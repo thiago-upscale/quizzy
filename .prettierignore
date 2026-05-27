@@ -1,0 +1,8 @@
+node_modules
+.next
+dist
+coverage
+pnpm-lock.yaml
+PRD-Quizzy-v2.md
+apps/web/AGENTS.md
+apps/web/drizzle/meta/*.json
