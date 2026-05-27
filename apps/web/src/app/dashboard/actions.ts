@@ -83,7 +83,9 @@ function sanitizeHex(color: string, fallback: string) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback;
 }
 
-function normalizeBranding(branding: Partial<BrandingPayload>): BrandingPayload {
+function normalizeBranding(
+  branding: Partial<BrandingPayload>,
+): BrandingPayload {
   return {
     primaryColor: sanitizeHex(
       branding.primaryColor ?? defaultBranding.primaryColor,
@@ -173,7 +175,10 @@ export async function saveQuiz(
       JSON.parse(brandingPayload) as Partial<BrandingPayload>,
     );
   } catch {
-    return { message: "Os dados do editor ficaram invalidos.", status: "error" };
+    return {
+      message: "Os dados do editor ficaram invalidos.",
+      status: "error",
+    };
   }
 
   const normalizedQuestions = normalizeQuestions(parsedQuestions);

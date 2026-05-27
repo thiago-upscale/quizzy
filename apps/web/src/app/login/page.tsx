@@ -13,9 +13,7 @@ export default async function LoginPage() {
     redirect("/dashboard");
   }
 
-  const hasGoogle = Boolean(
-    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
-  );
+  const hasGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#fef3c7,_transparent_34%),linear-gradient(135deg,_#fff8ef,_#edf7f4_60%,_#eef4ff)] px-6 py-12 text-[#10233f]">
@@ -55,7 +53,9 @@ export default async function LoginPage() {
         <section className="flex items-center">
           <div className="w-full rounded-[2rem] bg-white p-8 shadow-[0_30px_100px_rgba(15,23,42,0.14)]">
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold">Entrar na area do criador</h2>
+              <h2 className="text-2xl font-semibold">
+                Entrar na area do criador
+              </h2>
               <p className="mt-2 text-sm leading-6 text-[#61708c]">
                 Use email e senha para acessar seu dashboard.
               </p>

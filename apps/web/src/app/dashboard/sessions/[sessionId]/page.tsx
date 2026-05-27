@@ -3,7 +3,12 @@ import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
-import { quizSessions, quizzes, quizVersions, sessionEvents } from "@/db/schema";
+import {
+  quizSessions,
+  quizzes,
+  quizVersions,
+  sessionEvents,
+} from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 

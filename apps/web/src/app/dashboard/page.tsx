@@ -54,7 +54,9 @@ export default async function DashboardPage() {
         <section className="mt-8 grid gap-4">
           {quizList.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-[#c8d4e4] bg-white/80 p-10 text-center shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
-              <h2 className="text-2xl font-semibold">Nenhum quiz criado ainda</h2>
+              <h2 className="text-2xl font-semibold">
+                Nenhum quiz criado ainda
+              </h2>
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
                 Comecamos com um rascunho automaticamente quando voce cria o
                 primeiro quiz.

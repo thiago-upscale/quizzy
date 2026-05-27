@@ -28,10 +28,7 @@ export function RegisterForm() {
         />
       </div>
       <div className="space-y-2">
-        <label
-          className="text-sm font-medium text-[#22304a]"
-          htmlFor="company"
-        >
+        <label className="text-sm font-medium text-[#22304a]" htmlFor="company">
           Empresa
         </label>
         <input

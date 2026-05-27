@@ -44,7 +44,13 @@ const initialSaveState: SaveQuizState = {
   status: "idle",
 };
 
-const fontOptions = ["Manrope", "Space Grotesk", "IBM Plex Sans", "Outfit", "Archivo"];
+const fontOptions = [
+  "Manrope",
+  "Space Grotesk",
+  "IBM Plex Sans",
+  "Outfit",
+  "Archivo",
+];
 
 function SubmitButton({
   children,
@@ -76,11 +82,7 @@ function SubmitButton({
   );
 }
 
-function SessionButton({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function SessionButton({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus();
 
   return (
@@ -108,7 +110,10 @@ export function QuizEditor({
 }: QuizEditorProps) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [branding, setBranding] = useState(initialBranding);
-  const [saveState, saveFormAction] = useActionState(saveAction, initialSaveState);
+  const [saveState, saveFormAction] = useActionState(
+    saveAction,
+    initialSaveState,
+  );
 
   const previewQuestion = questions[0] ?? {
     id: "preview",
@@ -128,7 +133,9 @@ export function QuizEditor({
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
                 Sessoes
               </p>
-              <h2 className="mt-2 text-2xl font-semibold">Publicar e iniciar</h2>
+              <h2 className="mt-2 text-2xl font-semibold">
+                Publicar e iniciar
+              </h2>
             </div>
             <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
               {status}
@@ -190,7 +197,9 @@ export function QuizEditor({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
               Preview live
             </p>
-            <h2 className="mt-3 text-3xl font-semibold">{title || "Novo quiz"}</h2>
+            <h2 className="mt-3 text-3xl font-semibold">
+              {title || "Novo quiz"}
+            </h2>
             <p className="mt-2 text-sm text-white/75">
               O branding precisa aparecer com clareza antes de chegar ao lobby,
               pergunta e ranking.
@@ -306,7 +315,9 @@ export function QuizEditor({
                   key={key}
                   className="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3"
                 >
-                  <span className="text-sm font-medium text-[#22304a]">{label}</span>
+                  <span className="text-sm font-medium text-[#22304a]">
+                    {label}
+                  </span>
                   <div className="flex items-center gap-3">
                     <input
                       className="h-10 w-10 rounded-full border border-[#d5deea] bg-transparent"
@@ -369,7 +380,9 @@ export function QuizEditor({
                     setQuestions((currentQuestions) =>
                       currentQuestions.length === 1
                         ? currentQuestions
-                        : currentQuestions.filter((item) => item.id !== question.id),
+                        : currentQuestions.filter(
+                            (item) => item.id !== question.id,
+                          ),
                     )
                   }
                   type="button"
@@ -385,7 +398,8 @@ export function QuizEditor({
                     className="w-full rounded-xl border border-[#cad5e3] px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
                     value={question.type}
                     onChange={(event) => {
-                      const nextType = event.target.value as EditorQuestion["type"];
+                      const nextType = event.target
+                        .value as EditorQuestion["type"];
 
                       setQuestions((currentQuestions) =>
                         currentQuestions.map((item) =>
@@ -491,7 +505,9 @@ export function QuizEditor({
                 </div>
 
                 <div className="grid gap-3">
-                  <p className="text-sm font-medium text-[#22304a]">Alternativas</p>
+                  <p className="text-sm font-medium text-[#22304a]">
+                    Alternativas
+                  </p>
                   {question.options.map((option, optionIndex) => (
                     <input
                       key={`${question.id}-option-${optionIndex}`}

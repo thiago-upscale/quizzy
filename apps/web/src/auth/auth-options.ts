@@ -25,10 +25,7 @@ async function ensureGoogleUser(params: {
     })
     .from(users)
     .where(
-      or(
-        eq(users.email, normalizedEmail),
-        eq(users.googleId, params.googleId),
-      ),
+      or(eq(users.email, normalizedEmail), eq(users.googleId, params.googleId)),
     )
     .limit(1);
 

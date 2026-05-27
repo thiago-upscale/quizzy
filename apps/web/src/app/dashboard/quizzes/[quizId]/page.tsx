@@ -63,13 +63,12 @@ export default async function QuizDetailPage({
 
     return {
       id: question.id,
-      type:
-        question.type === "true_false" ? "true_false" : "multiple_choice",
+      type: question.type === "true_false" ? "true_false" : "multiple_choice",
       question: content.question ?? "",
       options:
         question.type === "true_false"
           ? ["Verdadeiro", "Falso"]
-          : content.options ?? ["Opcao A", "Opcao B", "Opcao C", "Opcao D"],
+          : (content.options ?? ["Opcao A", "Opcao B", "Opcao C", "Opcao D"]),
       correctIndex: correctAnswer.index ?? 0,
       timeLimitSeconds: question.timeLimitSeconds,
     } as const;
@@ -95,10 +94,7 @@ export default async function QuizDetailPage({
     })
     .from(quizSessions)
     .where(
-      and(
-        eq(quizSessions.quizId, quizId),
-        eq(quizSessions.mode, "individual"),
-      ),
+      and(eq(quizSessions.quizId, quizId), eq(quizSessions.mode, "individual")),
     )
     .orderBy(desc(quizSessions.createdAt))
     .limit(1);
