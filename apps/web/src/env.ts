@@ -11,4 +11,11 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().url().optional(),
 });
 
-export const env = envSchema.parse(process.env);
+export const env = envSchema.parse({
+  ...process.env,
+  DATABASE_URL:
+    process.env.DATABASE_URL ??
+    "postgresql://postgres:postgres@localhost:5432/quizzy",
+  NEXTAUTH_SECRET:
+    process.env.NEXTAUTH_SECRET ?? "development-secret-development-secret",
+});
