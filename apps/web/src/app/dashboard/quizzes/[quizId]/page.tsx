@@ -1,10 +1,14 @@
 import Link from "next/link";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
-import { questions, quizzes } from "@/db/schema";
-import { saveQuiz } from "../../actions";
+import { questions, quizzes, quizSessions } from "@/db/schema";
+import {
+  createIndividualSession,
+  createLiveSession,
+  saveQuiz,
+} from "../../actions";
 import { QuizEditor } from "./quiz-editor";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +26,7 @@ export default async function QuizDetailPage({
       id: quizzes.id,
       title: quizzes.title,
       description: quizzes.description,
+      branding: quizzes.branding,
       status: quizzes.status,
     })
     .from(quizzes)
@@ -70,6 +75,41 @@ export default async function QuizDetailPage({
     } as const;
   });
 
+  const liveSessions = await db
+    .select({
+      pin: quizSessions.pin,
+    })
+    .from(quizSessions)
+    .where(
+      and(
+        eq(quizSessions.quizId, quizId),
+        eq(quizSessions.mode, "live"),
+        inArray(quizSessions.status, ["waiting", "playing"]),
+      ),
+    )
+    .orderBy(desc(quizSessions.createdAt));
+
+  const [latestIndividualSession] = await db
+    .select({
+      shareToken: quizSessions.shareToken,
+    })
+    .from(quizSessions)
+    .where(
+      and(
+        eq(quizSessions.quizId, quizId),
+        eq(quizSessions.mode, "individual"),
+      ),
+    )
+    .orderBy(desc(quizSessions.createdAt))
+    .limit(1);
+
+  const branding = quiz.branding as Partial<{
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    fontFamily: string;
+  }>;
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_#f8fafc,_#eef5ff)] px-6 py-8 text-[#132238]">
       <div className="mx-auto w-full max-w-5xl">
@@ -89,10 +129,24 @@ export default async function QuizDetailPage({
         </div>
 
         <QuizEditor
+          branding={{
+            primaryColor: branding.primaryColor ?? "#0f766e",
+            secondaryColor: branding.secondaryColor ?? "#10233f",
+            accentColor: branding.accentColor ?? "#f59e0b",
+            fontFamily: branding.fontFamily ?? "Manrope",
+          }}
           description={quiz.description ?? ""}
           initialQuestions={initialQuestions}
+          liveSessionAction={createLiveSession}
           quizId={quiz.id}
           saveAction={saveQuiz}
+          sessionSummary={{
+            activeLiveCount: liveSessions.length,
+            latestLivePin: liveSessions[0]?.pin ?? null,
+            latestShareToken: latestIndividualSession?.shareToken ?? null,
+          }}
+          startIndividualSessionAction={createIndividualSession}
+          status={quiz.status}
           title={quiz.title}
         />
       </div>
