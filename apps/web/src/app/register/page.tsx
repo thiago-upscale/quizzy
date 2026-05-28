@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/auth/session";
+import { env } from "@/env";
 import { RegisterForm } from "./register-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function RegisterPage() {
   const session = await getAuthSession();
+  const hasGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   if (session?.user?.id) {
     redirect("/dashboard");
@@ -39,7 +41,7 @@ export default async function RegisterPage() {
               </p>
             </div>
 
-            <RegisterForm />
+            <RegisterForm hasGoogle={hasGoogle} />
 
             <p className="mt-6 text-sm text-[#61708c]">
               Ja tem conta?{" "}

@@ -32,6 +32,8 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: text("password_hash"),
   name: varchar("name", { length: 120 }).notNull(),
+  company: varchar("company", { length: 160 }),
+  avatar: varchar("avatar", { length: 50 }),
   googleId: varchar("google_id", { length: 255 }),
   role: varchar("role", { length: 20 }).notNull().default("owner"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -39,6 +41,26 @@ export const users = pgTable("users", {
     .defaultNow(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
 });
+
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("password_reset_tokens_user_idx").on(table.userId),
+    uniqueIndex("password_reset_tokens_hash_unique").on(table.tokenHash),
+  ],
+);
 
 export const quizzes = pgTable(
   "quizzes",

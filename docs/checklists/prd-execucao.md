@@ -22,15 +22,15 @@
 
 **Objetivo da sprint:** colocar a base tecnica e operacional no ar.
 
-| Item                                             | Status    | Observacoes                                          |
-| ------------------------------------------------ | --------- | ---------------------------------------------------- |
-| Monorepo `pnpm` com `apps/web` e `apps/realtime` | Concluido | Estrutura criada e em uso                            |
-| Next.js + TypeScript + Tailwind                  | Concluido | Base do app web ativa                                |
-| Socket.io em servico separado                    | Concluido | Realtime isolado conforme PRD                        |
-| PostgreSQL + Drizzle                             | Concluido | Schema e migrations em uso                           |
-| Redis para estado live                           | Concluido | Integrado ao realtime                                |
-| Railway com servicos `web` e `realtime`          | Concluido | Deploy funcional                                     |
-| GitHub Actions basico                            | Concluido | Format, lint, typecheck e build                      |
+| Item                                             | Status    | Observacoes                                                                                            |
+| ------------------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------ |
+| Monorepo `pnpm` com `apps/web` e `apps/realtime` | Concluido | Estrutura criada e em uso                                                                              |
+| Next.js + TypeScript + Tailwind                  | Concluido | Base do app web ativa                                                                                  |
+| Socket.io em servico separado                    | Concluido | Realtime isolado conforme PRD                                                                          |
+| PostgreSQL + Drizzle                             | Concluido | Schema e migrations em uso                                                                             |
+| Redis para estado live                           | Concluido | Integrado ao realtime                                                                                  |
+| Railway com servicos `web` e `realtime`          | Concluido | Deploy funcional                                                                                       |
+| GitHub Actions basico                            | Concluido | Format, lint, typecheck e build                                                                        |
 | Sentry e observabilidade operacional completa    | Parcial   | Logs estruturados e painel operacional base existem; ainda falta fechamento completo com monitoramento |
 
 **Proximo passo recomendado:** fechar observabilidade e operacao minima para beta.
@@ -94,16 +94,16 @@
 
 **Objetivo da sprint:** tornar o Live confiavel em uso real.
 
-| Item                                           | Status    | Observacoes                                                                     |
-| ---------------------------------------------- | --------- | ------------------------------------------------------------------------------- |
-| Reconexao do participante com mesmo token      | Concluido | Sem duplicar participante                                                       |
-| Retomada confirmada da sessao                  | Concluido | Fluxo "Retomar agora" implementado                                              |
-| Estado restaurado apos reconexao               | Concluido | Lobby, pergunta, resultado e final                                              |
-| Host vendo `online/offline`                    | Concluido | Em producao                                                                     |
-| Contagem real de conectados                    | Concluido | Separada do ranking                                                             |
+| Item                                           | Status    | Observacoes                                                                                               |
+| ---------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------- |
+| Reconexao do participante com mesmo token      | Concluido | Sem duplicar participante                                                                                 |
+| Retomada confirmada da sessao                  | Concluido | Fluxo "Retomar agora" implementado                                                                        |
+| Estado restaurado apos reconexao               | Concluido | Lobby, pergunta, resultado e final                                                                        |
+| Host vendo `online/offline`                    | Concluido | Em producao                                                                                               |
+| Contagem real de conectados                    | Concluido | Separada do ranking                                                                                       |
 | Reconexao do host em ate 5 min                 | Parcial   | Ja existe interrupcao e retomada operacional com janela curta; ainda falta validar a meta completa do PRD |
-| Persistencia segura sem depender so de memoria | Parcial   | Respostas criticas ja persistem; ainda vale endurecer mais o restante do estado |
-| Protecoes de limite/abuso                      | Parcial   | Ja existe rate limit leve de PIN e rejeicao estruturada de respostas; ainda falta endurecimento maior |
+| Persistencia segura sem depender so de memoria | Parcial   | Respostas criticas ja persistem; ainda vale endurecer mais o restante do estado                           |
+| Protecoes de limite/abuso                      | Parcial   | Ja existe rate limit leve de PIN e rejeicao estruturada de respostas; ainda falta endurecimento maior     |
 
 **Proximo passo recomendado:** hardening operacional e reconexao do host.
 
@@ -145,30 +145,30 @@
 
 **Objetivo da sprint:** deixar o produto apto para uso controlado com clientes reais.
 
-| Item                                       | Status    | Observacoes                                             |
-| ------------------------------------------ | --------- | ------------------------------------------------------- |
-| Fluxo completo live em producao controlada | Concluido | Ja operavel hoje                                        |
-| Modo Individual pronto para beta           | Faltando  | Principal lacuna funcional                              |
-| Teste de carga de 80 jogadores             | Faltando  | Ainda precisa execucao formal                           |
+| Item                                       | Status    | Observacoes                                                                              |
+| ------------------------------------------ | --------- | ---------------------------------------------------------------------------------------- |
+| Fluxo completo live em producao controlada | Concluido | Ja operavel hoje                                                                         |
+| Modo Individual pronto para beta           | Faltando  | Principal lacuna funcional                                                               |
+| Teste de carga de 80 jogadores             | Faltando  | Ainda precisa execucao formal                                                            |
 | Dashboard operacional para sessoes ativas  | Parcial   | A tela do host agora exibe sinais operacionais; ainda falta uma visao global de operacao |
-| Sentry sem novos erros apos staging        | Parcial   | Precisa consolidacao operacional                        |
-| Politica de privacidade e termos revisados | Bloqueado | Depende de validacao juridica                           |
-| Operadores de dados documentados           | Bloqueado | Depende de processo e documentacao                      |
-| Limite comercial prometido no beta         | Bloqueado | Decisao de negocio                                      |
+| Sentry sem novos erros apos staging        | Parcial   | Precisa consolidacao operacional                                                         |
+| Politica de privacidade e termos revisados | Bloqueado | Depende de validacao juridica                                                            |
+| Operadores de dados documentados           | Bloqueado | Depende de processo e documentacao                                                       |
+| Limite comercial prometido no beta         | Bloqueado | Decisao de negocio                                                                       |
 
 **Proximo passo recomendado:** so abrir beta depois de fechar Modo Individual e hardening operacional.
 
 ## Pendencias transversais do PRD
 
-| Tema                   | Status    | Observacoes                                                         |
-| ---------------------- | --------- | ------------------------------------------------------------------- |
-| Google OAuth           | Faltando  | Requisito do PRD ainda nao fechado em producao                      |
-| Recuperacao de senha   | Faltando  | Requisito do PRD ainda nao fechado                                  |
-| Perfil basico de conta | Faltando  | Nome, empresa e avatar ainda pedem acabamento                       |
-| PWA mobile-first       | Parcial   | UX mobile boa em partes, mas nao tratada como entrega formal de PWA |
-| Acessibilidade WCAG AA | Parcial   | Ainda precisa auditoria dedicada                                    |
-| Anti-cheating basico   | Parcial   | Ha validacoes server-side no core, nao como pacote fechado          |
-| LGPD operacional       | Bloqueado | Falta validacao juridica e processo                                 |
+| Tema                   | Status    | Observacoes                                                                              |
+| ---------------------- | --------- | ---------------------------------------------------------------------------------------- |
+| Google OAuth           | Parcial   | Provider pronto no codigo e escondido por config; falta adicionar credenciais no Railway |
+| Recuperacao de senha   | Concluido | Fluxo com token seguro e link interno para beta entregue                                 |
+| Perfil basico de conta | Concluido | Pagina de conta com nome, empresa, avatar e troca de senha entregue                      |
+| PWA mobile-first       | Parcial   | UX mobile boa em partes, mas nao tratada como entrega formal de PWA                      |
+| Acessibilidade WCAG AA | Parcial   | Ainda precisa auditoria dedicada                                                         |
+| Anti-cheating basico   | Parcial   | Ha validacoes server-side no core, nao como pacote fechado                               |
+| LGPD operacional       | Bloqueado | Falta validacao juridica e processo                                                      |
 
 ## Ordem recomendada daqui para frente
 

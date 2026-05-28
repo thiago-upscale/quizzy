@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { organizations, users } from "@/db/schema";
 import { hashPassword } from "@/auth/password";
+import { getDefaultAvatarForName } from "@/lib/account";
 
 export type RegisterState = {
   error?: string;
@@ -54,6 +55,8 @@ export async function registerCreator(
     }
 
     await tx.insert(users).values({
+      avatar: getDefaultAvatarForName(name),
+      company,
       organizationId: organization.id,
       email,
       name,

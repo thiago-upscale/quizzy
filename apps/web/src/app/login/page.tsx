@@ -6,8 +6,13 @@ import { env } from "@/env";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ registered?: string; reset?: string }>;
+}) {
   const session = await getAuthSession();
+  const params = await searchParams;
 
   if (session?.user?.id) {
     redirect("/dashboard");
@@ -60,6 +65,18 @@ export default async function LoginPage() {
                 Use email e senha para acessar seu dashboard.
               </p>
             </div>
+
+            {params.registered === "1" ? (
+              <p className="mb-4 rounded-xl bg-[#ecfdf3] px-4 py-3 text-sm text-[#0f766e]">
+                Conta criada com sucesso. Agora voce ja pode entrar.
+              </p>
+            ) : null}
+
+            {params.reset === "1" ? (
+              <p className="mb-4 rounded-xl bg-[#eff6ff] px-4 py-3 text-sm text-[#1d4ed8]">
+                Senha redefinida. Entre com a nova credencial.
+              </p>
+            ) : null}
 
             <LoginForm />
 

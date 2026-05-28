@@ -39,6 +39,12 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              className="rounded-full border border-[#cad5e3] px-5 py-3 text-sm font-semibold text-[#18202f] transition hover:bg-white"
+              href="/dashboard/account"
+            >
+              Conta
+            </Link>
             <form action={createQuiz}>
               <button
                 className="rounded-full bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59]"

@@ -165,13 +165,13 @@ Behavior:
 Introduce a dedicated table:
 
 ```ts
-password_reset_tokens
-- id
-- user_id
-- token_hash
-- expires_at
-- used_at
-- created_at
+password_reset_tokens -
+  id -
+  user_id -
+  token_hash -
+  expires_at -
+  used_at -
+  created_at;
 ```
 
 Recommended rules:

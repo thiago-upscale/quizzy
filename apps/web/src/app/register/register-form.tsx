@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import type { RegisterState } from "./actions";
 import { registerCreator } from "./actions";
 
 const initialState: RegisterState = {};
 
-export function RegisterForm() {
+export function RegisterForm({ hasGoogle }: { hasGoogle: boolean }) {
   const [state, formAction, pending] = useActionState(
     registerCreator,
     initialState,
@@ -80,6 +81,14 @@ export function RegisterForm() {
       >
         {pending ? "Criando conta..." : "Criar conta"}
       </button>
+      {hasGoogle ? (
+        <Link
+          className="block w-full rounded-xl border border-[#c9d5e7] px-4 py-3 text-center text-sm font-semibold text-[#1f2937] transition hover:bg-[#f8fafc]"
+          href="/api/auth/signin/google?callbackUrl=%2Fdashboard"
+        >
+          Criar conta com Google
+        </Link>
+      ) : null}
     </form>
   );
 }

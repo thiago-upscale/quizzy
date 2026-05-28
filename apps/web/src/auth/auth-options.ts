@@ -6,6 +6,7 @@ import { eq, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { organizations, users } from "@/db/schema";
 import { env } from "@/env";
+import { getDefaultAvatarForName } from "@/lib/account";
 import { verifyPassword } from "./password";
 
 async function ensureGoogleUser(params: {
@@ -21,6 +22,8 @@ async function ensureGoogleUser(params: {
       organizationId: users.organizationId,
       email: users.email,
       name: users.name,
+      company: users.company,
+      avatar: users.avatar,
       role: users.role,
     })
     .from(users)
@@ -38,7 +41,11 @@ async function ensureGoogleUser(params: {
       })
       .where(eq(users.id, existingUser.id));
 
-    return existingUser;
+    return {
+      ...existingUser,
+      avatar: existingUser.avatar ?? getDefaultAvatarForName(existingUser.name),
+      company: existingUser.company ?? existingUser.name,
+    };
   }
 
   const companyName = `${params.name.split(" ")[0] ?? "Equipe"} Quizzy`;
@@ -63,6 +70,8 @@ async function ensureGoogleUser(params: {
         organizationId: organization.id,
         email: normalizedEmail,
         name: params.name,
+        company: companyName,
+        avatar: getDefaultAvatarForName(params.name),
         googleId: params.googleId,
         role: "owner",
         lastLoginAt: new Date(),
@@ -72,6 +81,8 @@ async function ensureGoogleUser(params: {
         organizationId: users.organizationId,
         email: users.email,
         name: users.name,
+        company: users.company,
+        avatar: users.avatar,
         role: users.role,
       });
 
@@ -111,6 +122,8 @@ export const authOptions: AuthOptions = {
             organizationId: users.organizationId,
             email: users.email,
             name: users.name,
+            company: users.company,
+            avatar: users.avatar,
             role: users.role,
             passwordHash: users.passwordHash,
           })
@@ -136,6 +149,8 @@ export const authOptions: AuthOptions = {
           .where(eq(users.id, user.id));
 
         return {
+          avatar: user.avatar ?? getDefaultAvatarForName(user.name),
+          company: user.company ?? "",
           id: user.id,
           email: user.email,
           name: user.name,
@@ -178,6 +193,8 @@ export const authOptions: AuthOptions = {
     },
     async jwt({ token, user, account, profile }) {
       if (user) {
+        token.avatar = user.avatar;
+        token.company = user.company;
         token.userId = user.id;
         token.organizationId = user.organizationId;
         token.role = user.role;
@@ -193,12 +210,16 @@ export const authOptions: AuthOptions = {
         token.userId = dbUser.id;
         token.organizationId = dbUser.organizationId;
         token.role = dbUser.role;
+        token.company = dbUser.company;
+        token.avatar = dbUser.avatar;
       }
 
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.avatar = token.avatar ?? null;
+        session.user.company = token.company ?? null;
         session.user.id = token.userId ?? "";
         session.user.organizationId = token.organizationId ?? "";
         session.user.role = token.role ?? "owner";

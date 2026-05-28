@@ -81,6 +81,14 @@ export function LoginForm() {
           type="password"
         />
       </div>
+      <div className="flex justify-end">
+        <a
+          className="text-sm font-semibold text-[#0f766e]"
+          href="/forgot-password"
+        >
+          Esqueci minha senha
+        </a>
+      </div>
       {state.error ? (
         <p className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm text-[#9f1239]">
           {state.error}
