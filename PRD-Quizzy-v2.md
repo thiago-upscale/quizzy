@@ -17,6 +17,40 @@ O plano v2 tinha boa direção de produto, mas ainda misturava ambição de prod
 5. **Métricas mais acionáveis:** metas de sucesso agora separam validação de produto, confiabilidade técnica e qualidade da experiência.
 6. **Roadmap mais realista:** adicionados testes de carga, homologação operacional e critérios de saída por sprint.
 
+### 0.1. Status Executivo de Execução
+
+Estado atual estimado do PRD em 28 de maio de 2026:
+
+- **Avanco geral estimado:** 65%-70% do MVP descrito no PRD
+- **Nucleo Live:** forte e funcional
+- **Maior lacuna atual:** Modo Individual
+- **Risco principal para beta:** observabilidade, hardening operacional e itens pendentes de LGPD/auth complementar
+
+**Concluido**
+- Fundacao tecnica do monorepo, deploy e banco
+- Auth base com email/senha
+- Criacao, edicao e publicacao versionada de quizzes
+- Sessao Live com PIN, QR Code, lobby, respostas em tempo real, ranking e tela final
+- Relatorio basico por sessao com exportacao CSV
+- Reconexao do participante e status online/offline no host
+
+**Parcial**
+- Branding do quiz
+- Relatorios analiticos mais ricos
+- Robustez operacional para beta
+- Acessibilidade e polimento mobile
+
+**Faltando**
+- Modo Individual do MVP
+- Google OAuth em producao
+- Recuperacao de senha
+- Perfil basico de conta
+- Upload/storage final de assets de branding
+- Dashboard operacional e observabilidade completa
+- Hardening de beta: carga, limites e operacao assistida
+
+Checklist operacional detalhada em [docs/checklists/prd-execucao.md](docs/checklists/prd-execucao.md).
+
 ---
 
 ## 1. Visão Geral
