@@ -12,8 +12,10 @@ import {
   quizVersions,
   sessionEvents,
 } from "@/db/schema";
+import { getSessionReport } from "@/lib/session-report";
 import { advanceLiveSession, startLiveSession } from "../../actions";
 import { HostSessionPanel } from "./host-session-panel";
+import { ReportSection } from "./report-section";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +92,14 @@ export default async function SessionDetailPage({
     })
     .from(participants)
     .where(eq(participants.sessionId, sessionId));
+
+  const sessionReport =
+    quizSession.status === "finished"
+      ? await getSessionReport({
+          organizationId: session.user.organizationId,
+          sessionId,
+        })
+      : null;
 
   const publicUrl = quizSession.pin
     ? `${env.NEXTAUTH_URL}/live/${quizSession.pin}`
@@ -247,6 +257,12 @@ export default async function SessionDetailPage({
             </div>
           </aside>
         </section>
+
+        <ReportSection
+          report={sessionReport}
+          sessionId={quizSession.id}
+          sessionStatus={quizSession.status}
+        />
       </div>
     </main>
   );
