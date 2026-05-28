@@ -1,14 +1,19 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import QRCode from "qrcode";
 import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
+import { env } from "@/env";
 import {
+  participants,
   quizSessions,
   quizzes,
   quizVersions,
   sessionEvents,
 } from "@/db/schema";
+import { startLiveSession } from "../../actions";
+import { HostSessionPanel } from "./host-session-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +80,25 @@ export default async function SessionDetailPage({
     .orderBy(desc(sessionEvents.createdAt))
     .limit(5);
 
+  const joinedParticipants = await db
+    .select({
+      id: participants.id,
+      avatar: participants.avatar,
+      nickname: participants.nickname,
+      score: participants.score,
+    })
+    .from(participants)
+    .where(eq(participants.sessionId, sessionId));
+
+  const publicUrl = quizSession.pin
+    ? `${env.NEXTAUTH_URL}/live/${quizSession.pin}`
+    : null;
+  const qrCodeDataUrl = publicUrl
+    ? await QRCode.toDataURL(publicUrl, {
+        margin: 1,
+        width: 320,
+      })
+    : null;
   const sharePath = quizSession.shareToken
     ? `/play/${quizSession.shareToken}`
     : null;
@@ -114,6 +138,22 @@ export default async function SessionDetailPage({
           </div>
         </header>
 
+        {quizSession.mode === "live" &&
+        quizSession.pin &&
+        publicUrl &&
+        qrCodeDataUrl ? (
+          <HostSessionPanel
+            initialParticipants={joinedParticipants}
+            pin={quizSession.pin}
+            publicUrl={publicUrl}
+            qrCodeDataUrl={qrCodeDataUrl}
+            realtimeUrl={env.REALTIME_URL}
+            sessionId={quizSession.id}
+            sessionStatus={quizSession.status}
+            startAction={startLiveSession}
+          />
+        ) : null}
+
         <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="grid gap-4 sm:grid-cols-2">
             <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
@@ -132,14 +172,19 @@ export default async function SessionDetailPage({
 
             <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Link individual
+                {quizSession.mode === "live"
+                  ? "Link publico"
+                  : "Link individual"}
               </p>
               <p className="mt-3 break-all text-sm font-semibold text-[#132238]">
-                {sharePath ?? "Nao se aplica a sessoes live"}
+                {quizSession.mode === "live"
+                  ? (publicUrl ?? "Nao disponivel")
+                  : (sharePath ?? "Nao se aplica a sessoes live")}
               </p>
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                O fluxo publico do participante entra em seguida. Por enquanto,
-                esta referencia ja deixa o token visivel para QA e integracao.
+                {quizSession.mode === "live"
+                  ? "Esse e o link aberto pelo QR Code. O participante cai direto na sessao e informa so os dados de identificacao."
+                  : "O fluxo publico do participante entra em seguida. Por enquanto, esta referencia ja deixa o token visivel para QA e integracao."}
               </p>
             </article>
 

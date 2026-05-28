@@ -256,4 +256,3 @@ This slice should be validated with:
 - Participant sees a live lobby with branding and participant presence.
 - Host can start the session.
 - Participants receive a 3-second countdown and transition automatically.
-

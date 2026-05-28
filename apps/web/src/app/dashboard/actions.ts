@@ -6,12 +6,14 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
 import {
+  participants,
   questions,
   quizzes,
   quizSessions,
   quizVersions,
   sessionEvents,
 } from "@/db/schema";
+import { env } from "@/env";
 
 export async function createQuiz() {
   const session = await requireAuthSession();
@@ -68,6 +70,11 @@ type BrandingPayload = {
 };
 
 export type SaveQuizState = {
+  message?: string;
+  status: "idle" | "success" | "error";
+};
+
+export type StartLiveSessionState = {
   message?: string;
   status: "idle" | "success" | "error";
 };
@@ -419,4 +426,123 @@ export async function createIndividualSession(formData: FormData) {
 
   revalidatePath("/dashboard");
   redirect(`/dashboard/sessions/${individualSession.id}`);
+}
+
+async function notifyRealtimeSessionStart(params: {
+  pin: string;
+  sessionId: string;
+}) {
+  const response = await fetch(`${env.REALTIME_URL}/internal/session/start`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    throw new Error("Nao foi possivel avisar o servidor realtime.");
+  }
+}
+
+export async function startLiveSession(
+  _previousState: StartLiveSessionState,
+  formData: FormData,
+): Promise<StartLiveSessionState> {
+  const session = await requireAuthSession();
+  const sessionId = String(formData.get("sessionId") ?? "");
+
+  if (!sessionId) {
+    return { message: "Sessao invalida.", status: "error" };
+  }
+
+  const [liveSession] = await db
+    .select({
+      id: quizSessions.id,
+      pin: quizSessions.pin,
+      status: quizSessions.status,
+      quizId: quizSessions.quizId,
+    })
+    .from(quizSessions)
+    .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+    .where(
+      and(
+        eq(quizSessions.id, sessionId),
+        eq(quizSessions.mode, "live"),
+        eq(quizzes.organizationId, session.user.organizationId),
+      ),
+    )
+    .limit(1);
+
+  if (!liveSession?.pin) {
+    return { message: "Sessao live nao encontrada.", status: "error" };
+  }
+
+  if (liveSession.status !== "waiting") {
+    return {
+      message: "Essa sessao nao esta mais em estado de espera.",
+      status: "error",
+    };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(quizSessions)
+      .set({
+        status: "countdown",
+      })
+      .where(eq(quizSessions.id, liveSession.id));
+
+    await tx.insert(sessionEvents).values({
+      sessionId: liveSession.id,
+      eventType: "session.countdown_started",
+      payload: {
+        pin: liveSession.pin,
+      },
+    });
+  });
+
+  try {
+    await notifyRealtimeSessionStart({
+      pin: liveSession.pin,
+      sessionId: liveSession.id,
+    });
+  } catch {
+    await db
+      .update(quizSessions)
+      .set({
+        status: "waiting",
+      })
+      .where(eq(quizSessions.id, liveSession.id));
+
+    return {
+      message: "Nao conseguimos sincronizar o countdown realtime agora.",
+      status: "error",
+    };
+  }
+
+  revalidatePath(`/dashboard/sessions/${liveSession.id}`);
+  revalidatePath(`/live/${liveSession.pin}`);
+  revalidatePath(`/live/${liveSession.pin}/lobby`);
+
+  return {
+    message: "Countdown iniciado. Os participantes ja vao avancar.",
+    status: "success",
+  };
+}
+
+export async function getSessionParticipantsForDashboard(sessionId: string) {
+  await requireAuthSession();
+
+  return db
+    .select({
+      id: participants.id,
+      avatar: participants.avatar,
+      nickname: participants.nickname,
+      joinedAt: participants.joinedAt,
+      score: participants.score,
+    })
+    .from(participants)
+    .where(eq(participants.sessionId, sessionId));
 }

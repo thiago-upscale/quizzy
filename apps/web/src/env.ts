@@ -8,6 +8,7 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   REDIS_URL: z.string().url().optional(),
   REALTIME_URL: z.string().url().default("http://localhost:4001"),
+  REALTIME_INTERNAL_TOKEN: z.string().default("quizzy-internal-dev-token"),
   SENTRY_DSN: z.string().url().optional(),
 });
 
