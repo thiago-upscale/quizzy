@@ -32,7 +32,7 @@ export async function GET(
     session: report.session,
   });
 
-  return new Response(createSummaryCsv(report), {
+  return new Response(`\uFEFF${createSummaryCsv(report)}`, {
     headers: {
       "content-disposition": `attachment; filename="${filename}"`,
       "content-type": "text/csv; charset=utf-8",
