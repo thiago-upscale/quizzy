@@ -138,7 +138,7 @@ export const quizSessions = pgTable(
     uniqueIndex("quiz_sessions_active_pin_unique")
       .on(table.pin)
       .where(
-        sql`${table.pin} is not null and ${table.status} in ('waiting', 'countdown', 'playing', 'question_result')`,
+        sql`${table.pin} is not null and ${table.status} in ('waiting', 'countdown', 'playing', 'question_result', 'interrupted')`,
       ),
     uniqueIndex("quiz_sessions_share_token_unique")
       .on(table.shareToken)

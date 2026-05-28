@@ -322,6 +322,7 @@ export async function createLiveSession(formData: FormData) {
             "countdown",
             "playing",
             "question_result",
+            "interrupted",
           ]),
         ),
       )
@@ -611,6 +612,14 @@ export async function advanceLiveSession(
   if (liveSession.status === "finished") {
     return {
       message: "Essa sessao ja foi encerrada.",
+      status: "error",
+    };
+  }
+
+  if (liveSession.status === "interrupted") {
+    return {
+      message:
+        "Essa sessao esta em pausa operacional. Aguarde a retomada do host.",
       status: "error",
     };
   }

@@ -72,11 +72,15 @@ export async function POST(request: Request) {
         ? "session.question_started"
         : status === "question_result"
           ? "session.question_result_revealed"
-          : status === "playing"
-            ? "session.started"
-            : status === "finished"
-              ? "session.finished"
-              : "session.state_updated";
+          : status === "interrupted"
+            ? "session.interrupted"
+            : status === "playing"
+              ? "session.started"
+              : status === "finished"
+                ? "session.finished"
+                : status === "waiting"
+                  ? "session.waiting"
+                  : "session.state_updated";
 
     await tx.insert(sessionEvents).values({
       sessionId: liveSession.id,

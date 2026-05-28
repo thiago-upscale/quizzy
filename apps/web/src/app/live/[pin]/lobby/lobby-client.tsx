@@ -32,7 +32,14 @@ type LiveBranding = {
 };
 
 type SessionState = {
+  connectedParticipantsCount: number;
   countdownSeconds: number | null;
+  hostLastSeenAt: number | null;
+  hostPresenceStatus: "offline" | "online";
+  interruptionReason: "host_disconnected" | null;
+  lastEventAt: number | null;
+  offlineParticipantsCount: number;
+  rejectedAnswersCount: number;
   status: string;
 };
 
@@ -120,7 +127,16 @@ export function LobbyClient({
     ).length,
   );
   const [sessionState, setSessionState] = useState<SessionState>({
+    connectedParticipantsCount: initialParticipants.filter(
+      (currentParticipant) => currentParticipant.presenceStatus === "online",
+    ).length,
     countdownSeconds: initialSessionStatus === "countdown" ? 3 : null,
+    hostLastSeenAt: null,
+    hostPresenceStatus: "offline",
+    interruptionReason: null,
+    lastEventAt: null,
+    offlineParticipantsCount: initialParticipants.length,
+    rejectedAnswersCount: 0,
     status: initialSessionStatus,
   });
   const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
@@ -138,6 +154,7 @@ export function LobbyClient({
   >(null);
   const [answerState, setAnswerState] =
     useState<AnswerState>(initialAnswerState);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [submissionStats, setSubmissionStats] = useState({
     submittedCount: 0,
     totalParticipants: initialParticipants.length,
@@ -147,6 +164,10 @@ export function LobbyClient({
   const roomLabel = useMemo(() => {
     if (sessionState.status === "finished") {
       return "Encerrado";
+    }
+
+    if (sessionState.status === "interrupted") {
+      return "Pausado";
     }
 
     if (sessionState.status === "question_result") {
@@ -230,6 +251,7 @@ export function LobbyClient({
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      setSocketConnected(true);
       socket.emit("session:join", {
         avatar: participant.avatar,
         nickname: participant.nickname,
@@ -240,6 +262,10 @@ export function LobbyClient({
         score: participant.score,
         totalTimeMs: participant.totalTimeMs,
       });
+    });
+
+    socket.on("disconnect", () => {
+      setSocketConnected(false);
     });
 
     socket.on(
@@ -254,31 +280,29 @@ export function LobbyClient({
       },
     );
 
-    socket.on(
-      "session:state",
-      (payload: { countdownSeconds?: number; status: string }) => {
-        setSessionState({
-          countdownSeconds: payload.countdownSeconds ?? null,
-          status: payload.status,
-        });
-      },
-    );
+    socket.on("session:state", (payload: SessionState) => {
+      setSessionState(payload);
+    });
 
     socket.on("session:countdown", (payload: { seconds: number }) => {
       setCurrentResult(null);
-      setSessionState({
+      setSessionState((currentState) => ({
+        ...currentState,
         countdownSeconds: payload.seconds,
+        interruptionReason: null,
         status: "countdown",
-      });
+      }));
     });
 
     socket.on("session:started", () => {
       setCurrentResult(null);
       setFinalLeaderboard([]);
-      setSessionState({
+      setSessionState((currentState) => ({
+        ...currentState,
         countdownSeconds: null,
+        interruptionReason: null,
         status: "playing",
-      });
+      }));
     });
 
     socket.on("session:question", (payload: { question: ActiveQuestion }) => {
@@ -313,10 +337,12 @@ export function LobbyClient({
       setCurrentResult(payload.result);
       setLeaderboard(payload.result.leaderboard);
       setQuestionRemainingSeconds(0);
-      setSessionState({
+      setSessionState((currentState) => ({
+        ...currentState,
         countdownSeconds: null,
+        interruptionReason: null,
         status: "question_result",
-      });
+      }));
     });
 
     socket.on(
@@ -324,10 +350,12 @@ export function LobbyClient({
       (payload: { leaderboard: LeaderboardEntry[]; status: string }) => {
         setFinalLeaderboard(payload.leaderboard);
         setLeaderboard(payload.leaderboard);
-        setSessionState({
+        setSessionState((currentState) => ({
+          ...currentState,
           countdownSeconds: null,
+          interruptionReason: null,
           status: payload.status,
-        });
+        }));
       },
     );
 
@@ -436,6 +464,10 @@ export function LobbyClient({
             <p className="mt-1 text-sm font-medium text-white/75">
               {connectedCount} conectados agora
             </p>
+            <p className="mt-1 text-sm font-medium text-white/65">
+              Host {sessionState.hostPresenceStatus} •{" "}
+              {socketConnected ? "voce conectado" : "reconectando"}
+            </p>
             <p className="mt-3 text-sm leading-7 text-white/75">
               participantes ja passaram por esta sala. Quando o host iniciar,
               todos avancam ao mesmo tempo.
@@ -523,6 +555,21 @@ export function LobbyClient({
                     </p>
                   </div>
                 </div>
+              </div>
+            ) : null}
+
+            {sessionState.status === "interrupted" ? (
+              <div className="mt-8 rounded-[1.5rem] bg-[#fff7ed] p-6 text-[#7c2d12]">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9a3412]">
+                  Pausa operacional
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold">
+                  O host esta se reconectando
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[#9a3412]">
+                  Sua participacao foi preservada. Assim que o host retomar o
+                  controle, a sala volta para um estado seguro automaticamente.
+                </p>
               </div>
             ) : null}
 

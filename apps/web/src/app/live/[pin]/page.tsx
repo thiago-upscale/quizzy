@@ -78,7 +78,9 @@ export default async function LiveEntryPage({
           ? "Pergunta em andamento"
           : liveSession.status === "question_result"
             ? "Resultado da rodada"
-            : "Sessao encerrada";
+            : liveSession.status === "interrupted"
+              ? "Pausa operacional"
+              : "Sessao encerrada";
 
   return (
     <main

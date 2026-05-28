@@ -83,7 +83,13 @@ export default async function QuizDetailPage({
       and(
         eq(quizSessions.quizId, quizId),
         eq(quizSessions.mode, "live"),
-        inArray(quizSessions.status, ["waiting", "playing"]),
+        inArray(quizSessions.status, [
+          "waiting",
+          "countdown",
+          "playing",
+          "question_result",
+          "interrupted",
+        ]),
       ),
     )
     .orderBy(desc(quizSessions.createdAt));

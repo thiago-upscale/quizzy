@@ -240,6 +240,7 @@ export function canAccessLiveStatus(status: string) {
     "countdown",
     "playing",
     "question_result",
+    "interrupted",
     "finished",
   ]);
 }

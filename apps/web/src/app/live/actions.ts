@@ -1,6 +1,8 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -13,11 +15,35 @@ import {
   isJoinableLiveStatus,
   normalizeParticipantEmail,
 } from "@/lib/live";
+import { logger } from "@/lib/logger";
+import {
+  clearFailedPinEntries,
+  getPinEntryLimitConfig,
+  isPinEntryRateLimited,
+  registerFailedPinEntry,
+} from "@/lib/pin-entry-rate-limit";
 
 export type JoinLiveState = {
   message?: string;
   status: "idle" | "error";
 };
+
+function buildClientIdentifier(rawAddress: string | null) {
+  return createHash("sha256")
+    .update(rawAddress?.trim() || "unknown")
+    .digest("hex")
+    .slice(0, 16);
+}
+
+async function getClientIdentifier() {
+  const headerStore = await headers();
+  const forwardedFor = headerStore.get("x-forwarded-for");
+  const realIp = headerStore.get("x-real-ip");
+  const firstForwarded =
+    forwardedFor?.split(",").map((value) => value.trim())[0] ?? null;
+
+  return buildClientIdentifier(firstForwarded || realIp);
+}
 
 export async function joinLiveSession(
   _previousState: JoinLiveState,
@@ -26,6 +52,7 @@ export async function joinLiveSession(
   const pin = String(formData.get("pin") ?? "").trim();
   const nickname = String(formData.get("nickname") ?? "").trim();
   const email = String(formData.get("email") ?? "");
+  const clientIdentifier = await getClientIdentifier();
 
   if (!pin || nickname.length < 2) {
     return {
@@ -35,9 +62,41 @@ export async function joinLiveSession(
     };
   }
 
+  if (isPinEntryRateLimited(clientIdentifier)) {
+    const { maxFailedAttempts, windowMs } = getPinEntryLimitConfig();
+
+    logger.warn(
+      {
+        clientIdentifier,
+        maxFailedAttempts,
+        pin,
+        reason: "pin_rate_limited",
+        windowMs,
+      },
+      "pin.entry_rate_limited",
+    );
+
+    return {
+      message: "Muitas tentativas. Tente novamente em instantes.",
+      status: "error",
+    };
+  }
+
   const liveSession = await getLiveSessionByPin(pin);
 
   if (!liveSession || !isJoinableLiveStatus(liveSession.status)) {
+    const failedAttempts = registerFailedPinEntry(clientIdentifier);
+
+    logger.warn(
+      {
+        clientIdentifier,
+        failedAttempts,
+        pin,
+        reason: "session_unavailable",
+      },
+      "pin.entry_failed",
+    );
+
     return {
       message: "Essa sessao nao esta disponivel para entrada agora.",
       status: "error",
@@ -64,6 +123,7 @@ export async function joinLiveSession(
 
   const normalizedEmail = normalizeParticipantEmail(email);
   const participantToken = crypto.randomUUID().replaceAll("-", "");
+  clearFailedPinEntries(clientIdentifier);
 
   const [participant] = await db
     .insert(participants)

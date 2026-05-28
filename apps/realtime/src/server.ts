@@ -6,6 +6,16 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { env } from "./env.js";
 import { logger } from "./logger.js";
 
+type SessionStatus =
+  | "waiting"
+  | "countdown"
+  | "playing"
+  | "question_result"
+  | "interrupted"
+  | "finished";
+
+type InterruptionReason = "host_disconnected" | null;
+
 type RoomParticipant = {
   avatar: string;
   connected: boolean;
@@ -69,18 +79,45 @@ type QuestionResultSnapshot = {
   totalQuestions: number;
 };
 
+type SessionStatePayload = {
+  connectedParticipantsCount: number;
+  countdownSeconds: number | null;
+  hostLastSeenAt: number | null;
+  hostPresenceStatus: "offline" | "online";
+  interruptionReason: InterruptionReason;
+  lastEventAt: number | null;
+  offlineParticipantsCount: number;
+  rejectedAnswersCount: number;
+  status: SessionStatus;
+};
+
 type RoomState = {
   activeQuestionTimer: NodeJS.Timeout | null;
   answersByQuestion: Map<string, Map<string, RoomAnswer>>;
   countdownSeconds: number | null;
+  countdownTimer: NodeJS.Timeout | null;
   currentQuestionIndex: number | null;
   currentQuestionResult: QuestionResultSnapshot | null;
+  hostDisconnectedAt: number | null;
+  hostInterruptionTimer: NodeJS.Timeout | null;
+  hostLastSeenAt: number | null;
+  hostPresenceStatus: "offline" | "online";
+  hostSocketIds: Set<string>;
+  interruptedFromStatus:
+    | "waiting"
+    | "countdown"
+    | "playing"
+    | "question_result"
+    | null;
+  interruptionReason: InterruptionReason;
+  lastEventAt: number | null;
   participants: Map<string, RoomParticipant>;
   questionClosedAt: number | null;
   questionStartedAt: number | null;
   questions: RoomQuestion[];
+  rejectedAnswersCount: number;
   sessionId: string | null;
-  status: "waiting" | "countdown" | "playing" | "question_result" | "finished";
+  status: SessionStatus;
 };
 
 type StartSessionPayload = {
@@ -106,17 +143,29 @@ type PersistAnswerPayload = {
   timeSpentMs: number;
 };
 
+const HOST_RECOVERY_GRACE_MS = 60_000;
+
 function createEmptyRoom(): RoomState {
   return {
     activeQuestionTimer: null,
     answersByQuestion: new Map(),
     countdownSeconds: null,
+    countdownTimer: null,
     currentQuestionIndex: null,
     currentQuestionResult: null,
+    hostDisconnectedAt: null,
+    hostInterruptionTimer: null,
+    hostLastSeenAt: null,
+    hostPresenceStatus: "offline",
+    hostSocketIds: new Set(),
+    interruptedFromStatus: null,
+    interruptionReason: null,
+    lastEventAt: null,
     participants: new Map(),
     questionClosedAt: null,
     questionStartedAt: null,
     questions: [],
+    rejectedAnswersCount: 0,
     sessionId: null,
     status: "waiting",
   };
@@ -136,10 +185,28 @@ function getOrCreateRoom(pin: string) {
   return nextRoom;
 }
 
+function markRoomEvent(room: RoomState) {
+  room.lastEventAt = Date.now();
+}
+
 function clearQuestionTimer(room: RoomState) {
   if (room.activeQuestionTimer) {
     clearTimeout(room.activeQuestionTimer);
     room.activeQuestionTimer = null;
+  }
+}
+
+function clearCountdownTimer(room: RoomState) {
+  if (room.countdownTimer) {
+    clearTimeout(room.countdownTimer);
+    room.countdownTimer = null;
+  }
+}
+
+function clearHostInterruptionTimer(room: RoomState) {
+  if (room.hostInterruptionTimer) {
+    clearTimeout(room.hostInterruptionTimer);
+    room.hostInterruptionTimer = null;
   }
 }
 
@@ -185,6 +252,10 @@ function getConnectedParticipantCount(room: RoomState) {
   return [...room.participants.values()].filter(
     (participant) => participant.connected,
   ).length;
+}
+
+function getOfflineParticipantCount(room: RoomState) {
+  return room.participants.size - getConnectedParticipantCount(room);
 }
 
 function buildLeaderboard(
@@ -287,11 +358,25 @@ function buildQuestionResult(room: RoomState) {
   } satisfies QuestionResultSnapshot;
 }
 
+function buildSessionStatePayload(room: RoomState): SessionStatePayload {
+  return {
+    connectedParticipantsCount: getConnectedParticipantCount(room),
+    countdownSeconds: room.countdownSeconds,
+    hostLastSeenAt: room.hostLastSeenAt,
+    hostPresenceStatus: room.hostPresenceStatus,
+    interruptionReason: room.interruptionReason,
+    lastEventAt: room.lastEventAt,
+    offlineParticipantsCount: getOfflineParticipantCount(room),
+    rejectedAnswersCount: room.rejectedAnswersCount,
+    status: room.status,
+  };
+}
+
 async function notifyWebOfStateChange(params: {
   pin: string;
   questionIndex?: number;
   sessionId: string;
-  status: "countdown" | "playing" | "question_result" | "finished";
+  status: SessionStatus;
 }) {
   try {
     await fetch(new URL("/api/internal/live/state", env.WEB_ORIGIN), {
@@ -345,10 +430,7 @@ function emitRoomSnapshot(io: Server, pin: string, room: RoomState) {
     connectedCount,
     participants,
   });
-  io.to(pin).emit("session:state", {
-    countdownSeconds: room.countdownSeconds,
-    status: room.status,
-  });
+  io.to(pin).emit("session:state", buildSessionStatePayload(room));
   io.to(pin).emit("leaderboard:update", {
     entries: leaderboard,
   });
@@ -401,6 +483,8 @@ function finishSession(io: Server, params: { pin: string; room: RoomState }) {
   const { pin, room } = params;
 
   clearQuestionTimer(room);
+  clearCountdownTimer(room);
+  clearHostInterruptionTimer(room);
 
   room.status = "finished";
   room.countdownSeconds = null;
@@ -408,13 +492,13 @@ function finishSession(io: Server, params: { pin: string; room: RoomState }) {
   room.questionStartedAt = null;
   room.questionClosedAt = Date.now();
   room.currentQuestionResult = null;
+  room.interruptedFromStatus = null;
+  room.interruptionReason = null;
+  markRoomEvent(room);
 
   const leaderboard = buildLeaderboard(room);
 
-  io.to(pin).emit("session:state", {
-    countdownSeconds: null,
-    status: "finished",
-  });
+  io.to(pin).emit("session:state", buildSessionStatePayload(room));
   io.to(pin).emit("leaderboard:update", {
     entries: leaderboard,
   });
@@ -450,11 +534,11 @@ function closeQuestion(io: Server, params: { pin: string; room: RoomState }) {
   room.questionClosedAt = Date.now();
   room.questionStartedAt = null;
   room.currentQuestionResult = result;
+  room.interruptedFromStatus = null;
+  room.interruptionReason = null;
+  markRoomEvent(room);
 
-  io.to(pin).emit("session:state", {
-    countdownSeconds: null,
-    status: "question_result",
-  });
+  io.to(pin).emit("session:state", buildSessionStatePayload(room));
   io.to(pin).emit("question:closed", {
     questionId: currentQuestion.id,
     questionOrderIndex: currentQuestion.orderIndex,
@@ -467,6 +551,114 @@ function closeQuestion(io: Server, params: { pin: string; room: RoomState }) {
   });
 
   return true;
+}
+
+function interruptRoom(io: Server, params: { pin: string; room: RoomState }) {
+  const { pin, room } = params;
+
+  if (room.status === "finished" || room.status === "interrupted") {
+    return;
+  }
+
+  const previousStatus = room.status;
+  room.interruptedFromStatus = previousStatus;
+  room.status = "interrupted";
+  room.interruptionReason = "host_disconnected";
+  room.countdownSeconds = null;
+  room.questionStartedAt = null;
+  room.questionClosedAt = Date.now();
+  clearCountdownTimer(room);
+  clearQuestionTimer(room);
+  markRoomEvent(room);
+
+  logger.warn(
+    {
+      pin,
+      previousStatus,
+      sessionId: room.sessionId,
+    },
+    "session.interrupted",
+  );
+
+  emitRoomSnapshot(io, pin, room);
+
+  if (room.sessionId) {
+    void notifyWebOfStateChange({
+      pin,
+      questionIndex: room.currentQuestionIndex ?? undefined,
+      sessionId: room.sessionId,
+      status: "interrupted",
+    });
+  }
+}
+
+function resumeInterruptedRoom(
+  io: Server,
+  params: {
+    pin: string;
+    room: RoomState;
+  },
+) {
+  const { pin, room } = params;
+
+  if (room.status !== "interrupted") {
+    return;
+  }
+
+  const previousStatus = room.interruptedFromStatus ?? "waiting";
+
+  room.interruptedFromStatus = null;
+  room.interruptionReason = null;
+
+  if (previousStatus === "playing") {
+    const result = buildQuestionResult(room);
+    room.status = result ? "question_result" : "waiting";
+    room.currentQuestionResult = result;
+    room.questionClosedAt = Date.now();
+    room.questionStartedAt = null;
+  } else if (previousStatus === "countdown") {
+    room.status = "waiting";
+    room.currentQuestionIndex = null;
+    room.currentQuestionResult = null;
+    room.questionClosedAt = null;
+    room.questionStartedAt = null;
+  } else {
+    room.status = previousStatus;
+  }
+
+  markRoomEvent(room);
+
+  logger.info(
+    {
+      pin,
+      resumedStatus: room.status,
+      sessionId: room.sessionId,
+    },
+    "session.resumed",
+  );
+
+  emitRoomSnapshot(io, pin, room);
+
+  if (room.sessionId) {
+    void notifyWebOfStateChange({
+      pin,
+      questionIndex: room.currentQuestionIndex ?? undefined,
+      sessionId: room.sessionId,
+      status: room.status,
+    });
+  }
+}
+
+function scheduleHostInterruption(io: Server, pin: string, room: RoomState) {
+  clearHostInterruptionTimer(room);
+
+  room.hostInterruptionTimer = setTimeout(() => {
+    const currentRoom = getOrCreateRoom(pin);
+
+    if (currentRoom.hostSocketIds.size === 0) {
+      interruptRoom(io, { pin, room: currentRoom });
+    }
+  }, HOST_RECOVERY_GRACE_MS);
 }
 
 function startQuestion(
@@ -485,6 +677,7 @@ function startQuestion(
   }
 
   clearQuestionTimer(room);
+  clearCountdownTimer(room);
 
   room.status = "playing";
   room.countdownSeconds = null;
@@ -492,16 +685,16 @@ function startQuestion(
   room.currentQuestionResult = null;
   room.questionClosedAt = null;
   room.questionStartedAt = Date.now();
+  room.interruptedFromStatus = null;
+  room.interruptionReason = null;
+  markRoomEvent(room);
 
   const answerKey = getQuestionAnswerKey(question);
   if (!room.answersByQuestion.has(answerKey)) {
     room.answersByQuestion.set(answerKey, new Map());
   }
 
-  io.to(pin).emit("session:state", {
-    countdownSeconds: null,
-    status: room.status,
-  });
+  io.to(pin).emit("session:state", buildSessionStatePayload(room));
   io.to(pin).emit("session:started", {
     questionIndex,
     status: room.status,
@@ -538,6 +731,45 @@ function startQuestion(
   return true;
 }
 
+function rejectAnswer(
+  io: Server,
+  params: {
+    pin: string;
+    reason:
+      | "duplicate_answer"
+      | "invalid_payload"
+      | "participant_not_in_session"
+      | "question_closed"
+      | "session_interrupted";
+    room: RoomState;
+    socket: import("socket.io").Socket;
+    meta?: Record<string, string | number | null | undefined>;
+  },
+) {
+  const { pin, reason, room, socket, meta } = params;
+
+  room.rejectedAnswersCount += 1;
+  markRoomEvent(room);
+
+  socket.emit("answer:ack", {
+    accepted: false,
+    reason,
+  });
+
+  io.to(pin).emit("session:state", buildSessionStatePayload(room));
+
+  logger.warn(
+    {
+      ...meta,
+      pin,
+      reason,
+      sessionId: room.sessionId,
+      socketId: socket.id,
+    },
+    "answer.rejected",
+  );
+}
+
 const httpServer = createServer(async (request, response) => {
   if (request.url === "/health") {
     response.writeHead(200, { "content-type": "application/json" });
@@ -564,6 +796,8 @@ const httpServer = createServer(async (request, response) => {
 
       const room = getOrCreateRoom(pin);
       clearQuestionTimer(room);
+      clearCountdownTimer(room);
+      clearHostInterruptionTimer(room);
       room.sessionId = sessionId;
       room.questions = questions;
       room.status = "countdown";
@@ -572,11 +806,12 @@ const httpServer = createServer(async (request, response) => {
       room.currentQuestionResult = null;
       room.questionClosedAt = null;
       room.questionStartedAt = null;
+      room.interruptedFromStatus = null;
+      room.interruptionReason = null;
+      room.rejectedAnswersCount = 0;
+      markRoomEvent(room);
 
-      io.to(pin).emit("session:state", {
-        countdownSeconds: 3,
-        status: "countdown",
-      });
+      io.to(pin).emit("session:state", buildSessionStatePayload(room));
       io.to(pin).emit("session:countdown", { seconds: 3 });
 
       void notifyWebOfStateChange({
@@ -586,7 +821,7 @@ const httpServer = createServer(async (request, response) => {
         status: "countdown",
       });
 
-      setTimeout(() => {
+      room.countdownTimer = setTimeout(() => {
         const currentRoom = getOrCreateRoom(pin);
         const started = startQuestion(io, {
           pin,
@@ -635,6 +870,12 @@ const httpServer = createServer(async (request, response) => {
       if (room.sessionId !== sessionId || room.questions.length === 0) {
         response.writeHead(409, { "content-type": "application/json" });
         response.end(JSON.stringify({ error: "session_not_ready" }));
+        return;
+      }
+
+      if (room.status === "interrupted") {
+        response.writeHead(409, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "session_interrupted" }));
         return;
       }
 
@@ -781,6 +1022,7 @@ io.on("connection", (socket) => {
       socket.data.participantToken = participantToken;
       socket.data.role = "participant";
       socket.join(pin);
+      markRoomEvent(room);
 
       emitRoomSnapshot(io, pin, room);
 
@@ -818,11 +1060,35 @@ io.on("connection", (socket) => {
       room.sessionId = sessionId;
     }
 
+    const hostWasOffline = room.hostSocketIds.size === 0;
+
+    room.hostSocketIds.add(socket.id);
+    room.hostPresenceStatus = "online";
+    room.hostLastSeenAt = Date.now();
+    room.hostDisconnectedAt = null;
+    clearHostInterruptionTimer(room);
+    markRoomEvent(room);
+
     socket.data.pin = pin;
     socket.data.role = "host";
     socket.join(pin);
 
-    emitRoomSnapshot(io, pin, room);
+    if (room.status === "interrupted") {
+      resumeInterruptedRoom(io, { pin, room });
+    } else {
+      emitRoomSnapshot(io, pin, room);
+    }
+
+    if (hostWasOffline) {
+      logger.info(
+        {
+          pin,
+          sessionId: room.sessionId,
+          socketId: socket.id,
+        },
+        "host.reconnected",
+      );
+    }
   });
 
   socket.on(
@@ -844,9 +1110,12 @@ io.on("connection", (socket) => {
         !questionId ||
         typeof answerIndex !== "number"
       ) {
-        socket.emit("answer:ack", {
-          accepted: false,
+        const room = pin ? getOrCreateRoom(pin) : createEmptyRoom();
+        rejectAnswer(io, {
+          pin: pin ?? "unknown",
           reason: "invalid_payload",
+          room,
+          socket,
         });
         return;
       }
@@ -855,16 +1124,49 @@ io.on("connection", (socket) => {
       const currentQuestion = getCurrentQuestion(room);
       const participant = room.participants.get(participantToken);
 
+      if (!participant) {
+        rejectAnswer(io, {
+          pin,
+          reason: "participant_not_in_session",
+          room,
+          socket,
+          meta: {
+            participantToken,
+            questionId,
+          },
+        });
+        return;
+      }
+
+      if (room.status === "interrupted") {
+        rejectAnswer(io, {
+          pin,
+          reason: "session_interrupted",
+          room,
+          socket,
+          meta: {
+            participantId: participant.id,
+            questionId,
+          },
+        });
+        return;
+      }
+
       if (
         room.status !== "playing" ||
         !currentQuestion ||
-        !participant ||
         room.questionStartedAt === null ||
         currentQuestion.id !== questionId
       ) {
-        socket.emit("answer:ack", {
-          accepted: false,
-          reason: "question_not_active",
+        rejectAnswer(io, {
+          pin,
+          reason: "question_closed",
+          room,
+          socket,
+          meta: {
+            participantId: participant.id,
+            questionId,
+          },
         });
         return;
       }
@@ -874,9 +1176,15 @@ io.on("connection", (socket) => {
         room.answersByQuestion.get(answerKey) ?? new Map<string, RoomAnswer>();
 
       if (questionAnswers.has(participantToken)) {
-        socket.emit("answer:ack", {
-          accepted: false,
+        rejectAnswer(io, {
+          pin,
           reason: "duplicate_answer",
+          room,
+          socket,
+          meta: {
+            participantId: participant.id,
+            questionId,
+          },
         });
         return;
       }
@@ -885,9 +1193,15 @@ io.on("connection", (socket) => {
       const questionTimeLimitMs = currentQuestion.timeLimitSeconds * 1000;
 
       if (timeSpentMs > questionTimeLimitMs) {
-        socket.emit("answer:ack", {
-          accepted: false,
-          reason: "time_expired",
+        rejectAnswer(io, {
+          pin,
+          reason: "question_closed",
+          room,
+          socket,
+          meta: {
+            participantId: participant.id,
+            questionId,
+          },
         });
         return;
       }
@@ -911,6 +1225,7 @@ io.on("connection", (socket) => {
       participant.score += pointsEarned;
       participant.totalTimeMs += timeSpentMs;
       room.participants.set(participantToken, participant);
+      markRoomEvent(room);
 
       socket.emit("answer:ack", {
         accepted: true,
@@ -932,6 +1247,21 @@ io.on("connection", (socket) => {
       io.to(pin).emit("leaderboard:update", {
         entries: buildLeaderboard(room, currentQuestion),
       });
+      io.to(pin).emit("session:state", buildSessionStatePayload(room));
+
+      logger.info(
+        {
+          answerIndex,
+          isCorrect,
+          participantId: participant.id,
+          pin,
+          pointsEarned,
+          questionId: currentQuestion.id,
+          sessionId: room.sessionId,
+          timeSpentMs,
+        },
+        "answer.accepted",
+      );
 
       if (room.sessionId) {
         void persistAnswer({
@@ -964,11 +1294,36 @@ io.on("connection", (socket) => {
           connected: false,
           socketId: null,
         });
+        markRoomEvent(room);
 
         io.to(pin).emit("participant:list", {
           connectedCount: getConnectedParticipantCount(room),
           participants: serializeParticipants(room),
         });
+        io.to(pin).emit("session:state", buildSessionStatePayload(room));
+      }
+    }
+
+    if (pin && role === "host") {
+      const room = getOrCreateRoom(pin);
+      room.hostSocketIds.delete(socket.id);
+
+      if (room.hostSocketIds.size === 0) {
+        room.hostPresenceStatus = "offline";
+        room.hostDisconnectedAt = Date.now();
+        room.hostLastSeenAt = room.hostDisconnectedAt;
+        markRoomEvent(room);
+        scheduleHostInterruption(io, pin, room);
+        emitRoomSnapshot(io, pin, room);
+
+        logger.warn(
+          {
+            pin,
+            sessionId: room.sessionId,
+            socketId: socket.id,
+          },
+          "host.disconnected",
+        );
       }
     }
 

@@ -50,6 +50,18 @@ type QuestionResult = {
   totalQuestions: number;
 };
 
+type SessionStatePayload = {
+  connectedParticipantsCount: number;
+  countdownSeconds: number | null;
+  hostLastSeenAt: number | null;
+  hostPresenceStatus: "offline" | "online";
+  interruptionReason: "host_disconnected" | null;
+  lastEventAt: number | null;
+  offlineParticipantsCount: number;
+  rejectedAnswersCount: number;
+  status: string;
+};
+
 const initialActionState: StartLiveSessionState = {
   status: "idle",
 };
@@ -64,6 +76,16 @@ function formatDuration(totalTimeMs: number) {
   }
 
   return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+function formatEventTime(value: number | null) {
+  if (!value) {
+    return "Sem eventos recentes";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeStyle: "short",
+  }).format(value);
 }
 
 export function HostSessionPanel({
@@ -101,6 +123,22 @@ export function HostSessionPanel({
     ).length,
   );
   const [status, setStatus] = useState(sessionStatus);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [operationalState, setOperationalState] = useState<SessionStatePayload>(
+    {
+      connectedParticipantsCount: initialParticipants.filter(
+        (participant) => participant.presenceStatus === "online",
+      ).length,
+      countdownSeconds: sessionStatus === "countdown" ? 3 : null,
+      hostLastSeenAt: null,
+      hostPresenceStatus: "offline",
+      interruptionReason: null,
+      lastEventAt: null,
+      offlineParticipantsCount: initialParticipants.length,
+      rejectedAnswersCount: 0,
+      status: sessionStatus,
+    },
+  );
   const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
     null,
   );
@@ -144,13 +182,47 @@ export function HostSessionPanel({
     return "Abrir primeira pergunta";
   }, [currentResult, status]);
 
+  const operationalWarnings = useMemo(() => {
+    const warnings: string[] = [];
+
+    if (!socketConnected) {
+      warnings.push("Painel do host desconectado do realtime");
+    }
+
+    if (operationalState.hostPresenceStatus === "offline") {
+      warnings.push("Host offline no canal realtime");
+    }
+
+    if (status === "interrupted") {
+      warnings.push("Sessao pausada por ausencia do host");
+    }
+
+    if (operationalState.rejectedAnswersCount > 0) {
+      warnings.push(
+        `${operationalState.rejectedAnswersCount} resposta(s) rejeitada(s) nesta sala`,
+      );
+    }
+
+    return warnings;
+  }, [
+    operationalState.hostPresenceStatus,
+    operationalState.rejectedAnswersCount,
+    socketConnected,
+    status,
+  ]);
+
   useEffect(() => {
     const socket: Socket = io(realtimeUrl, {
       transports: ["websocket"],
     });
 
     socket.on("connect", () => {
+      setSocketConnected(true);
       socket.emit("host:watch", { pin, sessionId });
+    });
+
+    socket.on("disconnect", () => {
+      setSocketConnected(false);
     });
 
     socket.on(
@@ -165,12 +237,10 @@ export function HostSessionPanel({
       },
     );
 
-    socket.on(
-      "session:state",
-      (payload: { countdownSeconds?: number; status: string }) => {
-        setStatus(payload.status);
-      },
-    );
+    socket.on("session:state", (payload: SessionStatePayload) => {
+      setStatus(payload.status);
+      setOperationalState(payload);
+    });
 
     socket.on("session:question", (payload: { question: ActiveQuestion }) => {
       setCurrentQuestion(payload.question);
@@ -272,6 +342,26 @@ export function HostSessionPanel({
         </div>
 
         <div className="mt-6 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                Canal do host
+              </p>
+              <p className="mt-2 text-sm font-semibold text-[#132238]">
+                {socketConnected ? "Conectado ao realtime" : "Desconectado"}
+              </p>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                Presenca do host
+              </p>
+              <p className="mt-2 text-sm font-semibold text-[#132238]">
+                {operationalState.hostPresenceStatus}
+              </p>
+            </div>
+          </div>
+
           {startState.status !== "idle" ? (
             <p
               className={
@@ -337,6 +427,70 @@ export function HostSessionPanel({
           <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
             {connectedCount} conectados
           </span>
+        </div>
+
+        <div className="mt-6 grid gap-3 lg:grid-cols-2">
+          <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+              Painel operacional
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                  Sessao
+                </p>
+                <p className="mt-2 text-sm font-semibold text-[#132238]">
+                  {status}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                  Ultimo evento
+                </p>
+                <p className="mt-2 text-sm font-semibold text-[#132238]">
+                  {formatEventTime(operationalState.lastEventAt)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                  Online
+                </p>
+                <p className="mt-2 text-sm font-semibold text-[#132238]">
+                  {operationalState.connectedParticipantsCount}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                  Offline
+                </p>
+                <p className="mt-2 text-sm font-semibold text-[#132238]">
+                  {operationalState.offlineParticipantsCount}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+              Alertas
+            </p>
+            <div className="mt-3 space-y-2">
+              {operationalWarnings.length === 0 ? (
+                <p className="text-sm text-[#61708c]">
+                  Nenhum alerta operacional no momento.
+                </p>
+              ) : (
+                operationalWarnings.map((warning) => (
+                  <p
+                    key={warning}
+                    className="rounded-2xl bg-[#fff7ed] px-3 py-2 text-sm font-medium text-[#9a3412]"
+                  >
+                    {warning}
+                  </p>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
         {status === "playing" && currentQuestion ? (
@@ -423,6 +577,22 @@ export function HostSessionPanel({
                 </div>
               ))}
             </div>
+          </div>
+        ) : null}
+
+        {status === "interrupted" ? (
+          <div className="mt-6 rounded-[1.5rem] border border-[#fed7aa] bg-[#fff7ed] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9a3412]">
+              Pausa operacional
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-[#7c2d12]">
+              Sessao interrompida
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-[#9a3412]">
+              O realtime marcou a sala como interrompida por ausencia do host.
+              Assim que a conexao for retomada, a sessao volta para um estado
+              seguro.
+            </p>
           </div>
         ) : null}
 
