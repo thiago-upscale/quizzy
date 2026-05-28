@@ -155,7 +155,10 @@ export default async function SessionDetailPage({
         qrCodeDataUrl ? (
           <HostSessionPanel
             advanceAction={advanceLiveSession}
-            initialParticipants={joinedParticipants}
+            initialParticipants={joinedParticipants.map((participant) => ({
+              ...participant,
+              presenceStatus: "offline" as const,
+            }))}
             pin={quizSession.pin}
             publicUrl={publicUrl}
             qrCodeDataUrl={qrCodeDataUrl}

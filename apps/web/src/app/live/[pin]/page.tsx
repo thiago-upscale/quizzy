@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { joinLiveSession } from "../actions";
 import {
   canAccessLiveStatus,
@@ -56,19 +55,30 @@ export default async function LiveEntryPage({
   const participantToken = cookieStore.get(
     getLiveParticipantCookieName(pin),
   )?.value;
+  let returningParticipant: Awaited<
+    ReturnType<typeof getParticipantByToken>
+  > | null = null;
 
   if (participantToken) {
-    const participant = await getParticipantByToken({
+    returningParticipant = await getParticipantByToken({
       participantToken,
       sessionId: liveSession.id,
     });
-
-    if (participant && canAccessLiveStatus(liveSession.status)) {
-      redirect(`/live/${pin}/lobby`);
-    }
   }
 
   const isJoinable = isJoinableLiveStatus(liveSession.status);
+  const canResume =
+    Boolean(returningParticipant) && canAccessLiveStatus(liveSession.status);
+  const sessionStatusLabel =
+    liveSession.status === "waiting"
+      ? "Aguardando inicio"
+      : liveSession.status === "countdown"
+        ? "Contagem regressiva"
+        : liveSession.status === "playing"
+          ? "Pergunta em andamento"
+          : liveSession.status === "question_result"
+            ? "Resultado da rodada"
+            : "Sessao encerrada";
 
   return (
     <main
@@ -106,7 +116,42 @@ export default async function LiveEntryPage({
           </div>
 
           <div className="rounded-[1.75rem] border border-white/10 bg-white/8 p-6">
-            {isJoinable ? (
+            {canResume ? (
+              <>
+                <h2 className="text-2xl font-semibold">
+                  Voce voltou para a sessao
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-white/75">
+                  Seu progresso foi preservado para{" "}
+                  <span className="font-semibold text-white">
+                    {returningParticipant?.nickname}
+                  </span>
+                  . Retome do ponto atual quando quiser.
+                </p>
+                <div className="mt-6 rounded-[1.5rem] bg-white/10 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                    Estado atual
+                  </p>
+                  <p className="mt-2 text-lg font-semibold">
+                    {sessionStatusLabel}
+                  </p>
+                </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    className="inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#10233f]"
+                    href={`/live/${pin}/lobby`}
+                  >
+                    Retomar agora
+                  </Link>
+                  <Link
+                    className="inline-flex rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white/85 transition hover:bg-white/10"
+                    href="/join"
+                  >
+                    Voltar ao inicio
+                  </Link>
+                </div>
+              </>
+            ) : isJoinable ? (
               <>
                 <h2 className="text-2xl font-semibold">Entrar na sala</h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">

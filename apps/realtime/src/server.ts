@@ -17,6 +17,15 @@ type RoomParticipant = {
   totalTimeMs: number;
 };
 
+type SerializedParticipant = {
+  avatar: string;
+  id: string;
+  nickname: string;
+  presenceStatus: "offline" | "online";
+  score: number;
+  totalTimeMs: number;
+};
+
 type RoomQuestion = {
   correctIndex: number;
   id: string;
@@ -136,14 +145,17 @@ function clearQuestionTimer(room: RoomState) {
 
 function serializeParticipants(room: RoomState) {
   return [...room.participants.values()]
-    .filter((participant) => participant.connected)
-    .map((participant) => ({
-      avatar: participant.avatar,
-      id: participant.id,
-      nickname: participant.nickname,
-      score: participant.score,
-      totalTimeMs: participant.totalTimeMs,
-    }))
+    .map(
+      (participant) =>
+        ({
+          avatar: participant.avatar,
+          id: participant.id,
+          nickname: participant.nickname,
+          presenceStatus: participant.connected ? "online" : "offline",
+          score: participant.score,
+          totalTimeMs: participant.totalTimeMs,
+        }) satisfies SerializedParticipant,
+    )
     .sort((left, right) => left.nickname.localeCompare(right.nickname));
 }
 
@@ -326,9 +338,12 @@ async function parseJsonBody<T>(request: import("node:http").IncomingMessage) {
 
 function emitRoomSnapshot(io: Server, pin: string, room: RoomState) {
   const leaderboard = buildLeaderboard(room);
+  const participants = serializeParticipants(room);
+  const connectedCount = getConnectedParticipantCount(room);
 
   io.to(pin).emit("participant:list", {
-    participants: serializeParticipants(room),
+    connectedCount,
+    participants,
   });
   io.to(pin).emit("session:state", {
     countdownSeconds: room.countdownSeconds,
@@ -768,6 +783,25 @@ io.on("connection", (socket) => {
       socket.join(pin);
 
       emitRoomSnapshot(io, pin, room);
+
+      if (room.status === "playing") {
+        const currentQuestion = getCurrentQuestion(room);
+
+        if (currentQuestion) {
+          const answer = getQuestionAnswers(room, currentQuestion).get(
+            participantToken,
+          );
+
+          if (answer) {
+            socket.emit("answer:ack", {
+              accepted: true,
+              answerIndex: answer.answerIndex,
+              isCorrect: answer.isCorrect,
+              pointsEarned: answer.pointsEarned,
+            });
+          }
+        }
+      }
     },
   );
 
@@ -886,6 +920,7 @@ io.on("connection", (socket) => {
       });
 
       io.to(pin).emit("participant:list", {
+        connectedCount: getConnectedParticipantCount(room),
         participants: serializeParticipants(room),
       });
       io.to(pin).emit("question:stats", {
@@ -931,6 +966,7 @@ io.on("connection", (socket) => {
         });
 
         io.to(pin).emit("participant:list", {
+          connectedCount: getConnectedParticipantCount(room),
           participants: serializeParticipants(room),
         });
       }

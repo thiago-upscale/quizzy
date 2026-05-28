@@ -7,6 +7,7 @@ type Participant = {
   avatar: string;
   id: string;
   nickname: string;
+  presenceStatus: "offline" | "online";
   score: number;
   totalTimeMs: number;
 };
@@ -113,6 +114,11 @@ export function LobbyClient({
 }) {
   const [participants, setParticipants] =
     useState<Participant[]>(initialParticipants);
+  const [connectedCount, setConnectedCount] = useState(
+    initialParticipants.filter(
+      (currentParticipant) => currentParticipant.presenceStatus === "online",
+    ).length,
+  );
   const [sessionState, setSessionState] = useState<SessionState>({
     countdownSeconds: initialSessionStatus === "countdown" ? 3 : null,
     status: initialSessionStatus,
@@ -238,11 +244,12 @@ export function LobbyClient({
 
     socket.on(
       "participant:list",
-      (payload: { participants: Participant[] }) => {
+      (payload: { connectedCount: number; participants: Participant[] }) => {
         setParticipants(payload.participants);
+        setConnectedCount(payload.connectedCount);
         setSubmissionStats((currentStats) => ({
           ...currentStats,
-          totalParticipants: payload.participants.length,
+          totalParticipants: payload.connectedCount,
         }));
       },
     );
@@ -426,9 +433,12 @@ export function LobbyClient({
               Sala pronta
             </p>
             <p className="mt-3 text-5xl font-semibold">{participants.length}</p>
+            <p className="mt-1 text-sm font-medium text-white/75">
+              {connectedCount} conectados agora
+            </p>
             <p className="mt-3 text-sm leading-7 text-white/75">
-              participantes conectados. Quando o host iniciar, todos avancam ao
-              mesmo tempo.
+              participantes ja passaram por esta sala. Quando o host iniciar,
+              todos avancam ao mesmo tempo.
             </p>
 
             {sessionState.status === "countdown" ? (
@@ -647,7 +657,7 @@ export function LobbyClient({
                 </h2>
               </div>
               <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
-                {participants.length} online
+                {connectedCount} online
               </span>
             </div>
 
@@ -716,9 +726,14 @@ export function LobbyClient({
                       <p className="text-sm font-semibold">
                         {currentParticipant.nickname}
                       </p>
-                      <p className="text-xs text-white/65">
-                        {currentParticipant.score} pontos
-                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <p className="text-xs text-white/65">
+                          {currentParticipant.score} pontos
+                        </p>
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">
+                          {currentParticipant.presenceStatus}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}

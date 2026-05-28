@@ -9,6 +9,7 @@ type Participant = {
   avatar: string;
   id: string;
   nickname: string;
+  presenceStatus: "offline" | "online";
   score: number;
   totalTimeMs: number;
 };
@@ -94,6 +95,11 @@ export function HostSessionPanel({
 }) {
   const [participants, setParticipants] =
     useState<Participant[]>(initialParticipants);
+  const [connectedCount, setConnectedCount] = useState(
+    initialParticipants.filter(
+      (participant) => participant.presenceStatus === "online",
+    ).length,
+  );
   const [status, setStatus] = useState(sessionStatus);
   const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
     null,
@@ -149,11 +155,12 @@ export function HostSessionPanel({
 
     socket.on(
       "participant:list",
-      (payload: { participants: Participant[] }) => {
+      (payload: { connectedCount: number; participants: Participant[] }) => {
         setParticipants(payload.participants);
+        setConnectedCount(payload.connectedCount);
         setQuestionStats((currentStats) => ({
           ...currentStats,
-          totalParticipants: payload.participants.length,
+          totalParticipants: payload.connectedCount,
         }));
       },
     );
@@ -328,7 +335,7 @@ export function HostSessionPanel({
             </h2>
           </div>
           <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
-            {participants.length} conectados
+            {connectedCount} conectados
           </span>
         </div>
 
@@ -481,6 +488,47 @@ export function HostSessionPanel({
                 </div>
               ))
             )}
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+              Presenca
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-[#132238]">
+              Online e offline
+            </h3>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {participants.map((participant) => (
+              <div
+                key={participant.id}
+                className="flex items-center gap-3 rounded-2xl border border-[#e2e8f0] bg-[#f8fbff] px-4 py-3"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#10233f] text-sm font-semibold text-white">
+                  {participant.nickname.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#132238]">
+                    {participant.nickname}
+                  </p>
+                  <p className="text-xs text-[#61708c]">
+                    {participant.score} pontos
+                  </p>
+                </div>
+                <span
+                  className={
+                    participant.presenceStatus === "online"
+                      ? "rounded-full bg-[#ecfdf3] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#0f766e]"
+                      : "rounded-full bg-[#f4f4f5] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#52525b]"
+                  }
+                >
+                  {participant.presenceStatus}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </article>

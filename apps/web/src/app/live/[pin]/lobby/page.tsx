@@ -59,6 +59,7 @@ export default async function LiveLobbyPage({
         avatar: currentParticipant.avatar,
         id: currentParticipant.id,
         nickname: currentParticipant.nickname,
+        presenceStatus: "offline",
         score: currentParticipant.score,
         totalTimeMs: currentParticipant.totalTimeMs,
       }))}
