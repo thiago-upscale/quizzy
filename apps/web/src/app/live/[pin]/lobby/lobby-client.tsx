@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 
 type Participant = {
+  avatar: string;
   id: string;
   nickname: string;
-  avatar: string;
   score: number;
 };
 
@@ -18,8 +18,36 @@ type LiveBranding = {
 };
 
 type SessionState = {
-  status: string;
   countdownSeconds: number | null;
+  status: string;
+};
+
+type ActiveQuestion = {
+  id: string;
+  options: string[];
+  orderIndex: number;
+  prompt: string;
+  startedAt: number;
+  submittedCount: number;
+  timeLimitSeconds: number;
+  totalQuestions: number;
+  type: "multiple_choice" | "true_false";
+};
+
+type AnswerState = {
+  accepted: boolean;
+  answerIndex: number | null;
+  isCorrect: boolean | null;
+  pointsEarned: number;
+  submitted: boolean;
+};
+
+const initialAnswerState: AnswerState = {
+  accepted: false,
+  answerIndex: null,
+  isCorrect: null,
+  pointsEarned: 0,
+  submitted: false,
 };
 
 export function LobbyClient({
@@ -35,8 +63,11 @@ export function LobbyClient({
   initialParticipants: Participant[];
   initialSessionStatus: string;
   participant: {
+    avatar: string;
+    id: string;
     nickname: string;
     participantToken: string;
+    score: number;
   };
   pin: string;
   quizTitle: string;
@@ -45,11 +76,28 @@ export function LobbyClient({
   const [participants, setParticipants] =
     useState<Participant[]>(initialParticipants);
   const [sessionState, setSessionState] = useState<SessionState>({
-    status: initialSessionStatus,
     countdownSeconds: initialSessionStatus === "countdown" ? 3 : null,
+    status: initialSessionStatus,
   });
+  const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
+    null,
+  );
+  const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState<
+    number | null
+  >(null);
+  const [answerState, setAnswerState] =
+    useState<AnswerState>(initialAnswerState);
+  const [submissionStats, setSubmissionStats] = useState({
+    submittedCount: 0,
+    totalParticipants: initialParticipants.length,
+  });
+  const socketRef = useRef<Socket | null>(null);
 
   const roomLabel = useMemo(() => {
+    if (sessionState.status === "finished") {
+      return "Encerrado";
+    }
+
     if (sessionState.status === "playing") {
       return "Ao vivo";
     }
@@ -92,16 +140,40 @@ export function LobbyClient({
   }, [sessionState.countdownSeconds, sessionState.status]);
 
   useEffect(() => {
+    if (!currentQuestion) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      const elapsedMs = Date.now() - currentQuestion.startedAt;
+      const remaining = Math.max(
+        0,
+        Math.ceil(currentQuestion.timeLimitSeconds - elapsedMs / 1000),
+      );
+
+      setQuestionRemainingSeconds(remaining);
+    }, 250);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [currentQuestion]);
+
+  useEffect(() => {
     const socket: Socket = io(realtimeUrl, {
       transports: ["websocket"],
     });
+    socketRef.current = socket;
 
     socket.on("connect", () => {
       socket.emit("session:join", {
+        avatar: participant.avatar,
         nickname: participant.nickname,
+        participantId: participant.id,
         participantToken: participant.participantToken,
         pin,
         role: "participant",
+        score: participant.score,
       });
     });
 
@@ -109,6 +181,10 @@ export function LobbyClient({
       "participant:list",
       (payload: { participants: Participant[] }) => {
         setParticipants(payload.participants);
+        setSubmissionStats((currentStats) => ({
+          ...currentStats,
+          totalParticipants: payload.participants.length,
+        }));
       },
     );
 
@@ -116,30 +192,99 @@ export function LobbyClient({
       "session:state",
       (payload: { countdownSeconds?: number; status: string }) => {
         setSessionState({
-          status: payload.status,
           countdownSeconds: payload.countdownSeconds ?? null,
+          status: payload.status,
         });
       },
     );
 
     socket.on("session:countdown", (payload: { seconds: number }) => {
       setSessionState({
-        status: "countdown",
         countdownSeconds: payload.seconds,
+        status: "countdown",
       });
     });
 
     socket.on("session:started", () => {
       setSessionState({
-        status: "playing",
         countdownSeconds: null,
+        status: "playing",
       });
     });
 
+    socket.on("session:question", (payload: { question: ActiveQuestion }) => {
+      setCurrentQuestion(payload.question);
+      setAnswerState(initialAnswerState);
+      setQuestionRemainingSeconds(payload.question.timeLimitSeconds);
+      setSubmissionStats((currentStats) => ({
+        submittedCount: payload.question.submittedCount,
+        totalParticipants: currentStats.totalParticipants,
+      }));
+    });
+
+    socket.on(
+      "question:stats",
+      (payload: { submittedCount: number; totalParticipants: number }) => {
+        setSubmissionStats({
+          submittedCount: payload.submittedCount,
+          totalParticipants: payload.totalParticipants,
+        });
+      },
+    );
+
+    socket.on(
+      "answer:ack",
+      (payload: {
+        accepted: boolean;
+        answerIndex?: number;
+        isCorrect?: boolean;
+        pointsEarned?: number;
+      }) => {
+        if (!payload.accepted) {
+          return;
+        }
+
+        setAnswerState({
+          accepted: true,
+          answerIndex: payload.answerIndex ?? null,
+          isCorrect: payload.isCorrect ?? null,
+          pointsEarned: payload.pointsEarned ?? 0,
+          submitted: true,
+        });
+      },
+    );
+
     return () => {
+      socketRef.current = null;
       socket.disconnect();
     };
-  }, [participant.nickname, participant.participantToken, pin, realtimeUrl]);
+  }, [
+    participant.avatar,
+    participant.id,
+    participant.nickname,
+    participant.participantToken,
+    participant.score,
+    pin,
+    realtimeUrl,
+  ]);
+
+  function submitAnswer(answerIndex: number) {
+    if (
+      !currentQuestion ||
+      !socketRef.current ||
+      answerState.submitted ||
+      questionRemainingSeconds === 0
+    ) {
+      return;
+    }
+
+    socketRef.current.emit("answer:submit", {
+      answerIndex,
+      participantToken: participant.participantToken,
+      pin,
+      questionId: currentQuestion.id,
+    });
+  }
 
   return (
     <main
@@ -176,7 +321,7 @@ export function LobbyClient({
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+        <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <article className="rounded-[1.75rem] bg-white/10 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
               Sala pronta
@@ -198,17 +343,88 @@ export function LobbyClient({
               </div>
             ) : null}
 
-            {sessionState.status === "playing" ? (
+            {currentQuestion ? (
+              <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                      Pergunta {currentQuestion.orderIndex + 1} de{" "}
+                      {currentQuestion.totalQuestions}
+                    </p>
+                    <h2 className="mt-3 text-2xl font-semibold">
+                      {currentQuestion.prompt}
+                    </h2>
+                  </div>
+                  <span
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
+                    style={{ backgroundColor: branding.accentColor }}
+                  >
+                    {questionRemainingSeconds ??
+                      currentQuestion.timeLimitSeconds}
+                    s
+                  </span>
+                </div>
+
+                <div className="mt-6 grid gap-3">
+                  {currentQuestion.options.map((option, optionIndex) => {
+                    const isChosen = answerState.answerIndex === optionIndex;
+                    return (
+                      <button
+                        key={`${currentQuestion.id}-${optionIndex}`}
+                        className={
+                          isChosen
+                            ? "rounded-2xl bg-white px-4 py-4 text-left text-sm font-semibold text-[#10233f]"
+                            : "rounded-2xl bg-white/10 px-4 py-4 text-left text-sm font-medium text-white transition hover:bg-white/20"
+                        }
+                        disabled={
+                          answerState.submitted ||
+                          questionRemainingSeconds === 0
+                        }
+                        onClick={() => submitAnswer(optionIndex)}
+                        type="button"
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                      Respostas enviadas
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold">
+                      {submissionStats.submittedCount}/
+                      {submissionStats.totalParticipants}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                      Seu status
+                    </p>
+                    <p className="mt-2 text-sm font-semibold">
+                      {answerState.submitted
+                        ? answerState.isCorrect
+                          ? `Resposta confirmada: +${answerState.pointsEarned} pontos`
+                          : "Resposta confirmada"
+                        : "Aguardando sua resposta"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : sessionState.status === "playing" ? (
               <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                   Primeira pergunta
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold">
-                  A sessao ja comecou
+                  Preparando o enunciado
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">
-                  O fluxo de resposta entra em seguida. Este placeholder garante
-                  a transicao automatica do lobby para o estado de jogo.
+                  O host ja iniciou a sessao. A pergunta vai aparecer aqui em
+                  instantes.
                 </p>
               </div>
             ) : null}
@@ -239,12 +455,12 @@ export function LobbyClient({
                   >
                     {currentParticipant.nickname.slice(0, 2).toUpperCase()}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold">
                       {currentParticipant.nickname}
                     </p>
                     <p className="text-xs text-white/65">
-                      avatar {currentParticipant.avatar}
+                      {currentParticipant.score} pontos
                     </p>
                   </div>
                 </div>

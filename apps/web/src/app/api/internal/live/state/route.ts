@@ -5,6 +5,7 @@ import { quizSessions, sessionEvents } from "@/db/schema";
 import { env } from "@/env";
 
 type Payload = {
+  questionIndex?: number;
   pin?: string;
   sessionId?: string;
   status?: string;
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
   const pin = payload.pin?.trim();
   const sessionId = payload.sessionId?.trim();
   const status = payload.status?.trim();
+  const questionIndex =
+    typeof payload.questionIndex === "number" ? payload.questionIndex : null;
 
   if (!pin || !sessionId || !status) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
@@ -51,7 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "session_not_found" }, { status: 404 });
   }
 
-  if (liveSession.status === status) {
+  if (liveSession.status === status && questionIndex === null) {
     return NextResponse.json({ ok: true });
   }
 
@@ -65,17 +68,20 @@ export async function POST(request: Request) {
       .where(eq(quizSessions.id, liveSession.id));
 
     const eventType =
-      status === "playing"
-        ? "session.started"
-        : status === "finished"
-          ? "session.finished"
-          : "session.state_updated";
+      status === "playing" && questionIndex !== null
+        ? "session.question_started"
+        : status === "playing"
+          ? "session.started"
+          : status === "finished"
+            ? "session.finished"
+            : "session.state_updated";
 
     await tx.insert(sessionEvents).values({
       sessionId: liveSession.id,
       eventType,
       payload: {
         pin,
+        questionIndex,
         status,
       },
     });

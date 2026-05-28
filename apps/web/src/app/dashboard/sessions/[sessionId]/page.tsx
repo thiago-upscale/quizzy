@@ -12,7 +12,7 @@ import {
   quizVersions,
   sessionEvents,
 } from "@/db/schema";
-import { startLiveSession } from "../../actions";
+import { advanceLiveSession, startLiveSession } from "../../actions";
 import { HostSessionPanel } from "./host-session-panel";
 
 export const dynamic = "force-dynamic";
@@ -143,6 +143,7 @@ export default async function SessionDetailPage({
         publicUrl &&
         qrCodeDataUrl ? (
           <HostSessionPanel
+            advanceAction={advanceLiveSession}
             initialParticipants={joinedParticipants}
             pin={quizSession.pin}
             publicUrl={publicUrl}

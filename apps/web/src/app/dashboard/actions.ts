@@ -14,6 +14,10 @@ import {
   sessionEvents,
 } from "@/db/schema";
 import { env } from "@/env";
+import {
+  buildRuntimeQuestionsForSession,
+  getLiveSessionById,
+} from "@/lib/live";
 
 export async function createQuiz() {
   const session = await requireAuthSession();
@@ -429,6 +433,11 @@ export async function createIndividualSession(formData: FormData) {
 }
 
 async function notifyRealtimeSessionStart(params: {
+  questions: ReturnType<typeof buildRuntimeQuestionsForSession> extends Promise<
+    infer TValue
+  >
+    ? TValue
+    : never;
   pin: string;
   sessionId: string;
 }) {
@@ -486,6 +495,17 @@ export async function startLiveSession(
     };
   }
 
+  const runtimeQuestions = await buildRuntimeQuestionsForSession(
+    liveSession.id,
+  );
+
+  if (runtimeQuestions.length === 0) {
+    return {
+      message: "Nao encontramos perguntas publicadas para iniciar essa sessao.",
+      status: "error",
+    };
+  }
+
   await db.transaction(async (tx) => {
     await tx
       .update(quizSessions)
@@ -505,6 +525,7 @@ export async function startLiveSession(
 
   try {
     await notifyRealtimeSessionStart({
+      questions: runtimeQuestions,
       pin: liveSession.pin,
       sessionId: liveSession.id,
     });
@@ -528,6 +549,78 @@ export async function startLiveSession(
 
   return {
     message: "Countdown iniciado. Os participantes ja vao avancar.",
+    status: "success",
+  };
+}
+
+async function notifyRealtimeAdvanceSession(params: {
+  pin: string;
+  sessionId: string;
+}) {
+  const response = await fetch(`${env.REALTIME_URL}/internal/session/next`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    throw new Error("Nao foi possivel avancar a sessao no realtime.");
+  }
+}
+
+export async function advanceLiveSession(
+  _previousState: StartLiveSessionState,
+  formData: FormData,
+): Promise<StartLiveSessionState> {
+  const session = await requireAuthSession();
+  const sessionId = String(formData.get("sessionId") ?? "");
+
+  if (!sessionId) {
+    return { message: "Sessao invalida.", status: "error" };
+  }
+
+  const liveSession = await getLiveSessionById(sessionId);
+
+  if (!liveSession?.pin) {
+    return { message: "Sessao live nao encontrada.", status: "error" };
+  }
+
+  const [authorizedSession] = await db
+    .select({ id: quizzes.id })
+    .from(quizzes)
+    .where(
+      and(
+        eq(quizzes.id, liveSession.quizId),
+        eq(quizzes.organizationId, session.user.organizationId),
+      ),
+    )
+    .limit(1);
+
+  if (!authorizedSession) {
+    return { message: "Voce nao tem acesso a essa sessao.", status: "error" };
+  }
+
+  try {
+    await notifyRealtimeAdvanceSession({
+      pin: liveSession.pin,
+      sessionId: liveSession.id,
+    });
+  } catch {
+    return {
+      message: "Nao conseguimos avancar para a proxima etapa agora.",
+      status: "error",
+    };
+  }
+
+  revalidatePath(`/dashboard/sessions/${liveSession.id}`);
+  revalidatePath(`/live/${liveSession.pin}`);
+  revalidatePath(`/live/${liveSession.pin}/lobby`);
+
+  return {
+    message: "Sessao atualizada com sucesso.",
     status: "success",
   };
 }
