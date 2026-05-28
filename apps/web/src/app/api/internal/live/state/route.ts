@@ -70,11 +70,13 @@ export async function POST(request: Request) {
     const eventType =
       status === "playing" && questionIndex !== null
         ? "session.question_started"
-        : status === "playing"
-          ? "session.started"
-          : status === "finished"
-            ? "session.finished"
-            : "session.state_updated";
+        : status === "question_result"
+          ? "session.question_result_revealed"
+          : status === "playing"
+            ? "session.started"
+            : status === "finished"
+              ? "session.finished"
+              : "session.state_updated";
 
     await tx.insert(sessionEvents).values({
       sessionId: liveSession.id,

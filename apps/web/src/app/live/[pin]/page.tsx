@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { joinLiveSession } from "../actions";
 import {
+  canAccessLiveStatus,
   getLiveParticipantCookieName,
   getLiveSessionByPin,
   getParticipantByToken,
@@ -62,7 +63,7 @@ export default async function LiveEntryPage({
       sessionId: liveSession.id,
     });
 
-    if (participant && isJoinableLiveStatus(liveSession.status)) {
+    if (participant && canAccessLiveStatus(liveSession.status)) {
       redirect(`/live/${pin}/lobby`);
     }
   }

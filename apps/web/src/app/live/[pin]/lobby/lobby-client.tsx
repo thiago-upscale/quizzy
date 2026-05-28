@@ -8,13 +8,26 @@ type Participant = {
   id: string;
   nickname: string;
   score: number;
+  totalTimeMs: number;
+};
+
+type LeaderboardEntry = {
+  answeredCurrentQuestion: boolean;
+  avatar: string;
+  id: string;
+  lastIsCorrect: boolean | null;
+  lastPointsEarned: number;
+  nickname: string;
+  rank: number;
+  score: number;
+  totalTimeMs: number;
 };
 
 type LiveBranding = {
-  primaryColor: string;
-  secondaryColor: string;
   accentColor: string;
   fontFamily: string;
+  primaryColor: string;
+  secondaryColor: string;
 };
 
 type SessionState = {
@@ -34,6 +47,18 @@ type ActiveQuestion = {
   type: "multiple_choice" | "true_false";
 };
 
+type QuestionResult = {
+  correctCount: number;
+  correctOptionIndex: number;
+  leaderboard: LeaderboardEntry[];
+  options: string[];
+  prompt: string;
+  questionId: string;
+  questionOrderIndex: number;
+  submittedCount: number;
+  totalQuestions: number;
+};
+
 type AnswerState = {
   accepted: boolean;
   answerIndex: number | null;
@@ -49,6 +74,18 @@ const initialAnswerState: AnswerState = {
   pointsEarned: 0,
   submitted: false,
 };
+
+function formatDuration(totalTimeMs: number) {
+  const totalSeconds = Math.round(totalTimeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes === 0) {
+    return `${seconds}s`;
+  }
+
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
 
 export function LobbyClient({
   branding,
@@ -68,6 +105,7 @@ export function LobbyClient({
     nickname: string;
     participantToken: string;
     score: number;
+    totalTimeMs: number;
   };
   pin: string;
   quizTitle: string;
@@ -82,6 +120,13 @@ export function LobbyClient({
   const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
     null,
   );
+  const [currentResult, setCurrentResult] = useState<QuestionResult | null>(
+    null,
+  );
+  const [finalLeaderboard, setFinalLeaderboard] = useState<LeaderboardEntry[]>(
+    [],
+  );
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState<
     number | null
   >(null);
@@ -98,6 +143,10 @@ export function LobbyClient({
       return "Encerrado";
     }
 
+    if (sessionState.status === "question_result") {
+      return "Resultado";
+    }
+
     if (sessionState.status === "playing") {
       return "Ao vivo";
     }
@@ -108,6 +157,15 @@ export function LobbyClient({
 
     return "Aguardando inicio";
   }, [sessionState.status]);
+
+  const personalStanding = useMemo(() => {
+    const activeLeaderboard =
+      sessionState.status === "finished" ? finalLeaderboard : leaderboard;
+
+    return (
+      activeLeaderboard.find((entry) => entry.id === participant.id) ?? null
+    );
+  }, [finalLeaderboard, leaderboard, participant.id, sessionState.status]);
 
   useEffect(() => {
     if (sessionState.status !== "countdown" || !sessionState.countdownSeconds) {
@@ -140,7 +198,7 @@ export function LobbyClient({
   }, [sessionState.countdownSeconds, sessionState.status]);
 
   useEffect(() => {
-    if (!currentQuestion) {
+    if (!currentQuestion || sessionState.status !== "playing") {
       return;
     }
 
@@ -157,7 +215,7 @@ export function LobbyClient({
     return () => {
       window.clearInterval(interval);
     };
-  }, [currentQuestion]);
+  }, [currentQuestion, sessionState.status]);
 
   useEffect(() => {
     const socket: Socket = io(realtimeUrl, {
@@ -174,6 +232,7 @@ export function LobbyClient({
         pin,
         role: "participant",
         score: participant.score,
+        totalTimeMs: participant.totalTimeMs,
       });
     });
 
@@ -199,6 +258,7 @@ export function LobbyClient({
     );
 
     socket.on("session:countdown", (payload: { seconds: number }) => {
+      setCurrentResult(null);
       setSessionState({
         countdownSeconds: payload.seconds,
         status: "countdown",
@@ -206,6 +266,8 @@ export function LobbyClient({
     });
 
     socket.on("session:started", () => {
+      setCurrentResult(null);
+      setFinalLeaderboard([]);
       setSessionState({
         countdownSeconds: null,
         status: "playing",
@@ -214,6 +276,7 @@ export function LobbyClient({
 
     socket.on("session:question", (payload: { question: ActiveQuestion }) => {
       setCurrentQuestion(payload.question);
+      setCurrentResult(null);
       setAnswerState(initialAnswerState);
       setQuestionRemainingSeconds(payload.question.timeLimitSeconds);
       setSubmissionStats((currentStats) => ({
@@ -228,6 +291,35 @@ export function LobbyClient({
         setSubmissionStats({
           submittedCount: payload.submittedCount,
           totalParticipants: payload.totalParticipants,
+        });
+      },
+    );
+
+    socket.on(
+      "leaderboard:update",
+      (payload: { entries: LeaderboardEntry[] }) => {
+        setLeaderboard(payload.entries);
+      },
+    );
+
+    socket.on("question:result", (payload: { result: QuestionResult }) => {
+      setCurrentResult(payload.result);
+      setLeaderboard(payload.result.leaderboard);
+      setQuestionRemainingSeconds(0);
+      setSessionState({
+        countdownSeconds: null,
+        status: "question_result",
+      });
+    });
+
+    socket.on(
+      "session:final",
+      (payload: { leaderboard: LeaderboardEntry[]; status: string }) => {
+        setFinalLeaderboard(payload.leaderboard);
+        setLeaderboard(payload.leaderboard);
+        setSessionState({
+          countdownSeconds: null,
+          status: payload.status,
         });
       },
     );
@@ -264,6 +356,7 @@ export function LobbyClient({
     participant.nickname,
     participant.participantToken,
     participant.score,
+    participant.totalTimeMs,
     pin,
     realtimeUrl,
   ]);
@@ -273,7 +366,8 @@ export function LobbyClient({
       !currentQuestion ||
       !socketRef.current ||
       answerState.submitted ||
-      questionRemainingSeconds === 0
+      questionRemainingSeconds === 0 ||
+      sessionState.status !== "playing"
     ) {
       return;
     }
@@ -285,6 +379,11 @@ export function LobbyClient({
       questionId: currentQuestion.id,
     });
   }
+
+  const leaderboardToRender =
+    sessionState.status === "finished" && finalLeaderboard.length > 0
+      ? finalLeaderboard
+      : leaderboard;
 
   return (
     <main
@@ -343,7 +442,7 @@ export function LobbyClient({
               </div>
             ) : null}
 
-            {currentQuestion ? (
+            {sessionState.status === "playing" && currentQuestion ? (
               <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -368,6 +467,7 @@ export function LobbyClient({
                 <div className="mt-6 grid gap-3">
                   {currentQuestion.options.map((option, optionIndex) => {
                     const isChosen = answerState.answerIndex === optionIndex;
+
                     return (
                       <button
                         key={`${currentQuestion.id}-${optionIndex}`}
@@ -408,13 +508,119 @@ export function LobbyClient({
                       {answerState.submitted
                         ? answerState.isCorrect
                           ? `Resposta confirmada: +${answerState.pointsEarned} pontos`
-                          : "Resposta confirmada"
+                          : "Resposta confirmada. Aguarde o resultado."
                         : "Aguardando sua resposta"}
                     </p>
                   </div>
                 </div>
               </div>
-            ) : sessionState.status === "playing" ? (
+            ) : null}
+
+            {sessionState.status === "question_result" && currentResult ? (
+              <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                      Resultado da rodada
+                    </p>
+                    <h2 className="mt-3 text-2xl font-semibold">
+                      {currentResult.prompt}
+                    </h2>
+                  </div>
+                  <span
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
+                    style={{ backgroundColor: branding.accentColor }}
+                  >
+                    {currentResult.correctCount}/{currentResult.submittedCount}{" "}
+                    acertaram
+                  </span>
+                </div>
+
+                <div className="mt-6 grid gap-3">
+                  {currentResult.options.map((option, optionIndex) => {
+                    const isCorrectOption =
+                      optionIndex === currentResult.correctOptionIndex;
+
+                    return (
+                      <div
+                        key={`${currentResult.questionId}-${optionIndex}`}
+                        className={
+                          isCorrectOption
+                            ? "rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-[#10233f]"
+                            : "rounded-2xl bg-white/10 px-4 py-4 text-sm font-medium text-white/78"
+                        }
+                      >
+                        {option}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                      Seu resultado
+                    </p>
+                    <p className="mt-2 text-sm font-semibold">
+                      {personalStanding?.answeredCurrentQuestion
+                        ? personalStanding.lastIsCorrect
+                          ? `Voce acertou e ganhou ${personalStanding.lastPointsEarned} pontos.`
+                          : "Voce respondeu, mas nao acertou nesta rodada."
+                        : "Voce nao respondeu a tempo nesta rodada."}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                      Sua colocacao
+                    </p>
+                    <p className="mt-2 text-sm font-semibold">
+                      {personalStanding
+                        ? `${personalStanding.rank}o lugar com ${personalStanding.score} pontos`
+                        : "Atualizando classificacao"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {sessionState.status === "finished" ? (
+              <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Resultado final
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold">
+                  Sessao encerrada
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-white/75">
+                  O ranking final ja esta consolidado. Obrigado por jogar.
+                </p>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                      Sua posicao
+                    </p>
+                    <p className="mt-2 text-sm font-semibold">
+                      {personalStanding
+                        ? `${personalStanding.rank}o lugar`
+                        : "Posicao indisponivel"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                      Pontuacao final
+                    </p>
+                    <p className="mt-2 text-sm font-semibold">
+                      {personalStanding
+                        ? `${personalStanding.score} pontos em ${formatDuration(personalStanding.totalTimeMs)}`
+                        : "Sem pontuacao registrada"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {sessionState.status === "playing" && !currentQuestion ? (
               <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                   Primeira pergunta
@@ -434,37 +640,89 @@ export function LobbyClient({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                  Participantes
+                  Ranking ao vivo
                 </p>
-                <h2 className="mt-3 text-2xl font-semibold">Quem ja entrou</h2>
+                <h2 className="mt-3 text-2xl font-semibold">
+                  Classificacao da sala
+                </h2>
               </div>
               <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
                 {participants.length} online
               </span>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {participants.map((currentParticipant) => (
-                <div
-                  key={currentParticipant.id}
-                  className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3"
-                >
+            <div className="mt-6 space-y-3">
+              {leaderboardToRender.length === 0 ? (
+                <p className="text-sm leading-7 text-white/75">
+                  O ranking aparece assim que a rodada comecar e as primeiras
+                  respostas forem chegando.
+                </p>
+              ) : (
+                leaderboardToRender.slice(0, 5).map((entry) => (
                   <div
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-[#10233f]"
-                    style={{ backgroundColor: branding.accentColor }}
+                    key={entry.id}
+                    className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3"
                   >
-                    {currentParticipant.nickname.slice(0, 2).toUpperCase()}
+                    <div
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-[#10233f]"
+                      style={{ backgroundColor: branding.accentColor }}
+                    >
+                      {entry.rank}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{entry.nickname}</p>
+                      <p className="text-xs text-white/65">
+                        {entry.score} pontos em{" "}
+                        {formatDuration(entry.totalTimeMs)}
+                      </p>
+                    </div>
+                    {sessionState.status === "question_result" ? (
+                      <p className="text-xs font-semibold text-white/70">
+                        {entry.answeredCurrentQuestion
+                          ? entry.lastIsCorrect
+                            ? `+${entry.lastPointsEarned}`
+                            : "0"
+                          : "-"}
+                      </p>
+                    ) : null}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">
-                      {currentParticipant.nickname}
-                    </p>
-                    <p className="text-xs text-white/65">
-                      {currentParticipant.score} pontos
-                    </p>
-                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-8">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                    Participantes
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold">Quem ja entrou</h3>
                 </div>
-              ))}
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {participants.map((currentParticipant) => (
+                  <div
+                    key={currentParticipant.id}
+                    className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3"
+                  >
+                    <div
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-[#10233f]"
+                      style={{ backgroundColor: branding.accentColor }}
+                    >
+                      {currentParticipant.nickname.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">
+                        {currentParticipant.nickname}
+                      </p>
+                      <p className="text-xs text-white/65">
+                        {currentParticipant.score} pontos
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </article>
         </section>

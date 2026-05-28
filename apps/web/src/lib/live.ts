@@ -149,6 +149,7 @@ export async function getParticipantByToken(params: {
       participantToken: participants.participantToken,
       avatar: participants.avatar,
       score: participants.score,
+      totalTimeMs: participants.totalTimeMs,
       joinedAt: participants.joinedAt,
     })
     .from(participants)
@@ -170,6 +171,7 @@ export async function getSessionParticipants(sessionId: string) {
       nickname: participants.nickname,
       avatar: participants.avatar,
       score: participants.score,
+      totalTimeMs: participants.totalTimeMs,
       joinedAt: participants.joinedAt,
       finishedAt: participants.finishedAt,
     })
@@ -224,7 +226,22 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
 }
 
 export function isJoinableLiveStatus(status: string) {
-  return inArrayValue(status, ["waiting", "countdown", "playing"]);
+  return inArrayValue(status, [
+    "waiting",
+    "countdown",
+    "playing",
+    "question_result",
+  ]);
+}
+
+export function canAccessLiveStatus(status: string) {
+  return inArrayValue(status, [
+    "waiting",
+    "countdown",
+    "playing",
+    "question_result",
+    "finished",
+  ]);
 }
 
 export function isWaitingRoomStatus(status: string) {

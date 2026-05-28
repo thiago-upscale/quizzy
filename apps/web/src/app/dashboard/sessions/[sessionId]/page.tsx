@@ -86,6 +86,7 @@ export default async function SessionDetailPage({
       avatar: participants.avatar,
       nickname: participants.nickname,
       score: participants.score,
+      totalTimeMs: participants.totalTimeMs,
     })
     .from(participants)
     .where(eq(participants.sessionId, sessionId));
@@ -122,9 +123,9 @@ export default async function SessionDetailPage({
                 {quizSession.quizTitle}
               </h1>
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                Versao publicada #{quizSession.versionNumber}. Esta tela serve
-                como base operacional para o host enquanto o fluxo do
-                participante entra na proxima etapa.
+                Versao publicada #{quizSession.versionNumber}. Esta tela
+                concentra a operacao do host, do countdown ao ranking final da
+                sessao live.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">

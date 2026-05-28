@@ -8,11 +8,13 @@ import { logger } from "./logger.js";
 
 type RoomParticipant = {
   avatar: string;
+  connected: boolean;
   id: string;
   nickname: string;
   participantToken: string;
   score: number;
-  socketId: string;
+  socketId: string | null;
+  totalTimeMs: number;
 };
 
 type RoomQuestion = {
@@ -34,15 +36,42 @@ type RoomAnswer = {
   timeSpentMs: number;
 };
 
+type LeaderboardEntry = {
+  answeredCurrentQuestion: boolean;
+  avatar: string;
+  id: string;
+  lastIsCorrect: boolean | null;
+  lastPointsEarned: number;
+  nickname: string;
+  rank: number;
+  score: number;
+  totalTimeMs: number;
+};
+
+type QuestionResultSnapshot = {
+  correctCount: number;
+  correctOptionIndex: number;
+  leaderboard: LeaderboardEntry[];
+  options: string[];
+  prompt: string;
+  questionId: string;
+  questionOrderIndex: number;
+  submittedCount: number;
+  totalQuestions: number;
+};
+
 type RoomState = {
+  activeQuestionTimer: NodeJS.Timeout | null;
   answersByQuestion: Map<string, Map<string, RoomAnswer>>;
   countdownSeconds: number | null;
   currentQuestionIndex: number | null;
+  currentQuestionResult: QuestionResultSnapshot | null;
   participants: Map<string, RoomParticipant>;
+  questionClosedAt: number | null;
   questionStartedAt: number | null;
   questions: RoomQuestion[];
   sessionId: string | null;
-  status: "waiting" | "countdown" | "finished" | "playing";
+  status: "waiting" | "countdown" | "playing" | "question_result" | "finished";
 };
 
 type StartSessionPayload = {
@@ -70,10 +99,13 @@ type PersistAnswerPayload = {
 
 function createEmptyRoom(): RoomState {
   return {
+    activeQuestionTimer: null,
     answersByQuestion: new Map(),
     countdownSeconds: null,
     currentQuestionIndex: null,
+    currentQuestionResult: null,
     participants: new Map(),
+    questionClosedAt: null,
     questionStartedAt: null,
     questions: [],
     sessionId: null,
@@ -95,13 +127,22 @@ function getOrCreateRoom(pin: string) {
   return nextRoom;
 }
 
+function clearQuestionTimer(room: RoomState) {
+  if (room.activeQuestionTimer) {
+    clearTimeout(room.activeQuestionTimer);
+    room.activeQuestionTimer = null;
+  }
+}
+
 function serializeParticipants(room: RoomState) {
   return [...room.participants.values()]
+    .filter((participant) => participant.connected)
     .map((participant) => ({
       avatar: participant.avatar,
       id: participant.id,
       nickname: participant.nickname,
       score: participant.score,
+      totalTimeMs: participant.totalTimeMs,
     }))
     .sort((left, right) => left.nickname.localeCompare(right.nickname));
 }
@@ -118,6 +159,61 @@ function getCurrentQuestion(room: RoomState) {
   return room.questions[room.currentQuestionIndex] ?? null;
 }
 
+function getQuestionAnswerKey(question: RoomQuestion) {
+  return `${question.orderIndex}:${question.id}`;
+}
+
+function getQuestionAnswers(room: RoomState, question: RoomQuestion) {
+  return (
+    room.answersByQuestion.get(getQuestionAnswerKey(question)) ?? new Map()
+  );
+}
+
+function getConnectedParticipantCount(room: RoomState) {
+  return [...room.participants.values()].filter(
+    (participant) => participant.connected,
+  ).length;
+}
+
+function buildLeaderboard(
+  room: RoomState,
+  question: RoomQuestion | null = getCurrentQuestion(room),
+) {
+  const questionAnswers = question ? getQuestionAnswers(room, question) : null;
+
+  return [...room.participants.values()]
+    .map((participant) => {
+      const currentAnswer = questionAnswers?.get(participant.participantToken);
+
+      return {
+        answeredCurrentQuestion: Boolean(currentAnswer),
+        avatar: participant.avatar,
+        id: participant.id,
+        lastIsCorrect: currentAnswer?.isCorrect ?? null,
+        lastPointsEarned: currentAnswer?.pointsEarned ?? 0,
+        nickname: participant.nickname,
+        rank: 0,
+        score: participant.score,
+        totalTimeMs: participant.totalTimeMs,
+      } satisfies LeaderboardEntry;
+    })
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+
+      if (left.totalTimeMs !== right.totalTimeMs) {
+        return left.totalTimeMs - right.totalTimeMs;
+      }
+
+      return left.nickname.localeCompare(right.nickname);
+    })
+    .map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+}
+
 function serializeCurrentQuestion(room: RoomState) {
   const currentQuestion = getCurrentQuestion(room);
 
@@ -131,24 +227,11 @@ function serializeCurrentQuestion(room: RoomState) {
     orderIndex: currentQuestion.orderIndex,
     prompt: currentQuestion.prompt,
     startedAt: room.questionStartedAt,
-    submittedCount:
-      room.answersByQuestion.get(currentQuestion.id)?.size ??
-      room.answersByQuestion.get(
-        `${currentQuestion.orderIndex}:${currentQuestion.id}`,
-      )?.size ??
-      0,
+    submittedCount: getQuestionAnswers(room, currentQuestion).size,
     timeLimitSeconds: currentQuestion.timeLimitSeconds,
     totalQuestions: room.questions.length,
     type: currentQuestion.type,
   };
-}
-
-function getQuestionAnswerKey(question: RoomQuestion) {
-  return `${question.orderIndex}:${question.id}`;
-}
-
-function getSubmittedCount(room: RoomState, question: RoomQuestion) {
-  return room.answersByQuestion.get(getQuestionAnswerKey(question))?.size ?? 0;
 }
 
 function getQuestionStats(room: RoomState) {
@@ -161,16 +244,42 @@ function getQuestionStats(room: RoomState) {
   return {
     questionId: currentQuestion.id,
     questionOrderIndex: currentQuestion.orderIndex,
-    submittedCount: getSubmittedCount(room, currentQuestion),
-    totalParticipants: room.participants.size,
+    submittedCount: getQuestionAnswers(room, currentQuestion).size,
+    totalParticipants: getConnectedParticipantCount(room),
   };
+}
+
+function buildQuestionResult(room: RoomState) {
+  const currentQuestion = getCurrentQuestion(room);
+
+  if (!currentQuestion) {
+    return null;
+  }
+
+  const answers = getQuestionAnswers(room, currentQuestion);
+  const leaderboard = buildLeaderboard(room, currentQuestion);
+  const correctCount = [...answers.values()].filter(
+    (answer) => answer.isCorrect,
+  ).length;
+
+  return {
+    correctCount,
+    correctOptionIndex: currentQuestion.correctIndex,
+    leaderboard,
+    options: currentQuestion.options,
+    prompt: currentQuestion.prompt,
+    questionId: currentQuestion.id,
+    questionOrderIndex: currentQuestion.orderIndex,
+    submittedCount: answers.size,
+    totalQuestions: room.questions.length,
+  } satisfies QuestionResultSnapshot;
 }
 
 async function notifyWebOfStateChange(params: {
   pin: string;
   questionIndex?: number;
   sessionId: string;
-  status: "countdown" | "finished" | "playing";
+  status: "countdown" | "playing" | "question_result" | "finished";
 }) {
   try {
     await fetch(new URL("/api/internal/live/state", env.WEB_ORIGIN), {
@@ -216,6 +325,8 @@ async function parseJsonBody<T>(request: import("node:http").IncomingMessage) {
 }
 
 function emitRoomSnapshot(io: Server, pin: string, room: RoomState) {
+  const leaderboard = buildLeaderboard(room);
+
   io.to(pin).emit("participant:list", {
     participants: serializeParticipants(room),
   });
@@ -223,17 +334,36 @@ function emitRoomSnapshot(io: Server, pin: string, room: RoomState) {
     countdownSeconds: room.countdownSeconds,
     status: room.status,
   });
+  io.to(pin).emit("leaderboard:update", {
+    entries: leaderboard,
+  });
 
-  const currentQuestion = serializeCurrentQuestion(room);
-  if (currentQuestion) {
-    io.to(pin).emit("session:question", {
-      question: currentQuestion,
+  if (room.status === "playing") {
+    const currentQuestion = serializeCurrentQuestion(room);
+    if (currentQuestion) {
+      io.to(pin).emit("session:question", {
+        question: currentQuestion,
+      });
+    }
+
+    const questionStats = getQuestionStats(room);
+    if (questionStats) {
+      io.to(pin).emit("question:stats", questionStats);
+    }
+  }
+
+  if (room.status === "question_result" && room.currentQuestionResult) {
+    io.to(pin).emit("question:result", {
+      result: room.currentQuestionResult,
     });
   }
 
-  const questionStats = getQuestionStats(room);
-  if (questionStats) {
-    io.to(pin).emit("question:stats", questionStats);
+  if (room.status === "finished") {
+    io.to(pin).emit("session:final", {
+      leaderboard,
+      status: "finished",
+      totalQuestions: room.questions.length,
+    });
   }
 }
 
@@ -252,6 +382,78 @@ function computePoints(params: {
   return Math.max(100, Math.round(params.pointsBase * speedFactor));
 }
 
+function finishSession(io: Server, params: { pin: string; room: RoomState }) {
+  const { pin, room } = params;
+
+  clearQuestionTimer(room);
+
+  room.status = "finished";
+  room.countdownSeconds = null;
+  room.currentQuestionIndex = null;
+  room.questionStartedAt = null;
+  room.questionClosedAt = Date.now();
+  room.currentQuestionResult = null;
+
+  const leaderboard = buildLeaderboard(room);
+
+  io.to(pin).emit("session:state", {
+    countdownSeconds: null,
+    status: "finished",
+  });
+  io.to(pin).emit("leaderboard:update", {
+    entries: leaderboard,
+  });
+  io.to(pin).emit("session:final", {
+    leaderboard,
+    status: "finished",
+    totalQuestions: room.questions.length,
+  });
+  io.to(pin).emit("session:finished", {
+    leaderboard,
+    status: "finished",
+  });
+}
+
+function closeQuestion(io: Server, params: { pin: string; room: RoomState }) {
+  const { pin, room } = params;
+  const currentQuestion = getCurrentQuestion(room);
+
+  if (!currentQuestion || room.status !== "playing") {
+    return false;
+  }
+
+  clearQuestionTimer(room);
+
+  const result = buildQuestionResult(room);
+
+  if (!result) {
+    return false;
+  }
+
+  room.status = "question_result";
+  room.countdownSeconds = null;
+  room.questionClosedAt = Date.now();
+  room.questionStartedAt = null;
+  room.currentQuestionResult = result;
+
+  io.to(pin).emit("session:state", {
+    countdownSeconds: null,
+    status: "question_result",
+  });
+  io.to(pin).emit("question:closed", {
+    questionId: currentQuestion.id,
+    questionOrderIndex: currentQuestion.orderIndex,
+  });
+  io.to(pin).emit("question:result", {
+    result,
+  });
+  io.to(pin).emit("leaderboard:update", {
+    entries: result.leaderboard,
+  });
+
+  return true;
+}
+
 function startQuestion(
   io: Server,
   params: {
@@ -267,11 +469,19 @@ function startQuestion(
     return false;
   }
 
+  clearQuestionTimer(room);
+
   room.status = "playing";
   room.countdownSeconds = null;
   room.currentQuestionIndex = questionIndex;
+  room.currentQuestionResult = null;
+  room.questionClosedAt = null;
   room.questionStartedAt = Date.now();
-  room.answersByQuestion.set(getQuestionAnswerKey(question), new Map());
+
+  const answerKey = getQuestionAnswerKey(question);
+  if (!room.answersByQuestion.has(answerKey)) {
+    room.answersByQuestion.set(answerKey, new Map());
+  }
 
   io.to(pin).emit("session:state", {
     countdownSeconds: null,
@@ -287,26 +497,30 @@ function startQuestion(
   io.to(pin).emit("question:stats", {
     questionId: question.id,
     questionOrderIndex: question.orderIndex,
-    submittedCount: 0,
-    totalParticipants: room.participants.size,
+    submittedCount: getQuestionAnswers(room, question).size,
+    totalParticipants: getConnectedParticipantCount(room),
   });
+  io.to(pin).emit("leaderboard:update", {
+    entries: buildLeaderboard(room, question),
+  });
+
+  room.activeQuestionTimer = setTimeout(() => {
+    const currentRoom = getOrCreateRoom(pin);
+
+    if (
+      currentRoom.sessionId &&
+      closeQuestion(io, { pin, room: currentRoom })
+    ) {
+      void notifyWebOfStateChange({
+        pin,
+        questionIndex,
+        sessionId: currentRoom.sessionId,
+        status: "question_result",
+      });
+    }
+  }, question.timeLimitSeconds * 1000);
 
   return true;
-}
-
-function finishSession(io: Server, params: { pin: string; room: RoomState }) {
-  params.room.status = "finished";
-  params.room.countdownSeconds = null;
-  params.room.currentQuestionIndex = null;
-  params.room.questionStartedAt = null;
-
-  io.to(params.pin).emit("session:state", {
-    countdownSeconds: null,
-    status: "finished",
-  });
-  io.to(params.pin).emit("session:finished", {
-    status: "finished",
-  });
 }
 
 const httpServer = createServer(async (request, response) => {
@@ -334,11 +548,14 @@ const httpServer = createServer(async (request, response) => {
       }
 
       const room = getOrCreateRoom(pin);
+      clearQuestionTimer(room);
       room.sessionId = sessionId;
       room.questions = questions;
       room.status = "countdown";
       room.countdownSeconds = 3;
       room.currentQuestionIndex = null;
+      room.currentQuestionResult = null;
+      room.questionClosedAt = null;
       room.questionStartedAt = null;
 
       io.to(pin).emit("session:state", {
@@ -406,34 +623,61 @@ const httpServer = createServer(async (request, response) => {
         return;
       }
 
-      const nextQuestionIndex =
-        room.currentQuestionIndex === null ? 0 : room.currentQuestionIndex + 1;
-
-      if (nextQuestionIndex >= room.questions.length) {
-        finishSession(io, { pin, room });
-        void notifyWebOfStateChange({
-          pin,
-          questionIndex: room.questions.length,
-          sessionId,
-          status: "finished",
-        });
-      } else {
-        startQuestion(io, {
-          pin,
-          questionIndex: nextQuestionIndex,
-          room,
-        });
+      if (room.status === "playing") {
+        if (!closeQuestion(io, { pin, room })) {
+          response.writeHead(409, { "content-type": "application/json" });
+          response.end(JSON.stringify({ error: "question_not_active" }));
+          return;
+        }
 
         void notifyWebOfStateChange({
           pin,
-          questionIndex: nextQuestionIndex,
+          questionIndex: room.currentQuestionIndex ?? 0,
           sessionId,
-          status: "playing",
+          status: "question_result",
         });
+
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ ok: true, status: "question_result" }));
+        return;
       }
 
-      response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ ok: true }));
+      if (room.status === "question_result") {
+        const nextQuestionIndex =
+          room.currentQuestionIndex === null
+            ? 0
+            : room.currentQuestionIndex + 1;
+
+        if (nextQuestionIndex >= room.questions.length) {
+          finishSession(io, { pin, room });
+          void notifyWebOfStateChange({
+            pin,
+            questionIndex: room.questions.length,
+            sessionId,
+            status: "finished",
+          });
+        } else {
+          startQuestion(io, {
+            pin,
+            questionIndex: nextQuestionIndex,
+            room,
+          });
+
+          void notifyWebOfStateChange({
+            pin,
+            questionIndex: nextQuestionIndex,
+            sessionId,
+            status: "playing",
+          });
+        }
+
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ ok: true, status: room.status }));
+        return;
+      }
+
+      response.writeHead(409, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: "invalid_state" }));
       return;
     } catch (error) {
       logger.error({ error }, "Failed to advance session");
@@ -449,8 +693,8 @@ const httpServer = createServer(async (request, response) => {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: env.WEB_ORIGIN,
     methods: ["GET", "POST"],
+    origin: env.WEB_ORIGIN,
   },
 });
 
@@ -477,8 +721,8 @@ io.on("connection", (socket) => {
   logger.info({ socketId: socket.id }, "Socket connected");
 
   socket.emit("system.ready", {
-    socketId: socket.id,
     serverTime: new Date().toISOString(),
+    socketId: socket.id,
   });
 
   socket.on(
@@ -491,6 +735,7 @@ io.on("connection", (socket) => {
       pin?: string;
       role?: "participant" | "host";
       score?: number;
+      totalTimeMs?: number;
     }) => {
       const pin = payload.pin?.trim();
       const participantToken = payload.participantToken?.trim();
@@ -501,13 +746,20 @@ io.on("connection", (socket) => {
       }
 
       const room = getOrCreateRoom(pin);
+      const previousParticipant = room.participants.get(participantToken);
       room.participants.set(participantToken, {
-        avatar: payload.avatar?.trim() || "live",
-        id: payload.participantId?.trim() || participantToken,
+        avatar: payload.avatar?.trim() || previousParticipant?.avatar || "live",
+        connected: true,
+        id:
+          payload.participantId?.trim() ||
+          previousParticipant?.id ||
+          participantToken,
         nickname,
         participantToken,
-        score: payload.score ?? 0,
+        score: previousParticipant?.score ?? payload.score ?? 0,
         socketId: socket.id,
+        totalTimeMs:
+          previousParticipant?.totalTimeMs ?? payload.totalTimeMs ?? 0,
       });
 
       socket.data.pin = pin;
@@ -521,12 +773,17 @@ io.on("connection", (socket) => {
 
   socket.on("host:watch", (payload: { pin?: string; sessionId?: string }) => {
     const pin = payload.pin?.trim();
+    const sessionId = payload.sessionId?.trim();
 
     if (!pin) {
       return;
     }
 
     const room = getOrCreateRoom(pin);
+    if (sessionId && !room.sessionId) {
+      room.sessionId = sessionId;
+    }
+
     socket.data.pin = pin;
     socket.data.role = "host";
     socket.join(pin);
@@ -565,6 +822,7 @@ io.on("connection", (socket) => {
       const participant = room.participants.get(participantToken);
 
       if (
+        room.status !== "playing" ||
         !currentQuestion ||
         !participant ||
         room.questionStartedAt === null ||
@@ -617,6 +875,7 @@ io.on("connection", (socket) => {
       room.answersByQuestion.set(answerKey, questionAnswers);
 
       participant.score += pointsEarned;
+      participant.totalTimeMs += timeSpentMs;
       room.participants.set(participantToken, participant);
 
       socket.emit("answer:ack", {
@@ -624,18 +883,19 @@ io.on("connection", (socket) => {
         answerIndex,
         isCorrect,
         pointsEarned,
-        questionId,
-        submittedCount: questionAnswers.size,
       });
 
       io.to(pin).emit("participant:list", {
         participants: serializeParticipants(room),
       });
       io.to(pin).emit("question:stats", {
-        questionId,
+        questionId: currentQuestion.id,
         questionOrderIndex: currentQuestion.orderIndex,
         submittedCount: questionAnswers.size,
-        totalParticipants: room.participants.size,
+        totalParticipants: getConnectedParticipantCount(room),
+      });
+      io.to(pin).emit("leaderboard:update", {
+        entries: buildLeaderboard(room, currentQuestion),
       });
 
       if (room.sessionId) {
@@ -645,7 +905,7 @@ io.on("connection", (socket) => {
           participantToken,
           pin,
           pointsEarned,
-          questionId,
+          questionId: currentQuestion.id,
           questionOrderIndex: currentQuestion.orderIndex,
           sessionId: room.sessionId,
           timeSpentMs,
@@ -654,22 +914,32 @@ io.on("connection", (socket) => {
     },
   );
 
-  socket.on("disconnect", (reason) => {
+  socket.on("disconnect", () => {
     const pin = socket.data.pin as string | undefined;
     const participantToken = socket.data.participantToken as string | undefined;
+    const role = socket.data.role as string | undefined;
 
-    if (pin && participantToken) {
+    if (pin && participantToken && role === "participant") {
       const room = getOrCreateRoom(pin);
-      room.participants.delete(participantToken);
-      io.to(pin).emit("participant:list", {
-        participants: serializeParticipants(room),
-      });
+      const participant = room.participants.get(participantToken);
+
+      if (participant) {
+        room.participants.set(participantToken, {
+          ...participant,
+          connected: false,
+          socketId: null,
+        });
+
+        io.to(pin).emit("participant:list", {
+          participants: serializeParticipants(room),
+        });
+      }
     }
 
-    logger.info({ socketId: socket.id, reason }, "Socket disconnected");
+    logger.info({ socketId: socket.id }, "Socket disconnected");
   });
 });
 
 httpServer.listen(env.PORT, () => {
-  logger.info({ port: env.PORT }, "Realtime server listening");
+  logger.info({ port: env.PORT }, "Quizzy realtime server listening");
 });

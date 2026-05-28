@@ -60,6 +60,7 @@ export default async function LiveLobbyPage({
         id: currentParticipant.id,
         nickname: currentParticipant.nickname,
         score: currentParticipant.score,
+        totalTimeMs: currentParticipant.totalTimeMs,
       }))}
       initialSessionStatus={liveSession.status}
       participant={{
@@ -68,6 +69,7 @@ export default async function LiveLobbyPage({
         nickname: participant.nickname,
         participantToken: participant.participantToken,
         score: participant.score,
+        totalTimeMs: participant.totalTimeMs,
       }}
       pin={pin}
       quizTitle={liveSession.versionTitle || liveSession.quizTitle}

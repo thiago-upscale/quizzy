@@ -317,7 +317,12 @@ export async function createLiveSession(formData: FormData) {
       .where(
         and(
           eq(quizSessions.pin, candidate),
-          inArray(quizSessions.status, ["waiting", "playing"]),
+          inArray(quizSessions.status, [
+            "waiting",
+            "countdown",
+            "playing",
+            "question_result",
+          ]),
         ),
       )
       .limit(1);
@@ -603,6 +608,13 @@ export async function advanceLiveSession(
     return { message: "Voce nao tem acesso a essa sessao.", status: "error" };
   }
 
+  if (liveSession.status === "finished") {
+    return {
+      message: "Essa sessao ja foi encerrada.",
+      status: "error",
+    };
+  }
+
   try {
     await notifyRealtimeAdvanceSession({
       pin: liveSession.pin,
@@ -620,7 +632,12 @@ export async function advanceLiveSession(
   revalidatePath(`/live/${liveSession.pin}/lobby`);
 
   return {
-    message: "Sessao atualizada com sucesso.",
+    message:
+      liveSession.status === "playing"
+        ? "Rodada encerrada e resultado liberado."
+        : liveSession.status === "question_result"
+          ? "Sessao avancou para a proxima etapa."
+          : "Sessao atualizada com sucesso.",
     status: "success",
   };
 }
@@ -635,6 +652,7 @@ export async function getSessionParticipantsForDashboard(sessionId: string) {
       nickname: participants.nickname,
       joinedAt: participants.joinedAt,
       score: participants.score,
+      totalTimeMs: participants.totalTimeMs,
     })
     .from(participants)
     .where(eq(participants.sessionId, sessionId));
