@@ -117,59 +117,57 @@ export default async function DashboardPage() {
 
   const [quizList, activeSessionsRaw, recentEvents, realtimeHealth] =
     await Promise.all([
-    db
-      .select({
-        id: quizzes.id,
-        title: quizzes.title,
-        description: quizzes.description,
-        status: quizzes.status,
-        updatedAt: quizzes.updatedAt,
-      })
-      .from(quizzes)
-      .where(eq(quizzes.organizationId, session.user.organizationId))
-      .orderBy(desc(quizzes.updatedAt)),
-    db
-      .select({
-        id: quizSessions.id,
-        quizId: quizSessions.quizId,
-        pin: quizSessions.pin,
-        shareToken: quizSessions.shareToken,
-        mode: quizSessions.mode,
-        status: quizSessions.status,
-        startsAt: quizSessions.startsAt,
-        endsAt: quizSessions.endsAt,
-        expiresAt: quizSessions.expiresAt,
-        createdAt: quizSessions.createdAt,
-        finishedAt: quizSessions.finishedAt,
-        quizTitle: quizzes.title,
-        participantCount: count(participants.id),
-      })
-      .from(quizSessions)
-      .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-      .leftJoin(participants, eq(participants.sessionId, quizSessions.id))
-      .where(
-        eq(quizzes.organizationId, session.user.organizationId),
-      )
-      .groupBy(quizSessions.id, quizzes.id)
-      .orderBy(desc(quizSessions.createdAt)),
-    db
-      .select({
-        id: sessionEvents.id,
-        sessionId: sessionEvents.sessionId,
-        eventType: sessionEvents.eventType,
-        createdAt: sessionEvents.createdAt,
-        payload: sessionEvents.payload,
-        sessionMode: quizSessions.mode,
-        sessionStatus: quizSessions.status,
-        quizTitle: quizzes.title,
-      })
-      .from(sessionEvents)
-      .innerJoin(quizSessions, eq(sessionEvents.sessionId, quizSessions.id))
-      .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-      .where(eq(quizzes.organizationId, session.user.organizationId))
-      .orderBy(desc(sessionEvents.createdAt))
-      .limit(12),
-    getRealtimeHealth(),
+      db
+        .select({
+          id: quizzes.id,
+          title: quizzes.title,
+          description: quizzes.description,
+          status: quizzes.status,
+          updatedAt: quizzes.updatedAt,
+        })
+        .from(quizzes)
+        .where(eq(quizzes.organizationId, session.user.organizationId))
+        .orderBy(desc(quizzes.updatedAt)),
+      db
+        .select({
+          id: quizSessions.id,
+          quizId: quizSessions.quizId,
+          pin: quizSessions.pin,
+          shareToken: quizSessions.shareToken,
+          mode: quizSessions.mode,
+          status: quizSessions.status,
+          startsAt: quizSessions.startsAt,
+          endsAt: quizSessions.endsAt,
+          expiresAt: quizSessions.expiresAt,
+          createdAt: quizSessions.createdAt,
+          finishedAt: quizSessions.finishedAt,
+          quizTitle: quizzes.title,
+          participantCount: count(participants.id),
+        })
+        .from(quizSessions)
+        .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+        .leftJoin(participants, eq(participants.sessionId, quizSessions.id))
+        .where(eq(quizzes.organizationId, session.user.organizationId))
+        .groupBy(quizSessions.id, quizzes.id)
+        .orderBy(desc(quizSessions.createdAt)),
+      db
+        .select({
+          id: sessionEvents.id,
+          sessionId: sessionEvents.sessionId,
+          eventType: sessionEvents.eventType,
+          createdAt: sessionEvents.createdAt,
+          payload: sessionEvents.payload,
+          sessionMode: quizSessions.mode,
+          sessionStatus: quizSessions.status,
+          quizTitle: quizzes.title,
+        })
+        .from(sessionEvents)
+        .innerJoin(quizSessions, eq(sessionEvents.sessionId, quizSessions.id))
+        .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+        .where(eq(quizzes.organizationId, session.user.organizationId))
+        .orderBy(desc(sessionEvents.createdAt))
+        .limit(12),
+      getRealtimeHealth(),
     ]);
 
   const activeSessions = activeSessionsRaw.filter((sessionItem) =>
@@ -207,7 +205,9 @@ export default async function DashboardPage() {
     }
   }
 
-  const publishedQuizzes = quizList.filter((quiz) => quiz.status === "published");
+  const publishedQuizzes = quizList.filter(
+    (quiz) => quiz.status === "published",
+  );
   const activeLiveSessions = activeSessions.filter(
     (sessionItem) => sessionItem.mode === "live",
   );
@@ -286,7 +286,8 @@ export default async function DashboardPage() {
               {activeLiveSessions.length}
             </p>
             <p className="mt-3 text-sm leading-7 text-[#61708c]">
-              {activeParticipants} participantes registrados nas sessoes abertas.
+              {activeParticipants} participantes registrados nas sessoes
+              abertas.
             </p>
           </article>
 
@@ -408,12 +409,12 @@ export default async function DashboardPage() {
                       <div className="mt-4 grid gap-3 text-sm text-[#61708c] sm:grid-cols-3">
                         <div>
                           <p className="font-semibold text-[#132238]">Criada</p>
-                          <p className="mt-1">{formatDate(sessionItem.createdAt)}</p>
+                          <p className="mt-1">
+                            {formatDate(sessionItem.createdAt)}
+                          </p>
                         </div>
                         <div>
-                          <p className="font-semibold text-[#132238]">
-                            Expira
-                          </p>
+                          <p className="font-semibold text-[#132238]">Expira</p>
                           <p className="mt-1">
                             {formatDate(
                               sessionItem.expiresAt ?? sessionItem.endsAt,

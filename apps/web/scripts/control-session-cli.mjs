@@ -24,7 +24,8 @@ if (!databaseUrl) {
 }
 
 const realtimeUrl = process.env.REALTIME_URL || "http://localhost:4001";
-const internalToken = process.env.REALTIME_INTERNAL_TOKEN || "quizzy-internal-dev-token";
+const internalToken =
+  process.env.REALTIME_INTERNAL_TOKEN || "quizzy-internal-dev-token";
 
 const sql = postgres(databaseUrl);
 
@@ -56,7 +57,9 @@ const action = args.action; // 'create', 'start', 'next', 'info'
 const pin = args.pin;
 
 if (!action) {
-  console.log("Comandos válidos: --action [create | start | next | info] [--pin <PIN>]");
+  console.log(
+    "Comandos válidos: --action [create | start | next | info] [--pin <PIN>]",
+  );
   process.exit(0);
 }
 
@@ -162,7 +165,6 @@ async function run() {
       console.log(`SESSION_PIN=${newSession.pin}`);
       console.log(`SESSION_ID=${newSession.id}`);
       console.log(`STATUS=waiting`);
-
     } else if (action === "start") {
       if (!pin) {
         console.error("Erro: PIN é necessário para iniciar a sessão.");
@@ -179,8 +181,11 @@ async function run() {
       }
 
       console.log(`Iniciando a sessão ${session.id} (PIN ${pin})...`);
-      const runtimeQuestions = await buildRuntimeQuestions(session.quiz_id, session.quiz_version_id);
-      
+      const runtimeQuestions = await buildRuntimeQuestions(
+        session.quiz_id,
+        session.quiz_version_id,
+      );
+
       const now = new Date();
       await sql`
         UPDATE quiz_sessions SET status = 'countdown' WHERE id = ${session.id}
@@ -208,8 +213,9 @@ async function run() {
         throw new Error(`Realtime server start failed: ${errorText}`);
       }
 
-      console.log("Sessão iniciada com sucesso (status: countdown no realtime).");
-
+      console.log(
+        "Sessão iniciada com sucesso (status: countdown no realtime).",
+      );
     } else if (action === "next") {
       if (!pin) {
         console.error("Erro: PIN é necessário para avançar.");
@@ -241,7 +247,6 @@ async function run() {
 
       const resBody = await response.json();
       console.log("Sessão avançada com sucesso. Resposta:", resBody);
-
     } else if (action === "info") {
       if (!pin) {
         console.error("Erro: PIN é necessário.");

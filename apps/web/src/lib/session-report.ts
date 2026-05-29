@@ -223,52 +223,52 @@ export async function getSessionReport(params: {
 
   const [participantRows, attemptRows, answerRows, currentQuestionRows] =
     await Promise.all([
-    db
-      .select({
-        email: participants.email,
-        id: participants.id,
-        nickname: participants.nickname,
-        score: participants.score,
-        totalTimeMs: participants.totalTimeMs,
-      })
-      .from(participants)
-      .where(eq(participants.sessionId, session.id)),
-    db
-      .select({
-        attemptNumber: attempts.attemptNumber,
-        finishedAt: attempts.finishedAt,
-        id: attempts.id,
-        participantId: attempts.participantId,
-        score: attempts.score,
-        status: attempts.status,
-        totalTimeMs: attempts.totalTimeMs,
-      })
-      .from(attempts)
-      .where(eq(attempts.sessionId, session.id))
-      .orderBy(asc(attempts.participantId), asc(attempts.attemptNumber)),
-    db
-      .select({
-        answer: answers.answer,
-        attemptId: answers.attemptId,
-        isCorrect: answers.isCorrect,
-        participantId: answers.participantId,
-        pointsEarned: answers.pointsEarned,
-        questionId: answers.questionId,
-        questionOrderIndex: questions.orderIndex,
-        timeSpentMs: answers.timeSpentMs,
-      })
-      .from(answers)
-      .innerJoin(questions, eq(answers.questionId, questions.id))
-      .where(eq(answers.sessionId, session.id))
-      .orderBy(asc(questions.orderIndex), asc(answers.createdAt)),
-    db
-      .select({
-        id: questions.id,
-        orderIndex: questions.orderIndex,
-      })
-      .from(questions)
-      .where(eq(questions.quizId, session.quizId))
-      .orderBy(asc(questions.orderIndex)),
+      db
+        .select({
+          email: participants.email,
+          id: participants.id,
+          nickname: participants.nickname,
+          score: participants.score,
+          totalTimeMs: participants.totalTimeMs,
+        })
+        .from(participants)
+        .where(eq(participants.sessionId, session.id)),
+      db
+        .select({
+          attemptNumber: attempts.attemptNumber,
+          finishedAt: attempts.finishedAt,
+          id: attempts.id,
+          participantId: attempts.participantId,
+          score: attempts.score,
+          status: attempts.status,
+          totalTimeMs: attempts.totalTimeMs,
+        })
+        .from(attempts)
+        .where(eq(attempts.sessionId, session.id))
+        .orderBy(asc(attempts.participantId), asc(attempts.attemptNumber)),
+      db
+        .select({
+          answer: answers.answer,
+          attemptId: answers.attemptId,
+          isCorrect: answers.isCorrect,
+          participantId: answers.participantId,
+          pointsEarned: answers.pointsEarned,
+          questionId: answers.questionId,
+          questionOrderIndex: questions.orderIndex,
+          timeSpentMs: answers.timeSpentMs,
+        })
+        .from(answers)
+        .innerJoin(questions, eq(answers.questionId, questions.id))
+        .where(eq(answers.sessionId, session.id))
+        .orderBy(asc(questions.orderIndex), asc(answers.createdAt)),
+      db
+        .select({
+          id: questions.id,
+          orderIndex: questions.orderIndex,
+        })
+        .from(questions)
+        .where(eq(questions.quizId, session.quizId))
+        .orderBy(asc(questions.orderIndex)),
     ]);
 
   const questionDefinitions = getQuestionDefinitions({
@@ -359,8 +359,7 @@ export async function getSessionReport(params: {
   const bestAttemptIdByParticipant = new Map<string, string>();
 
   for (const participant of participantRows) {
-    const participantAttempts =
-      attemptsByParticipant.get(participant.id) ?? [];
+    const participantAttempts = attemptsByParticipant.get(participant.id) ?? [];
     const bestAttempt = [...participantAttempts].sort((left, right) => {
       if (right.score !== left.score) {
         return right.score - left.score;
@@ -443,7 +442,8 @@ export async function getSessionReport(params: {
               return null;
             }
 
-            const currentAttemptAnswers = answersByAttempt.get(attempt.id) ?? [];
+            const currentAttemptAnswers =
+              answersByAttempt.get(attempt.id) ?? [];
             const answeredCount = currentAttemptAnswers.length;
             const correctCount = currentAttemptAnswers.filter(
               (answer) => answer.isCorrect,
@@ -489,9 +489,7 @@ export async function getSessionReport(params: {
             } satisfies SessionReportAttemptRow & SessionReportDetailedRow;
           })
           .filter(
-            (
-              row,
-            ): row is SessionReportAttemptRow & SessionReportDetailedRow =>
+            (row): row is SessionReportAttemptRow & SessionReportDetailedRow =>
               Boolean(row),
           )
       : [];

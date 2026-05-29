@@ -65,7 +65,7 @@ async function run() {
     }
 
     const quizVersionId = versions[0].id;
-    
+
     // Geramos um PIN único
     let pin = "";
     for (let i = 0; i < 10; i++) {
@@ -100,7 +100,6 @@ async function run() {
 
     console.log(`SESSION_PIN=${newSession.pin}`);
     console.log(`SESSION_ID=${newSession.id}`);
-
   } catch (error) {
     console.error("Falha ao criar/buscar sessão:", error);
   } finally {

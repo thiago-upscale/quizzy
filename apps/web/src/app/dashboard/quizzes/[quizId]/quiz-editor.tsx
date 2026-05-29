@@ -63,7 +63,9 @@ function buildDefaultIndividualEndsAtValue() {
   const value = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const timezoneOffsetMs = value.getTimezoneOffset() * 60 * 1000;
 
-  return new Date(value.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+  return new Date(value.getTime() - timezoneOffsetMs)
+    .toISOString()
+    .slice(0, 16);
 }
 
 const acceptedImageTypes =
@@ -185,7 +187,9 @@ function AssetUploadField({
         />
       </label>
 
-      {error ? <p className="text-sm font-medium text-[#b42318]">{error}</p> : null}
+      {error ? (
+        <p className="text-sm font-medium text-[#b42318]">{error}</p>
+      ) : null}
     </div>
   );
 }

@@ -211,13 +211,17 @@ export async function joinIndividualSession(
   });
 
   const cookieStore = await cookies();
-  cookieStore.set(getIndividualParticipantCookieName(shareToken), participantToken, {
-    httpOnly: true,
-    maxAge: 60 * 60 * 24 * 14,
-    path: buildPlayPath(shareToken),
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  });
+  cookieStore.set(
+    getIndividualParticipantCookieName(shareToken),
+    participantToken,
+    {
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 14,
+      path: buildPlayPath(shareToken),
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    },
+  );
 
   revalidatePath(buildPlayPath(shareToken));
   redirect(buildPlayPath(shareToken));
@@ -240,9 +244,8 @@ export async function submitIndividualAnswer(
     };
   }
 
-  const { participant, session } = await getCurrentParticipantForSession(
-    shareToken,
-  );
+  const { participant, session } =
+    await getCurrentParticipantForSession(shareToken);
 
   if (!session || !participant) {
     return {
@@ -358,7 +361,8 @@ export async function submitIndividualAnswer(
     const shouldPromoteScore =
       nextAttemptScore > participant.score ||
       (nextAttemptScore === participant.score &&
-        (participant.totalTimeMs === 0 || nextAttemptTime < participant.totalTimeMs));
+        (participant.totalTimeMs === 0 ||
+          nextAttemptTime < participant.totalTimeMs));
 
     await tx
       .update(participants)
@@ -392,9 +396,8 @@ export async function submitIndividualAnswer(
 
 export async function startNextIndividualAttempt(formData: FormData) {
   const shareToken = String(formData.get("shareToken") ?? "").trim();
-  const { participant, session } = await getCurrentParticipantForSession(
-    shareToken,
-  );
+  const { participant, session } =
+    await getCurrentParticipantForSession(shareToken);
 
   if (!session || !participant || isIndividualSessionExpired(session)) {
     redirect(buildPlayPath(shareToken));

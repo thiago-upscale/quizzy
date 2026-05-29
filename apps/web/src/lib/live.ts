@@ -372,7 +372,7 @@ export async function buildLiveRecoverySnapshot(params: {
     : null;
   const currentQuestion =
     currentQuestionIndex !== null
-      ? runtimeQuestions[currentQuestionIndex] ?? null
+      ? (runtimeQuestions[currentQuestionIndex] ?? null)
       : null;
 
   const currentQuestionAnswers = currentQuestion?.persistable

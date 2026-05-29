@@ -13,9 +13,7 @@ const envSchema = z.object({
   REALTIME_URL: z.string().url().default("http://localhost:4001"),
   REALTIME_INTERNAL_TOKEN: z.string().default("quizzy-internal-dev-token"),
   SENTRY_DSN: z.string().url().optional(),
-  STORAGE_DRIVER: z
-    .enum(["railway-volume", "r2"])
-    .default("railway-volume"),
+  STORAGE_DRIVER: z.enum(["railway-volume", "r2"]).default("railway-volume"),
   STORAGE_BASE_PATH: z.string().min(1).default("./storage"),
   STORAGE_PUBLIC_BASE_PATH: z.string().min(1).default("/uploads"),
   R2_ACCOUNT_ID: z.preprocess(

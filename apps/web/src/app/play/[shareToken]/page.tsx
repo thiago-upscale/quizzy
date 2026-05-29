@@ -218,7 +218,8 @@ export default async function IndividualPlayPage({
       answer.orderIndex,
       {
         answerIndex:
-          typeof (answer.answer as { index?: number } | null)?.index === "number"
+          typeof (answer.answer as { index?: number } | null)?.index ===
+          "number"
             ? (answer.answer as { index: number }).index
             : null,
         isCorrect: answer.isCorrect,
@@ -229,12 +230,14 @@ export default async function IndividualPlayPage({
   );
   const nextQuestion =
     latestAttempt?.status === "in_progress"
-      ? individualQuestions.find(
+      ? (individualQuestions.find(
           (question) => !answerByOrderIndex.has(question.orderIndex),
-        ) ?? null
+        ) ?? null)
       : null;
   const answeredCount = attemptAnswers.length;
-  const correctCount = attemptAnswers.filter((answer) => answer.isCorrect).length;
+  const correctCount = attemptAnswers.filter(
+    (answer) => answer.isCorrect,
+  ).length;
   const canStartAnotherAttempt =
     !expired &&
     latestAttempt?.status === "finished" &&
@@ -277,7 +280,8 @@ export default async function IndividualPlayPage({
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
-                Tentativa {latestAttempt?.attemptNumber ?? 1}/{session.maxAttempts}
+                Tentativa {latestAttempt?.attemptNumber ?? 1}/
+                {session.maxAttempts}
               </span>
               <span
                 className="rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#10233f]"
@@ -305,7 +309,9 @@ export default async function IndividualPlayPage({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                   Melhor score
                 </p>
-                <p className="mt-2 text-2xl font-semibold">{participant.score}</p>
+                <p className="mt-2 text-2xl font-semibold">
+                  {participant.score}
+                </p>
               </div>
               <div className="rounded-2xl bg-white/10 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
@@ -325,7 +331,8 @@ export default async function IndividualPlayPage({
             {nextQuestion && !expired ? (
               <>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                  Pergunta {nextQuestion.orderIndex + 1} de {individualQuestions.length}
+                  Pergunta {nextQuestion.orderIndex + 1} de{" "}
+                  {individualQuestions.length}
                 </p>
                 <h2 className="mt-3 text-3xl font-semibold">
                   {nextQuestion.prompt}
@@ -363,8 +370,8 @@ export default async function IndividualPlayPage({
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">
                   {latestAttempt?.status === "finished"
-                  ? "Seu desempenho desta tentativa ja foi consolidado."
-                  : "Voce respondeu o que foi possivel antes do encerramento do prazo."}
+                    ? "Seu desempenho desta tentativa ja foi consolidado."
+                    : "Voce respondeu o que foi possivel antes do encerramento do prazo."}
                 </p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="rounded-2xl bg-white/10 px-4 py-4">
@@ -379,7 +386,9 @@ export default async function IndividualPlayPage({
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                       Acertos
                     </p>
-                    <p className="mt-2 text-3xl font-semibold">{correctCount}</p>
+                    <p className="mt-2 text-3xl font-semibold">
+                      {correctCount}
+                    </p>
                   </div>
                   <div className="rounded-2xl bg-white/10 px-4 py-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
@@ -418,7 +427,11 @@ export default async function IndividualPlayPage({
                 <div className="mt-6 flex flex-wrap gap-3">
                   {canStartAnotherAttempt ? (
                     <form action={startNextIndividualAttempt}>
-                      <input name="shareToken" type="hidden" value={shareToken} />
+                      <input
+                        name="shareToken"
+                        type="hidden"
+                        value={shareToken}
+                      />
                       <button
                         className="rounded-full bg-[#f59e0b] px-5 py-3 text-sm font-semibold text-[#10233f] transition hover:bg-[#fbbf24]"
                         type="submit"

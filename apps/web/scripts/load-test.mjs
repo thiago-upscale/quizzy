@@ -84,24 +84,31 @@ function calcP95(arr) {
 }
 
 function printStats() {
-  const avgRtt = stats.rtts.length > 0
-    ? stats.rtts.reduce((a, b) => a + b, 0) / stats.rtts.length
-    : 0;
+  const avgRtt =
+    stats.rtts.length > 0
+      ? stats.rtts.reduce((a, b) => a + b, 0) / stats.rtts.length
+      : 0;
   const p95Rtt = calcP95(stats.rtts);
-  const avgReconn = stats.reconnectTimes.length > 0
-    ? stats.reconnectTimes.reduce((a, b) => a + b, 0) / stats.reconnectTimes.length
-    : 0;
+  const avgReconn =
+    stats.reconnectTimes.length > 0
+      ? stats.reconnectTimes.reduce((a, b) => a + b, 0) /
+        stats.reconnectTimes.length
+      : 0;
   const p95Reconn = calcP95(stats.reconnectTimes);
 
   console.log(`\nStatus do Teste:`);
   console.log(`- Conectados: ${stats.connected}/${numPlayers}`);
   console.log(`- Respostas enviadas: ${stats.answered}`);
   console.log(`- Confirmados (ACK): ${stats.acks}`);
-  console.log(`- Latência RTT média: ${avgRtt.toFixed(2)}ms | P95: ${p95Rtt.toFixed(2)}ms`);
+  console.log(
+    `- Latência RTT média: ${avgRtt.toFixed(2)}ms | P95: ${p95Rtt.toFixed(2)}ms`,
+  );
   console.log(`- Desconexões: ${stats.disconnects}`);
   console.log(`- Reconexões bem-sucedidas: ${stats.reconnects}`);
   if (stats.reconnectTimes.length > 0) {
-    console.log(`- Tempo de reconexão média: ${avgReconn.toFixed(2)}ms | P95: ${p95Reconn.toFixed(2)}ms`);
+    console.log(
+      `- Tempo de reconexão média: ${avgReconn.toFixed(2)}ms | P95: ${p95Reconn.toFixed(2)}ms`,
+    );
   }
   console.log(`- Erros acumulados: ${stats.errors}`);
 }
@@ -237,14 +244,17 @@ async function run() {
           currentOptionsCount = question.options?.length || 4;
 
           if (i === reporterOrdinal) {
-            console.log(`\n--- Pergunta Iniciada: "${question.prompt}" (ID: ${question.id}) ---`);
+            console.log(
+              `\n--- Pergunta Iniciada: "${question.prompt}" (ID: ${question.id}) ---`,
+            );
             stats.answered = 0;
             stats.acks = 0;
             stats.rtts = [];
           }
         }
 
-        const responseDelay = Math.random() * (actionDelayMax - actionDelayMin) + actionDelayMin;
+        const responseDelay =
+          Math.random() * (actionDelayMax - actionDelayMin) + actionDelayMin;
         setTimeout(() => {
           if (currentQuestionId !== question.id) return;
 
@@ -273,7 +283,9 @@ async function run() {
       socket.on("question:result", (payload) => {
         if (i === reporterOrdinal) {
           console.log(`\n--- Resultado da Rodada Recebido ---`);
-          console.log(`Acertos: ${payload.result?.correctCount}/${payload.result?.submittedCount}`);
+          console.log(
+            `Acertos: ${payload.result?.correctCount}/${payload.result?.submittedCount}`,
+          );
           printStats();
         }
       });
@@ -293,7 +305,7 @@ async function run() {
 
     progressInterval = setInterval(() => {
       console.log(
-        `[Progresso] Online: ${stats.connected}/${numPlayers} | ACKs: ${stats.acks}/${stats.answered} | Reconexões: ${stats.reconnects} | Erros: ${stats.errors}`
+        `[Progresso] Online: ${stats.connected}/${numPlayers} | ACKs: ${stats.acks}/${stats.answered} | Reconexões: ${stats.reconnects} | Erros: ${stats.errors}`,
       );
     }, 5000);
   } catch (error) {

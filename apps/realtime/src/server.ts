@@ -559,7 +559,11 @@ function populateCurrentQuestionAnswersFromSnapshot(
   );
 }
 
-function scheduleRecoveredQuestionTimer(io: Server, pin: string, room: RoomState) {
+function scheduleRecoveredQuestionTimer(
+  io: Server,
+  pin: string,
+  room: RoomState,
+) {
   const currentQuestion = getCurrentQuestion(room);
 
   if (!currentQuestion || room.questionStartedAt === null || !room.sessionId) {
@@ -567,7 +571,9 @@ function scheduleRecoveredQuestionTimer(io: Server, pin: string, room: RoomState
   }
 
   const remainingMs =
-    room.questionStartedAt + currentQuestion.timeLimitSeconds * 1000 - Date.now();
+    room.questionStartedAt +
+    currentQuestion.timeLimitSeconds * 1000 -
+    Date.now();
 
   if (remainingMs <= 0) {
     if (closeQuestion(io, { pin, room })) {
@@ -1405,52 +1411,52 @@ io.on("connection", (socket) => {
   socket.on(
     "host:watch",
     async (payload: { pin?: string; sessionId?: string }) => {
-    const pin = payload.pin?.trim();
-    const sessionId = payload.sessionId?.trim();
+      const pin = payload.pin?.trim();
+      const sessionId = payload.sessionId?.trim();
 
-    if (!pin) {
-      return;
-    }
+      if (!pin) {
+        return;
+      }
 
-    const room = await ensureRoomHydrated(io, {
-      pin,
-      room: getOrCreateRoom(pin),
-      sessionId,
-    });
-    if (sessionId && !room.sessionId) {
-      room.sessionId = sessionId;
-    }
+      const room = await ensureRoomHydrated(io, {
+        pin,
+        room: getOrCreateRoom(pin),
+        sessionId,
+      });
+      if (sessionId && !room.sessionId) {
+        room.sessionId = sessionId;
+      }
 
-    const hostWasOffline = room.hostSocketIds.size === 0;
+      const hostWasOffline = room.hostSocketIds.size === 0;
 
-    room.hostSocketIds.add(socket.id);
-    room.hostPresenceStatus = "online";
-    room.hostLastSeenAt = Date.now();
-    room.hostDisconnectedAt = null;
-    room.hostRecoveryDeadlineAt = null;
-    clearHostInterruptionTimer(room);
-    markRoomEvent(room);
+      room.hostSocketIds.add(socket.id);
+      room.hostPresenceStatus = "online";
+      room.hostLastSeenAt = Date.now();
+      room.hostDisconnectedAt = null;
+      room.hostRecoveryDeadlineAt = null;
+      clearHostInterruptionTimer(room);
+      markRoomEvent(room);
 
-    socket.data.pin = pin;
-    socket.data.role = "host";
-    socket.join(pin);
+      socket.data.pin = pin;
+      socket.data.role = "host";
+      socket.join(pin);
 
-    if (room.status === "interrupted") {
-      resumeInterruptedRoom(io, { pin, room });
-    } else {
-      emitRoomSnapshot(io, pin, room);
-    }
+      if (room.status === "interrupted") {
+        resumeInterruptedRoom(io, { pin, room });
+      } else {
+        emitRoomSnapshot(io, pin, room);
+      }
 
-    if (hostWasOffline) {
-      logger.info(
-        {
-          pin,
-          sessionId: room.sessionId,
-          socketId: socket.id,
-        },
-        "host.reconnected",
-      );
-    }
+      if (hostWasOffline) {
+        logger.info(
+          {
+            pin,
+            sessionId: room.sessionId,
+            socketId: socket.id,
+          },
+          "host.reconnected",
+        );
+      }
     },
   );
 

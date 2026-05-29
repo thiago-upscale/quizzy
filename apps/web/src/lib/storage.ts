@@ -2,7 +2,11 @@ import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { env } from "@/env";
-import { deleteR2Object, getR2PublicUrl, uploadR2Object } from "@/lib/r2-storage";
+import {
+  deleteR2Object,
+  getR2PublicUrl,
+  uploadR2Object,
+} from "@/lib/r2-storage";
 
 type StoredObject = {
   key: string;
@@ -95,11 +99,7 @@ export async function deleteStoredObject(key: string) {
   try {
     await unlink(storagePath.filePath);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      "code" in error &&
-      error.code === "ENOENT"
-    ) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       return;
     }
 

@@ -39,17 +39,17 @@
 
 **Objetivo da sprint:** permitir criar, editar, publicar e operar quizzes.
 
-| Item                                  | Status    | Observacoes                                                   |
-| ------------------------------------- | --------- | ------------------------------------------------------------- |
-| Cadastro via email/senha              | Concluido | Fluxo implementado                                            |
-| Login protegido e dashboard           | Concluido | Rotas protegidas em uso                                       |
-| CRUD de quizzes                       | Concluido | Fluxo principal funcional                                     |
-| Publicacao com snapshot/versionamento | Concluido | `quiz_versions` ativo                                         |
-| Tipos de pergunta: multipla escolha   | Concluido | Base do live usa esse formato                                 |
-| Tipo Verdadeiro/Falso                 | Parcial   | Precisa confirmar UX dedicada no editor e validacao fim a fim |
-| Tempo limite e pontos por pergunta    | Concluido | Em uso no fluxo live                                          |
+| Item                                  | Status    | Observacoes                                                                                            |
+| ------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------ |
+| Cadastro via email/senha              | Concluido | Fluxo implementado                                                                                     |
+| Login protegido e dashboard           | Concluido | Rotas protegidas em uso                                                                                |
+| CRUD de quizzes                       | Concluido | Fluxo principal funcional                                                                              |
+| Publicacao com snapshot/versionamento | Concluido | `quiz_versions` ativo                                                                                  |
+| Tipos de pergunta: multipla escolha   | Concluido | Base do live usa esse formato                                                                          |
+| Tipo Verdadeiro/Falso                 | Parcial   | Precisa confirmar UX dedicada no editor e validacao fim a fim                                          |
+| Tempo limite e pontos por pergunta    | Concluido | Em uso no fluxo live                                                                                   |
 | Imagem opcional por pergunta          | Parcial   | Upload ligado no editor, persistido no quiz e exibido no fluxo live; ainda falta polimento operacional |
-| Preview do quiz                       | Parcial   | Existe preview base, ainda nao no nivel completo do PRD       |
+| Preview do quiz                       | Parcial   | Existe preview base, ainda nao no nivel completo do PRD                                                |
 
 **Proximo passo recomendado:** fechar imagens por pergunta e revisar suporte final a Verdadeiro/Falso.
 
@@ -57,14 +57,14 @@
 
 **Objetivo da sprint:** tornar branding um diferencial real do produto.
 
-| Item                                | Status   | Observacoes                                                                      |
-| ----------------------------------- | -------- | -------------------------------------------------------------------------------- |
-| Cor primaria/secundaria/destaque    | Parcial  | Base visual e configuracao existem, mas ainda pedem revisao fina                 |
-| Upload de logo                      | Parcial  | Upload ligado no branding, preview do editor e entrada live; ainda falta refinamento operacional |
-| Upload de background                | Parcial  | Upload ligado no branding, preview do editor e entrada live; ainda falta refinamento operacional |
-| Selecao de fonte                    | Parcial  | Parte visual existe, precisa confirmar opcoes e persistencia final               |
-| Validacao de contraste WCAG         | Parcial  | Intencao e parte do design existem, falta fechar como requisito tecnico completo |
-| Branding consistente no host/player | Parcial  | Ja aparece no fluxo, mas ainda nao considero 100% do PRD                         |
+| Item                                | Status  | Observacoes                                                                                      |
+| ----------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| Cor primaria/secundaria/destaque    | Parcial | Base visual e configuracao existem, mas ainda pedem revisao fina                                 |
+| Upload de logo                      | Parcial | Upload ligado no branding, preview do editor e entrada live; ainda falta refinamento operacional |
+| Upload de background                | Parcial | Upload ligado no branding, preview do editor e entrada live; ainda falta refinamento operacional |
+| Selecao de fonte                    | Parcial | Parte visual existe, precisa confirmar opcoes e persistencia final                               |
+| Validacao de contraste WCAG         | Parcial | Intencao e parte do design existem, falta fechar como requisito tecnico completo                 |
+| Branding consistente no host/player | Parcial | Ja aparece no fluxo, mas ainda nao considero 100% do PRD                                         |
 
 **Proximo passo recomendado:** validar o fluxo em Railway com Volume anexado e depois seguir para Sprint 5.
 
@@ -94,16 +94,16 @@
 
 **Objetivo da sprint:** tornar o Live confiavel em uso real.
 
-| Item                                           | Status    | Observacoes                                                                                               |
-| ---------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------- |
-| Reconexao do participante com mesmo token      | Concluido | Sem duplicar participante                                                                                 |
-| Retomada confirmada da sessao                  | Concluido | Fluxo "Retomar agora" implementado                                                                        |
-| Estado restaurado apos reconexao               | Concluido | Lobby, pergunta, resultado e final                                                                        |
-| Host vendo `online/offline`                    | Concluido | Em producao                                                                                               |
-| Contagem real de conectados                    | Concluido | Separada do ranking                                                                                       |
+| Item                                           | Status    | Observacoes                                                                                                        |
+| ---------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| Reconexao do participante com mesmo token      | Concluido | Sem duplicar participante                                                                                          |
+| Retomada confirmada da sessao                  | Concluido | Fluxo "Retomar agora" implementado                                                                                 |
+| Estado restaurado apos reconexao               | Concluido | Lobby, pergunta, resultado e final                                                                                 |
+| Host vendo `online/offline`                    | Concluido | Em producao                                                                                                        |
+| Contagem real de conectados                    | Concluido | Separada do ranking                                                                                                |
 | Reconexao do host em ate 5 min                 | Parcial   | Painel do host agora exibe reconexao, janela de recuperacao e retomada; ainda falta validar a meta completa do PRD |
-| Persistencia segura sem depender so de memoria | Parcial   | Snapshot interno e hidratacao de sala apos restart do realtime entregues; ainda vale validar em carga     |
-| Protecoes de limite/abuso                      | Parcial   | Ja existe rate limit leve de PIN e rejeicao estruturada de respostas; ainda falta endurecimento maior     |
+| Persistencia segura sem depender so de memoria | Parcial   | Snapshot interno e hidratacao de sala apos restart do realtime entregues; ainda vale validar em carga              |
+| Protecoes de limite/abuso                      | Parcial   | Ja existe rate limit leve de PIN e rejeicao estruturada de respostas; ainda falta endurecimento maior              |
 
 **Proximo passo recomendado:** executar teste de carga controlado e observar comportamento de recuperacao.
 
@@ -111,16 +111,16 @@
 
 **Objetivo da sprint:** entregar o fluxo assincrono minimo validavel.
 
-| Item                               | Status   | Observacoes                                     |
-| ---------------------------------- | -------- | ----------------------------------------------- |
-| Criacao de sessao individual       | Concluido | Fluxo do dashboard cria a sessao e abre a pagina de detalhes |
-| Link individual de acesso          | Concluido | Link publico `/play/[shareToken]` ativo na pagina da sessao |
-| Deadline/encerramento configuravel | Concluido | Prazo configuravel na criacao da sessao e respeitado no fluxo publico |
+| Item                               | Status    | Observacoes                                                                       |
+| ---------------------------------- | --------- | --------------------------------------------------------------------------------- |
+| Criacao de sessao individual       | Concluido | Fluxo do dashboard cria a sessao e abre a pagina de detalhes                      |
+| Link individual de acesso          | Concluido | Link publico `/play/[shareToken]` ativo na pagina da sessao                       |
+| Deadline/encerramento configuravel | Concluido | Prazo configuravel na criacao da sessao e respeitado no fluxo publico             |
 | Controle de tentativas             | Concluido | Modelo com `attempts`, retomada, nova tentativa e limite configuravel funcionando |
-| Nickname obrigatorio               | Concluido | Entrada publica exige apelido antes de iniciar a tentativa |
-| Email opcional/configuravel        | Concluido | Sessao individual pode deixar email opcional ou obrigatorio ja na criacao |
-| Resultado individual final         | Concluido | Participante recebe score, acertos e resumo final ao concluir |
-| Sem ranking realtime               | Concluido | Fluxo assincrono sem dependencia de realtime entregue |
+| Nickname obrigatorio               | Concluido | Entrada publica exige apelido antes de iniciar a tentativa                        |
+| Email opcional/configuravel        | Concluido | Sessao individual pode deixar email opcional ou obrigatorio ja na criacao         |
+| Resultado individual final         | Concluido | Participante recebe score, acertos e resumo final ao concluir                     |
+| Sem ranking realtime               | Concluido | Fluxo assincrono sem dependencia de realtime entregue                             |
 
 **Proximo passo recomendado:** validar a migration nova no banco e seguir para hardening operacional e refinamento do beta.
 
@@ -145,16 +145,16 @@
 
 **Objetivo da sprint:** deixar o produto apto para uso controlado com clientes reais.
 
-| Item                                       | Status    | Observacoes                                                                              |
-| ------------------------------------------ | --------- | ---------------------------------------------------------------------------------------- |
-| Fluxo completo live em producao controlada | Concluido | Ja operavel hoje                                                                         |
-| Modo Individual pronto para beta           | Concluido | Fluxo publico, tentativas, retomada e relatorios por tentativa entregues                 |
-| Teste de carga de 80 jogadores             | Faltando  | Ainda precisa execucao formal                                                            |
-| Dashboard operacional para sessoes ativas  | Concluido | Dashboard global agora mostra sessoes ativas, interrupcoes e atividade recente           |
-| Sentry sem novos erros apos staging        | Parcial   | Precisa consolidacao operacional                                                         |
-| Politica de privacidade e termos revisados | Bloqueado | Depende de validacao juridica                                                            |
-| Operadores de dados documentados           | Bloqueado | Depende de processo e documentacao                                                       |
-| Limite comercial prometido no beta         | Bloqueado | Decisao de negocio                                                                       |
+| Item                                       | Status    | Observacoes                                                                    |
+| ------------------------------------------ | --------- | ------------------------------------------------------------------------------ |
+| Fluxo completo live em producao controlada | Concluido | Ja operavel hoje                                                               |
+| Modo Individual pronto para beta           | Concluido | Fluxo publico, tentativas, retomada e relatorios por tentativa entregues       |
+| Teste de carga de 80 jogadores             | Faltando  | Ainda precisa execucao formal                                                  |
+| Dashboard operacional para sessoes ativas  | Concluido | Dashboard global agora mostra sessoes ativas, interrupcoes e atividade recente |
+| Sentry sem novos erros apos staging        | Parcial   | Precisa consolidacao operacional                                               |
+| Politica de privacidade e termos revisados | Bloqueado | Depende de validacao juridica                                                  |
+| Operadores de dados documentados           | Bloqueado | Depende de processo e documentacao                                             |
+| Limite comercial prometido no beta         | Bloqueado | Decisao de negocio                                                             |
 
 **Proximo passo recomendado:** fechar observabilidade minima de beta e depois executar teste de carga controlado.
 

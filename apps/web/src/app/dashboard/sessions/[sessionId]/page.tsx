@@ -228,7 +228,11 @@ export default async function SessionDetailPage({
               </p>
               {quizSession.mode === "individual" ? (
                 <p className="mt-2 text-sm leading-7 text-[#61708c]">
-                  Email {quizSession.requireParticipantEmail ? "obrigatorio" : "opcional"} para participar.
+                  Email{" "}
+                  {quizSession.requireParticipantEmail
+                    ? "obrigatorio"
+                    : "opcional"}{" "}
+                  para participar.
                 </p>
               ) : null}
             </article>
