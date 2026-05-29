@@ -2,12 +2,14 @@
 
 import { useActionState } from "react";
 import {
-  accountInitialState,
   changeAccountPassword,
   requestPasswordReset,
   updateAccountProfile,
-  type AccountActionState,
 } from "./actions";
+import {
+  accountInitialState,
+  type AccountActionState,
+} from "./action-state";
 
 function FeedbackMessage({ state }: { state: AccountActionState }) {
   if (state.status === "idle" || !state.message) {

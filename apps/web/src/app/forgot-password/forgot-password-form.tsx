@@ -3,8 +3,10 @@
 import { useActionState } from "react";
 import {
   accountInitialState,
-  requestPasswordReset,
   type AccountActionState,
+} from "@/app/dashboard/account/action-state";
+import {
+  requestPasswordReset,
 } from "@/app/dashboard/account/actions";
 
 function FeedbackMessage({ state }: { state: AccountActionState }) {

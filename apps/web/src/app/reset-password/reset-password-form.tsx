@@ -2,10 +2,8 @@
 
 import { startTransition, useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  accountInitialState,
-  resetPasswordWithToken,
-} from "@/app/dashboard/account/actions";
+import { accountInitialState } from "@/app/dashboard/account/action-state";
+import { resetPasswordWithToken } from "@/app/dashboard/account/actions";
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();

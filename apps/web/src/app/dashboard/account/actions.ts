@@ -12,14 +12,7 @@ import { db } from "@/db/client";
 import { passwordResetTokens, users } from "@/db/schema";
 import { env } from "@/env";
 import { logger } from "@/lib/logger";
-
-export type AccountActionState = {
-  message?: string;
-  previewUrl?: string;
-  status: "idle" | "success" | "error";
-};
-
-const initialState: AccountActionState = { status: "idle" };
+import { type AccountActionState } from "./action-state";
 
 function sanitizeCompany(company: string) {
   const value = company.trim();
@@ -321,5 +314,3 @@ export async function resetPasswordWithToken(
     status: "success",
   };
 }
-
-export { initialState as accountInitialState };
