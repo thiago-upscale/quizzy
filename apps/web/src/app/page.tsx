@@ -166,20 +166,13 @@ export default async function Home() {
         </div>
 
         <section className="mt-12 rounded-[2.5rem] border border-[#d7d3ca] bg-[#fffdf8] p-8 shadow-[0_18px_50px_rgba(16,35,63,0.06)]">
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#5f665d]">
-                Modos do produto
-              </p>
-              <h2 className="mt-4 text-4xl font-semibold leading-tight text-[#2d322c]">
-                Crie, conduza e acompanhe sem perder o ritmo da sala.
-              </h2>
-            </div>
-            <p className="text-base leading-8 text-[#5f665d]">
-              A home precisa vender o ciclo completo do Quizzy. Não é só criar
-              pergunta: é apresentar bem, rodar com clareza e manter a operação
-              sob controle.
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#5f665d]">
+              Modos do produto
             </p>
+            <h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight text-[#2d322c]">
+              Crie, conduza e acompanhe sem perder o ritmo da sala.
+            </h2>
           </div>
 
           <div className="mt-8 grid gap-5 lg:grid-cols-3">
