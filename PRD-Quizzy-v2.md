@@ -299,6 +299,16 @@ Resposta curta, nuvem de palavras, ordenação, matching, imagem como resposta, 
 - **Auth:** Auth.js com Credentials (email/senha) e Google OAuth
 - **Observabilidade:** Sentry + logs estruturados (Pino)
 
+### 6.1a. Limite de escalonamento horizontal (MVP)
+
+**Clarificação (adicionada após revisão de engenharia de 2026-05-29):**
+
+O Redis adapter para Socket.io permite roteamento de mensagens entre instâncias, mas NÃO replica o estado de sessão (`liveRooms` Map, timers `setTimeout`). Duas instâncias do realtime teriam estados divergentes para a mesma sala.
+
+**Restrição do MVP:** o serviço realtime deve rodar em uma única instância no Railway. Escalonamento horizontal real (múltiplas instâncias) requer mover `RoomState` para Redis hash, o que é Fase 2.
+
+**Implicação operacional:** configurar Railway para não escalar automaticamente o container realtime. Monitorar RAM/CPU; escalar verticalmente se necessário.
+
 ### 6.2. Decisão crítica: Socket.io em container separado
 
 Rodar Socket.io dentro de Next.js API Routes em produção é frágil (serverless functions não mantêm conexões persistentes). Solução para MVP:
@@ -591,29 +601,154 @@ audit_log (
 - Estado de sessão encerrada, expirada, cheia e interrompida na entrada do jogador
 - Confirmação explícita antes de encerrar sessão Live
 
+**Especificação visual dos estados críticos:**
+
+_Entrada por PIN — erros (inline, abaixo do campo):_
+- PIN inválido: "PIN inválido. Verifique os 6 dígitos com o host."
+- Sessão expirada: "Essa sessão encerrou. Se o quiz continua, peça um novo PIN ao host."
+- Sessão cheia: "Sessão com capacidade máxima. Aguarde o host."
+- Genérico/fallback: "Não foi possível conectar. Tente novamente."
+
+_Player durante pergunta — estado offline:_
+- Comportamento: player pode continuar e selecionar resposta (salva localmente, otimista).
+- UI: banner não-bloqueante no topo em âmbar: "Reconectando..." com ícone de sinal fraco.
+- Timer continua rodando normalmente.
+- Ao reconectar (dentro de 60s): resposta é enviada e sincronizada. Se o tempo já encerrou, resposta é registrada com 0 pontos mas sem perda do jogador na sessão.
+- Se falhar reconexão após 60s: banner muda para "Conexão perdida. Tente reentrar com seu apelido." com link para a tela de PIN.
+
+_Dashboard — estado vazio (zero quizzes):_
+- Card de onboarding centralizado: headline "Crie seu primeiro quiz", sub "Com a cara da sua empresa", botão primário "Criar quiz".
+- Não mostrar tabela vazia ou spinner sem contexto.
+
+_Relatório — estado de carregamento:_
+- Skeleton de 3 cards (ranking, % acerto, tempo médio) + skeleton de tabela. Não mostrar spinner genérico sobre área em branco.
+
 ### 9.2. Separação Host vs. Player
 
-**Tela do Host durante pergunta:**
-- Enunciado e alternativas grandes (projeção)
-- Timer em destaque
-- Contador "X de Y responderam"
-- Botão "Pular agora"
-- Botão "Encerrar sessão"
-- QR Code pequeno no canto (para entrada tardia)
+**Tela do Host durante pergunta — hierarquia visual:**
+- **Elemento dominante:** Contador de respostas em tamanho grande ("X / 80 responderam"). Este é o sinal mais crítico para o host em tempo real.
+- **Secundário:** Timer visível e legível, mas não maior que o contador.
+- **Terciário:** Enunciado da pergunta (legível, mas host já sabe o conteúdo).
+- **CTAs:** "Pular agora" é o botão primário. "Encerrar sessão" é secundário, em posição que evite clique acidental.
+- **QR Code:** Canto inferior discreto, para entrada tardia — não compete com os controles.
+- Hierarquia: Resposta count > Timer > CTA (Pular) > Enunciado > QR code
 
 **Tela do Player durante pergunta:**
 - Enunciado compacto
-- Alternativas como botões grandes (touch-friendly)
+- Alternativas como botões grandes (touch-friendly, mínimo 48px de altura)
 - Timer
 - Streak atual visível
 - Sem informação de outros jogadores (foco)
 
-### 9.3. Prioridade de UX no MVP
+### 9.2a. Landing Page — Estrutura e Hierarquia de Conteúdo
+
+A landing page segue estrutura branding-first: mostrar o diferencial visual em vez de apenas descrevê-lo.
+
+**Estrutura aprovada:**
+1. **Hero:** Quiz ao vivo com a identidade visual de uma empresa aplicada (logo, cores). Headline: "Quizzes com a cara da sua empresa." Sub: "Sessões ao vivo, branding corporativo, relatórios prontos. PT-BR nativo." CTA único: "Entrar no beta privado".
+2. **Demo de branding:** Comparação visual "quiz genérico vs. quiz com identidade da sua empresa". Sem texto de explicação — a imagem faz o trabalho.
+3. **Prova social:** Logos dos primeiros beta testers (quando disponível) ou depoimento de 1 cliente real.
+4. **CTA final:** Repetição do CTA de beta, com campo de email.
+
+Regras de design: sem grid de 3 colunas com ícone + título + texto. Cada seção tem um único trabalho. A primeira viewport é uma composição, não um dashboard.
+
+### 9.2b. Dashboard — Estado Vazio (Primeiro Acesso)
+
+Quando um criador acessa o dashboard sem nenhum quiz criado:
+
+- **Não mostrar:** tabela vazia, "Nenhum quiz encontrado", ou spinner sem contexto.
+- **Mostrar:** Card de onboarding centralizado com:
+  - Headline: "Crie seu primeiro quiz"
+  - Sub: "Com a cara da sua empresa — adicione logo, cores e fontes."
+  - Botão primário: "Criar quiz"
+  - Elemento visual opcional: miniatura mostrando um quiz com branding aplicado.
+- Este estado apoia diretamente a métrica de ativação (≥ 50% publicam 1º quiz em 7 dias).
+
+### 9.3. Responsividade e Breakpoints
+
+As telas do jogador são mobile-first. As telas do criador são desktop-first com suporte a tablet.
+
+| Tela | Mobile (< 640px) | Tablet (640-1024px) | Desktop (> 1024px) |
+|------|------------------|---------------------|---------------------|
+| PIN entry (11) | Input central, full-width, teclado numérico auto-invocado | Igual ao mobile, card com max-w-lg | Card centralizado max-w-xl |
+| Pergunta player (14) | Alternativas empilhadas (1 coluna), full-width, 56px de altura mínima | 2 colunas de alternativas | 2 colunas de alternativas |
+| Host Live (7) | Não otimizado para mobile (uso exclusivo em desktop/projeção) | Desktop layout | Contador resposta ocupa 40% da tela |
+| Dashboard (3) | Lista de quizzes card único por linha | Grid 2 colunas | Grid 3 colunas com sidebar de métricas |
+| Relatório (10) | Métricas em cards empilhados, tabela com scroll horizontal | Grid 2 colunas de métricas | Layout com gráficos lado a lado |
+
+Touch targets: todos os botões de ação do jogador têm mínimo 48px de altura (WCAG 2.5.5).
+
+### 9.3b. Decisões de Design Resolvidas (Pass 7)
+
+**Alerta de contraste de acessibilidade no editor de branding:**
+- Chip âmbar inline, abaixo do picker da cor com problema.
+- Texto: "Contraste insuficiente com [outra cor]: X:1. WCAG AA requer 4.5:1."
+- Com sugestão de valor HEX que atingiria 4.5:1.
+- Preview destaca o texto afetado com overlay vermelho semitransparente.
+- Não bloqueia o save — apenas adverte.
+
+**Status de quiz no Dashboard:**
+- Pill badge ao lado do título.
+- Rascunho: `bg-slate-100 text-slate-600` + ícone de lápis.
+- Publicado: `bg-green-100 text-green-700` + ícone de check-circle.
+- Arquivado: `bg-amber-100 text-amber-700` + ícone de arquivo.
+- Ícone + texto para acessibilidade sem dependência de cor.
+
+### 9.3a. Prioridade de UX no MVP
 
 1. Entrada por PIN em celular deve ser a experiência mais rápida e robusta do produto.
 2. Host não pode ficar preso sem ação clara; todo erro Live precisa oferecer retry, encerrar sessão ou voltar ao lobby.
 3. Branding precisa aparecer no lobby, pergunta, ranking e relatório, não apenas no preview.
 4. Relatório pode ser simples, mas precisa ser confiável e exportável.
+
+### 9.4a. Sistema de Design do Quizzy (UI próprio)
+
+**Tipografia (aprovada):**
+- Body: Geist Sans (já instalado via `next/font/google`) — remover override Arial em `globals.css:24`.
+- Headings: Geist Sans, peso 600-700.
+- Código/dados: Geist Mono (já disponível).
+- NÃO usar: Arial, Helvetica, system-ui como fonte primária.
+
+**Cores base do Quizzy (ad-hoc → formalizar como CSS tokens):**
+- `--quizzy-navy: #10233f` — cor primária do produto.
+- `--quizzy-teal: #0f766e` — cor de ação e destaque.
+- `--quizzy-accent: #f59e0b` — CTA principal (âmbar).
+- `--quizzy-surface: #f7f8fa` — fundo neutro.
+- `--quizzy-text: #18202f` — texto principal.
+- `--quizzy-muted: #667085` — texto secundário.
+Definir estes como variáveis CSS em `globals.css` e usar via Tailwind config.
+
+**Landing page — regras anti-slop (aprovadas):**
+- Remover o grid `sm:grid-cols-3` de `page.tsx` com os cards "Web / Realtime / Dados".
+- Substituir pela estrutura branding-first aprovada na seção 9.2a.
+- Nenhuma seção da landing page deve ter 3 colunas iguais com ícone + título + 2 linhas de texto.
+- Sem emoji como decoração de seção.
+- Sem gradiente azul/roxo genérico (usar a paleta navy/teal do Quizzy).
+
+### 9.4. Microinterações e Arco Emocional
+
+**Streak — Tela de Feedback:**
+- Streak ≥ 2: badge "Sequência x{N}!" aparece com o multiplicador aplicado ("1.3x pontos").
+- Streak ≥ 5: badge pulsa uma vez (keyframe scale 1 → 1.1 → 1).
+- Sem confetti, sem som. Respeita `prefers-reduced-motion` (badge aparece sem animação).
+- Streak zerado por erro: badge não aparece, feedback visual é apenas correto/errado.
+
+**Ranking — Transição entre perguntas:**
+- Posições entram de baixo para cima (último lugar → primeiro lugar).
+- Stagger de 50-100ms por linha.
+- Badge de delta de posição: "+2" (verde) ou "-1" (vermelho) ao lado do nome.
+- Respeita `prefers-reduced-motion`: lista aparece instantaneamente sem stagger.
+- Timer visual no host para avançar para próxima pergunta — não avança automaticamente.
+
+**Resposta correta — Player:**
+- Botão selecionado expande levemente (scale 1.03) por 100ms, depois destaca em verde.
+- Botões errados esmaecidos em cinza.
+- Pontos ganhos aparecem com contador animado (0 → X pontos) em 400ms.
+
+**Resposta errada — Player:**
+- Botão selecionado destaca em vermelho com ícone de "X".
+- Botão correto destaca em verde (ensina a resposta certa).
+- Streak zera — sem animação adicional além do estado de streak ausente.
 
 ---
 
@@ -833,8 +968,8 @@ Antes do Sprint 0, decidir:
 1. Nome final e domínio (Quizzy está disponível?)
 2. Identidade visual do próprio Quizzy (logo, paleta)
 3. Pricing definitivo dos planos (mesmo que cobrança fique para depois)
-4. 5 fontes pré-aprovadas para branding (preferência por web fonts open source)
-5. 12 avatares pré-definidos (estilo visual)
+4. 5 fontes pré-aprovadas para branding — **APROVADAS:** Montserrat, DM Sans, Raleway, Playfair Display, Space Grotesk. Todas via Google Fonts, gratuitas, boa cobertura PT-BR. Carregadas on-demand via `next/font` apenas no contexto do quiz com branding aplicado.
+5. 12 avatares pré-definidos — **APROVADO:** emoji de personagens animais (🦊 🦉 🐻 🐯 🦁 🐸 🐧 🦋 🦄 🐺 🦅 🦔). Armazenados como unicode, sem SVG, renderizam identicamente em todos os dispositivos e no CSV de relatório. Exibidos em grid 4×3 na tela de seleção de avatar (tela 12).
 6. Política de privacidade e Termos de Uso (texto jurídico)
 7. Beta testers iniciais (5-10 clientes do portfólio atual)
 8. Quem assume papel de DPO
@@ -862,3 +997,91 @@ Antes do Sprint 0, decidir:
 - Realtime ajustado para persistência incremental de respostas aceitas
 - LGPD reescrita como requisito de validação jurídica, não como conclusão fechada
 - Roadmap ganhou critérios de saída por sprint e teste de carga obrigatório
+
+---
+
+## Engineering Review — Critical Bugs Found (2026-05-29)
+
+The following bugs were identified during /plan-eng-review and must be fixed before beta:
+
+### Bug 0 — REALTIME_INTERNAL_TOKEN default inseguro (P1 — Segurança)
+**File:** `apps/realtime/src/env.ts:12`
+**Issue:** `REALTIME_INTERNAL_TOKEN` tem default `"quizzy-internal-dev-token"`. Se não configurado no Railway, qualquer um com a URL das rotas `/api/internal/live/*` pode chamar essas rotas com o token padrão.
+**Fix:** Mudar para `.string().min(32)` sem `.default()`. O processo falha no startup se a variável não estiver configurada. Adicionar ao checklist de deploy.
+**Acceptance:** Railway falha ao iniciar sem `REALTIME_INTERNAL_TOKEN` configurado. Não há fallback.
+
+### Bug 1 — Answer persistence: fire-and-forget (P1)
+**File:** `apps/realtime/src/server.ts:1624`
+**Issue:** `void persistAnswer(...)` discards errors silently. HTTP failure between realtime and web containers = answer permanently lost.
+**Fix (cross-model consensus):**
+1. In-memory retry queue: on HTTP failure, push to queue, worker retries every 5s up to 5 times.
+2. Answer route: use `INSERT...ON CONFLICT (participant_id, question_id) DO NOTHING` to make persistence idempotent. This makes retries safe and prevents any concurrent double-persist from double-counting.
+**Acceptance:** Retry queue + idempotent INSERT. Load test shows zero answer loss when web container restarts mid-session.
+
+### Bug 2 — Scoring formula diverges from PRD spec (P1)
+**File:** `apps/realtime/src/server.ts:830-843`
+**Issues:**
+- Speed factor minimum: code uses `max(0.25, ...)` → min score 250 pts. PRD says `max(0.5, ...)` → min score 500 pts.
+- Streak multiplier: not implemented. `RoomParticipant` has no `currentStreak` field.
+**Fix:**
+- Correct `computePoints()` to use `max(0.5, 1 - (timeSpentMs / totalMs) * 0.5)`
+- Add `currentStreak: number` to `RoomParticipant` (in-memory only, resets on host reconnect — accepted tradeoff for beta)
+- Apply multiplier: `min(1.5, 1 + currentStreak * 0.1)` on correct answers; reset to 0 on wrong answers
+- Update `participant.currentStreak` in the `answer:submit` handler
+- Note: streak resets to 0 after host reconnect/room hydration — this is acceptable for beta. Persisting streak across reconnects requires schema change (Phase 2).
+**Acceptance:** Unit test with 5 consecutive correct answers shows max 1.5x multiplier applied. Slow correct answer earns ≥500 pts.
+
+### Bug 3 — Host recovery timer: 1 min instead of 5 min (P1)
+**File:** `apps/realtime/src/server.ts:168`
+**Issue:** `HOST_RECOVERY_GRACE_MS = 60_000` (60s). PRD section 6.5 specifies 5 minutes.
+**Fix:** Change to `HOST_RECOVERY_GRACE_MS = 300_000`.
+**Acceptance:** Manual test: disconnect host for 90s → session remains in "interrupted" state. Reconnect → session resumes.
+
+### Bug 4 — liveRooms Map memory leak (P2)
+**File:** `apps/realtime/src/server.ts:207`
+**Issue:** `liveRooms` Map grows indefinitely. Finished/interrupted sessions are never removed. OOM risk after weeks of operation.
+**Fix:** After `finishSession()` and `interruptRoom()`, schedule `liveRooms.delete(pin)` after 30 minutes (allows late reconnectors to get final state).
+**Acceptance:** `liveRooms.size` does not grow after running 20 sessions over 2 hours. Each finished session is cleaned up within 31 minutes.
+
+## Implementation Tasks
+
+Synthesized from the /plan-design-review of 2026-05-29. Each task derives from a specific finding.
+
+- [ ] **T1 (P1, human: ~30min / CC: ~5min)** — Design System — Remove Arial override; activate Geist Sans; add Quizzy CSS token variables
+  - Surfaced by: Pass 4 — `globals.css:24` overrides Geist with Arial; no CSS token system exists
+  - Files: `apps/web/src/app/globals.css`, `tailwind.config.ts`
+  - Verify: `pnpm build` passes; browser inspector shows Geist Sans on body
+
+- [ ] **T2 (P2, human: ~4h / CC: ~30min)** — Landing Page — Replace 3-column card grid with branding-first hero structure
+  - Surfaced by: Pass 4 — `page.tsx:35-45` uses `sm:grid-cols-3` with tech stack cards (AI slop pattern #2)
+  - Files: `apps/web/src/app/page.tsx`
+  - Verify: No 3-column grid; hero shows quiz with branding applied; single CTA above the fold
+
+- [ ] **T3 (P2, human: ~2h / CC: ~20min)** — Design System — Create `docs/DESIGN.md` with token system, approved fonts, avatars, microinteraction specs
+  - Surfaced by: Pass 5 — no DESIGN.md; design decisions are undocumented or scattered
+  - Files: `docs/DESIGN.md` (new)
+  - Verify: Any contributor can implement a new screen without asking design questions
+
+- [ ] **T4 (P2, human: ~3h / CC: ~20min)** — Player Experience — Implement streak badge + ranking stagger animation + answer reveal
+  - Surfaced by: Pass 3 — streak mechanic (1.5x multiplier) is invisible in UI; ranking reveal has no animation
+  - Files: `apps/web/src/app/play/`
+  - Verify: 3+ correct answers in a row shows badge + pulse; ranking shows bottom-to-top stagger
+
+- [ ] **T5 (P2, human: ~2h / CC: ~15min)** — Branding Editor — Implement inline WCAG contrast warning with ratio and HEX suggestion
+  - Surfaced by: Pass 7 — US-02 specifies contrast alert but no UI spec was defined
+  - Files: `apps/web/src/app/dashboard/quizzes/` (branding editor component)
+  - Verify: Color pair with 3:1 contrast shows inline amber chip with ratio and suggestion
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 0 | — | — |
+| Design Review | `/plan-design-review` | UI/UX gaps | 1 | issues_open | score: 3/10 → 7/10, 14 decisions |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+
+**UNRESOLVED:** 3 decisions deferred — Quizzy logo/identity, session setup screen IA (screen 6), host ranking countdown timer duration.
+
+**VERDICT:** Design Review ran (issues_open — 3 unresolved decisions). Eng review required before shipping.
