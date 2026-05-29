@@ -86,13 +86,25 @@ export default async function LiveEntryPage({
     <main
       className="min-h-screen px-6 py-10 text-white"
       style={{
-        background: `linear-gradient(180deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+        backgroundImage: branding.backgroundImageUrl
+          ? `linear-gradient(180deg, rgba(16,35,63,0.84) 0%, rgba(15,118,110,0.84) 100%), url(${branding.backgroundImageUrl})`
+          : `linear-gradient(180deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
         fontFamily: branding.fontFamily,
       }}
     >
       <div className="mx-auto flex min-h-[80vh] w-full max-w-5xl items-center justify-center">
         <section className="grid w-full gap-6 rounded-[2rem] bg-white/10 p-8 shadow-[0_24px_90px_rgba(15,23,42,0.25)] backdrop-blur lg:grid-cols-[1fr_0.85fr]">
           <div>
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt="Logo do quiz"
+                className="h-14 w-auto rounded-xl bg-white/10 p-2"
+                src={branding.logoUrl}
+              />
+            ) : null}
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/70">
               Quiz ao vivo
             </p>

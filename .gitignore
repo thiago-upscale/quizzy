@@ -1,8 +1,10 @@
 apikey_*
+Cloudflare R2 Storage
 .env
 .env.*
 !.env.example
 node_modules/
+storage/
 .next/
 dist/
 coverage/

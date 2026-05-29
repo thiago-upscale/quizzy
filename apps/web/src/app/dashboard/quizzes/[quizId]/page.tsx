@@ -56,6 +56,7 @@ export default async function QuizDetailPage({
 
   const initialQuestions = quizQuestions.map((question) => {
     const content = question.content as {
+      imageUrl?: string | null;
       question?: string;
       options?: string[];
     };
@@ -65,6 +66,7 @@ export default async function QuizDetailPage({
       id: question.id,
       type: question.type === "true_false" ? "true_false" : "multiple_choice",
       question: content.question ?? "",
+      imageUrl: content.imageUrl ?? null,
       options:
         question.type === "true_false"
           ? ["Verdadeiro", "Falso"]
@@ -110,8 +112,9 @@ export default async function QuizDetailPage({
     secondaryColor: string;
     accentColor: string;
     fontFamily: string;
+    backgroundImageUrl: string | null;
+    logoUrl: string | null;
   }>;
-
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_#f8fafc,_#eef5ff)] px-6 py-8 text-[#132238]">
       <div className="mx-auto w-full max-w-5xl">
@@ -136,6 +139,8 @@ export default async function QuizDetailPage({
             secondaryColor: branding.secondaryColor ?? "#10233f",
             accentColor: branding.accentColor ?? "#f59e0b",
             fontFamily: branding.fontFamily ?? "Manrope",
+            backgroundImageUrl: branding.backgroundImageUrl ?? null,
+            logoUrl: branding.logoUrl ?? null,
           }}
           description={quiz.description ?? ""}
           initialQuestions={initialQuestions}
@@ -146,6 +151,10 @@ export default async function QuizDetailPage({
             activeLiveCount: liveSessions.length,
             latestLivePin: liveSessions[0]?.pin ?? null,
             latestShareToken: latestIndividualSession?.shareToken ?? null,
+          }}
+          individualSessionDefaults={{
+            maxAttempts: 1,
+            requireParticipantEmail: false,
           }}
           startIndividualSessionAction={createIndividualSession}
           status={quiz.status}

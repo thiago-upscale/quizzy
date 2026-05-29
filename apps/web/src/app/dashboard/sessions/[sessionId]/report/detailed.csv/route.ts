@@ -22,7 +22,10 @@ export async function GET(
     return NextResponse.json({ error: "session_not_found" }, { status: 404 });
   }
 
-  if (report.session.status !== "finished") {
+  if (
+    report.session.status !== "finished" &&
+    report.session.mode !== "individual"
+  ) {
     return NextResponse.json({ error: "report_not_ready" }, { status: 409 });
   }
 

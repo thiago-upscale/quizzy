@@ -18,6 +18,7 @@ import {
   buildRuntimeQuestionsForSession,
   getLiveSessionById,
 } from "@/lib/live";
+import { logger } from "@/lib/logger";
 
 export async function createQuiz() {
   const session = await requireAuthSession();
@@ -33,6 +34,9 @@ export async function createQuiz() {
         primaryColor: "#0f766e",
         secondaryColor: "#10233f",
         accentColor: "#f59e0b",
+        backgroundImageUrl: null,
+        logoUrl: null,
+        fontFamily: "Manrope",
       },
     })
     .returning({ id: quizzes.id });
@@ -63,6 +67,7 @@ type QuestionPayload = {
   question: string;
   options: string[];
   correctIndex: number;
+  imageUrl?: string | null;
   timeLimitSeconds: number;
 };
 
@@ -71,6 +76,8 @@ type BrandingPayload = {
   secondaryColor: string;
   accentColor: string;
   fontFamily: string;
+  backgroundImageUrl: string | null;
+  logoUrl: string | null;
 };
 
 export type SaveQuizState = {
@@ -88,10 +95,34 @@ const defaultBranding: BrandingPayload = {
   secondaryColor: "#10233f",
   accentColor: "#f59e0b",
   fontFamily: "Manrope",
+  backgroundImageUrl: null,
+  logoUrl: null,
 };
 
 function sanitizeHex(color: string, fallback: string) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback;
+}
+
+function sanitizeAssetUrl(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  if (
+    trimmed.startsWith("/uploads/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  ) {
+    return trimmed;
+  }
+
+  return null;
 }
 
 function normalizeBranding(
@@ -114,6 +145,8 @@ function normalizeBranding(
       typeof branding.fontFamily === "string" && branding.fontFamily.length > 0
         ? branding.fontFamily
         : defaultBranding.fontFamily,
+    backgroundImageUrl: sanitizeAssetUrl(branding.backgroundImageUrl),
+    logoUrl: sanitizeAssetUrl(branding.logoUrl),
   };
 }
 
@@ -128,7 +161,7 @@ function normalizeQuestions(parsedQuestions: QuestionPayload[]) {
           question.type === "true_false"
             ? ["Verdadeiro", "Falso"]
             : question.options.map((option) => option.trim()).filter(Boolean),
-        imageUrl: null,
+        imageUrl: sanitizeAssetUrl(question.imageUrl),
       },
       correctAnswer: {
         index: question.correctIndex,
@@ -379,6 +412,10 @@ export async function createLiveSession(formData: FormData) {
 export async function createIndividualSession(formData: FormData) {
   const session = await requireAuthSession();
   const quizId = String(formData.get("quizId") ?? "");
+  const endsAtInput = String(formData.get("endsAt") ?? "").trim();
+  const maxAttemptsInput = Number(formData.get("maxAttempts") ?? 1);
+  const requireParticipantEmail =
+    String(formData.get("requireParticipantEmail") ?? "") === "on";
 
   if (!quizId) {
     throw new Error("Quiz invalido.");
@@ -399,7 +436,15 @@ export async function createIndividualSession(formData: FormData) {
 
   const shareToken = crypto.randomUUID().replaceAll("-", "");
   const now = new Date();
-  const endsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const parsedEndsAt = endsAtInput ? new Date(endsAtInput) : null;
+  const endsAt =
+    parsedEndsAt && !Number.isNaN(parsedEndsAt.getTime()) && parsedEndsAt > now
+      ? parsedEndsAt
+      : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const maxAttempts =
+    Number.isInteger(maxAttemptsInput) && maxAttemptsInput >= 1
+      ? Math.min(maxAttemptsInput, 3)
+      : 1;
 
   const [individualSession] = await db
     .insert(quizSessions)
@@ -413,7 +458,8 @@ export async function createIndividualSession(formData: FormData) {
       startsAt: now,
       endsAt,
       expiresAt: endsAt,
-      maxAttempts: 1,
+      maxAttempts,
+      requireParticipantEmail,
     })
     .returning({
       id: quizSessions.id,
@@ -430,7 +476,10 @@ export async function createIndividualSession(formData: FormData) {
       shareToken,
       quizId,
       quizVersionId: latestVersion.id,
+      endsAt: endsAt.toISOString(),
+      maxAttempts,
       mode: "individual",
+      requireParticipantEmail,
     },
   });
 
@@ -535,13 +584,33 @@ export async function startLiveSession(
       pin: liveSession.pin,
       sessionId: liveSession.id,
     });
-  } catch {
-    await db
-      .update(quizSessions)
-      .set({
-        status: "waiting",
-      })
-      .where(eq(quizSessions.id, liveSession.id));
+  } catch (error) {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(quizSessions)
+        .set({
+          status: "waiting",
+        })
+        .where(eq(quizSessions.id, liveSession.id));
+
+      await tx.insert(sessionEvents).values({
+        sessionId: liveSession.id,
+        eventType: "session.start_sync_failed",
+        payload: {
+          pin: liveSession.pin,
+          reason: error instanceof Error ? error.message : "unknown_error",
+        },
+      });
+    });
+
+    logger.error(
+      {
+        error,
+        pin: liveSession.pin,
+        sessionId: liveSession.id,
+      },
+      "session.start_sync_failed",
+    );
 
     return {
       message: "Nao conseguimos sincronizar o countdown realtime agora.",
@@ -629,7 +698,27 @@ export async function advanceLiveSession(
       pin: liveSession.pin,
       sessionId: liveSession.id,
     });
-  } catch {
+  } catch (error) {
+    await db.insert(sessionEvents).values({
+      sessionId: liveSession.id,
+      eventType: "session.advance_sync_failed",
+      payload: {
+        pin: liveSession.pin,
+        status: liveSession.status,
+        reason: error instanceof Error ? error.message : "unknown_error",
+      },
+    });
+
+    logger.error(
+      {
+        error,
+        pin: liveSession.pin,
+        sessionId: liveSession.id,
+        status: liveSession.status,
+      },
+      "session.advance_sync_failed",
+    );
+
     return {
       message: "Nao conseguimos avancar para a proxima etapa agora.",
       status: "error",

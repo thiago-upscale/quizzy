@@ -1,11 +1,13 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
+  answers,
   participants,
   questions,
   quizSessions,
   quizzes,
   quizVersions,
+  sessionEvents,
 } from "@/db/schema";
 
 export type LiveBranding = {
@@ -13,11 +15,14 @@ export type LiveBranding = {
   secondaryColor: string;
   accentColor: string;
   fontFamily: string;
+  backgroundImageUrl: string | null;
+  logoUrl: string | null;
 };
 
 export type RuntimeLiveQuestion = {
   correctIndex: number;
   id: string;
+  imageUrl: string | null;
   options: string[];
   orderIndex: number;
   persistable: boolean;
@@ -27,11 +32,42 @@ export type RuntimeLiveQuestion = {
   type: "multiple_choice" | "true_false";
 };
 
+export type LiveRecoveryParticipant = {
+  avatar: string;
+  id: string;
+  nickname: string;
+  participantToken: string;
+  score: number;
+  totalTimeMs: number;
+};
+
+export type LiveRecoveryAnswer = {
+  answerIndex: number;
+  isCorrect: boolean;
+  participantToken: string;
+  pointsEarned: number;
+  timeSpentMs: number;
+};
+
+export type LiveRecoverySnapshot = {
+  countdownStartedAt: string | null;
+  currentQuestionAnswers: LiveRecoveryAnswer[];
+  currentQuestionIndex: number | null;
+  participants: LiveRecoveryParticipant[];
+  pin: string;
+  questionStartedAt: string | null;
+  questions: RuntimeLiveQuestion[];
+  sessionId: string;
+  status: string;
+};
+
 export const defaultLiveBranding: LiveBranding = {
   primaryColor: "#0f766e",
   secondaryColor: "#10233f",
   accentColor: "#f59e0b",
   fontFamily: "Manrope",
+  backgroundImageUrl: null,
+  logoUrl: null,
 };
 
 export function getLiveParticipantCookieName(pin: string) {
@@ -47,6 +83,14 @@ export function normalizeLiveBranding(
       branding?.secondaryColor ?? defaultLiveBranding.secondaryColor,
     accentColor: branding?.accentColor ?? defaultLiveBranding.accentColor,
     fontFamily: branding?.fontFamily ?? defaultLiveBranding.fontFamily,
+    backgroundImageUrl:
+      typeof branding?.backgroundImageUrl === "string"
+        ? branding.backgroundImageUrl
+        : defaultLiveBranding.backgroundImageUrl,
+    logoUrl:
+      typeof branding?.logoUrl === "string"
+        ? branding.logoUrl
+        : defaultLiveBranding.logoUrl,
   };
 }
 
@@ -190,7 +234,11 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
   const snapshot =
     (liveSession.questionsSnapshot as
       | Array<{
-          content?: { options?: string[]; question?: string };
+          content?: {
+            imageUrl?: string | null;
+            options?: string[];
+            question?: string;
+          };
           correctAnswer?: { index?: number };
           timeLimitSeconds?: number;
           type?: string;
@@ -214,6 +262,10 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
     return {
       correctIndex: question.correctAnswer?.index ?? 0,
       id: currentQuestion?.id ?? `virtual-${liveSession.id}-${index}`,
+      imageUrl:
+        typeof question.content?.imageUrl === "string"
+          ? question.content.imageUrl
+          : null,
       options,
       orderIndex: index,
       persistable: Boolean(currentQuestion?.id),
@@ -223,6 +275,142 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
       type: question.type === "true_false" ? "true_false" : "multiple_choice",
     } satisfies RuntimeLiveQuestion;
   });
+}
+
+function getEventQuestionIndex(payload: unknown) {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "questionIndex" in payload &&
+    typeof payload.questionIndex === "number"
+  ) {
+    return payload.questionIndex;
+  }
+
+  return null;
+}
+
+function getAnswerIndexFromPayload(value: unknown) {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "index" in value &&
+    typeof value.index === "number"
+  ) {
+    return value.index;
+  }
+
+  return 0;
+}
+
+export async function buildLiveRecoverySnapshot(params: {
+  pin?: string;
+  sessionId?: string;
+}) {
+  const pin = params.pin?.trim();
+  const sessionId = params.sessionId?.trim();
+
+  if (!pin && !sessionId) {
+    return null;
+  }
+
+  const [liveSession] = await db
+    .select({
+      id: quizSessions.id,
+      pin: quizSessions.pin,
+      status: quizSessions.status,
+    })
+    .from(quizSessions)
+    .where(
+      pin
+        ? and(eq(quizSessions.pin, pin), eq(quizSessions.mode, "live"))
+        : and(
+            eq(quizSessions.id, sessionId as string),
+            eq(quizSessions.mode, "live"),
+          ),
+    )
+    .limit(1);
+
+  if (!liveSession?.pin) {
+    return null;
+  }
+
+  const [runtimeQuestions, participantRows, eventRows] = await Promise.all([
+    buildRuntimeQuestionsForSession(liveSession.id),
+    db
+      .select({
+        avatar: participants.avatar,
+        id: participants.id,
+        nickname: participants.nickname,
+        participantToken: participants.participantToken,
+        score: participants.score,
+        totalTimeMs: participants.totalTimeMs,
+      })
+      .from(participants)
+      .where(eq(participants.sessionId, liveSession.id))
+      .orderBy(asc(participants.joinedAt), asc(participants.nickname)),
+    db
+      .select({
+        createdAt: sessionEvents.createdAt,
+        eventType: sessionEvents.eventType,
+        payload: sessionEvents.payload,
+      })
+      .from(sessionEvents)
+      .where(eq(sessionEvents.sessionId, liveSession.id))
+      .orderBy(desc(sessionEvents.createdAt))
+      .limit(40),
+  ]);
+
+  const latestQuestionStarted = eventRows.find(
+    (event) => event.eventType === "session.question_started",
+  );
+  const latestCountdownStarted = eventRows.find(
+    (event) => event.eventType === "session.countdown_started",
+  );
+  const currentQuestionIndex = latestQuestionStarted
+    ? getEventQuestionIndex(latestQuestionStarted.payload)
+    : null;
+  const currentQuestion =
+    currentQuestionIndex !== null
+      ? runtimeQuestions[currentQuestionIndex] ?? null
+      : null;
+
+  const currentQuestionAnswers = currentQuestion?.persistable
+    ? await db
+        .select({
+          answer: answers.answer,
+          isCorrect: answers.isCorrect,
+          participantToken: participants.participantToken,
+          pointsEarned: answers.pointsEarned,
+          timeSpentMs: answers.timeSpentMs,
+        })
+        .from(answers)
+        .innerJoin(participants, eq(answers.participantId, participants.id))
+        .where(
+          and(
+            eq(answers.sessionId, liveSession.id),
+            eq(answers.questionId, currentQuestion.id),
+          ),
+        )
+    : [];
+
+  return {
+    countdownStartedAt: latestCountdownStarted?.createdAt.toISOString() ?? null,
+    currentQuestionAnswers: currentQuestionAnswers.map((row) => ({
+      answerIndex: getAnswerIndexFromPayload(row.answer),
+      isCorrect: row.isCorrect,
+      participantToken: row.participantToken,
+      pointsEarned: row.pointsEarned,
+      timeSpentMs: row.timeSpentMs,
+    })),
+    currentQuestionIndex,
+    participants: participantRows,
+    pin: liveSession.pin,
+    questionStartedAt: latestQuestionStarted?.createdAt.toISOString() ?? null,
+    questions: runtimeQuestions,
+    sessionId: liveSession.id,
+    status: liveSession.status,
+  } satisfies LiveRecoverySnapshot;
 }
 
 export function isJoinableLiveStatus(status: string) {

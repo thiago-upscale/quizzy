@@ -11,7 +11,6 @@ import {
 import { db } from "@/db/client";
 import { passwordResetTokens, users } from "@/db/schema";
 import { env } from "@/env";
-import { isValidAccountAvatar } from "@/lib/account";
 import { logger } from "@/lib/logger";
 
 export type AccountActionState = {
@@ -84,7 +83,6 @@ export async function updateAccountProfile(
   const session = await requireAuthSession();
   const name = String(formData.get("name") ?? "").trim();
   const company = String(formData.get("company") ?? "").trim();
-  const avatar = String(formData.get("avatar") ?? "").trim();
 
   if (name.length < 2) {
     return {
@@ -93,17 +91,9 @@ export async function updateAccountProfile(
     };
   }
 
-  if (!isValidAccountAvatar(avatar)) {
-    return {
-      message: "Selecione um avatar valido.",
-      status: "error",
-    };
-  }
-
   await db
     .update(users)
     .set({
-      avatar,
       company: sanitizeCompany(company),
       name,
     })

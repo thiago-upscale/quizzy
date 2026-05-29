@@ -49,6 +49,7 @@ export default async function SessionDetailPage({
       endsAt: quizSessions.endsAt,
       expiresAt: quizSessions.expiresAt,
       maxAttempts: quizSessions.maxAttempts,
+      requireParticipantEmail: quizSessions.requireParticipantEmail,
       createdAt: quizSessions.createdAt,
       quizId: quizzes.id,
       quizTitle: quizzes.title,
@@ -94,7 +95,7 @@ export default async function SessionDetailPage({
     .where(eq(participants.sessionId, sessionId));
 
   const sessionReport =
-    quizSession.status === "finished"
+    quizSession.status === "finished" || quizSession.mode === "individual"
       ? await getSessionReport({
           organizationId: session.user.organizationId,
           sessionId,
@@ -111,7 +112,7 @@ export default async function SessionDetailPage({
       })
     : null;
   const sharePath = quizSession.shareToken
-    ? `/play/${quizSession.shareToken}`
+    ? `${env.NEXTAUTH_URL}/play/${quizSession.shareToken}`
     : null;
 
   return (
@@ -199,7 +200,7 @@ export default async function SessionDetailPage({
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
                 {quizSession.mode === "live"
                   ? "Esse e o link aberto pelo QR Code. O participante cai direto na sessao e informa so os dados de identificacao."
-                  : "O fluxo publico do participante entra em seguida. Por enquanto, esta referencia ja deixa o token visivel para QA e integracao."}
+                  : "Este e o link publico da tarefa assincrona, com retomada da tentativa pelo mesmo navegador."}
               </p>
             </article>
 
@@ -225,6 +226,11 @@ export default async function SessionDetailPage({
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
                 Maximo de tentativas: {quizSession.maxAttempts}.
               </p>
+              {quizSession.mode === "individual" ? (
+                <p className="mt-2 text-sm leading-7 text-[#61708c]">
+                  Email {quizSession.requireParticipantEmail ? "obrigatorio" : "opcional"} para participar.
+                </p>
+              ) : null}
             </article>
           </div>
 
@@ -262,6 +268,7 @@ export default async function SessionDetailPage({
         </section>
 
         <ReportSection
+          mode={quizSession.mode}
           report={sessionReport}
           sessionId={quizSession.id}
           sessionStatus={quizSession.status}

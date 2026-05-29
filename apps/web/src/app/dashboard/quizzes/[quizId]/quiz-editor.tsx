@@ -7,6 +7,7 @@ import type { SaveQuizState } from "../../actions";
 type EditorQuestion = {
   id: string;
   type: "multiple_choice" | "true_false";
+  imageUrl: string | null;
   question: string;
   options: string[];
   correctIndex: number;
@@ -18,6 +19,8 @@ type BrandingState = {
   secondaryColor: string;
   accentColor: string;
   fontFamily: string;
+  backgroundImageUrl: string | null;
+  logoUrl: string | null;
 };
 
 type QuizEditorProps = {
@@ -30,6 +33,10 @@ type QuizEditorProps = {
     state: SaveQuizState,
     formData: FormData,
   ) => Promise<SaveQuizState>;
+  individualSessionDefaults: {
+    maxAttempts: number;
+    requireParticipantEmail?: boolean;
+  };
   sessionSummary: {
     activeLiveCount: number;
     latestLivePin: string | null;
@@ -51,6 +58,137 @@ const fontOptions = [
   "Outfit",
   "Archivo",
 ];
+
+function buildDefaultIndividualEndsAtValue() {
+  const value = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const timezoneOffsetMs = value.getTimezoneOffset() * 60 * 1000;
+
+  return new Date(value.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+}
+
+const acceptedImageTypes =
+  "image/png,image/jpeg,image/webp,image/gif,image/avif";
+
+function AssetUploadField({
+  assetType,
+  currentUrl,
+  label,
+  onClear,
+  onUploaded,
+  quizId,
+  questionId,
+}: {
+  assetType: "branding-background" | "branding-logo" | "question-image";
+  currentUrl: string | null;
+  label: string;
+  onClear: () => void;
+  onUploaded: (url: string) => void;
+  quizId: string;
+  questionId?: string;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setError(null);
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.set("assetType", assetType);
+      formData.set("file", file);
+
+      if (questionId) {
+        formData.set("questionId", questionId);
+      }
+
+      const response = await fetch(`/api/quizzes/${quizId}/assets`, {
+        body: formData,
+        method: "POST",
+      });
+
+      const payload = (await response.json()) as
+        | { error?: string; url?: string }
+        | undefined;
+
+      if (!response.ok || !payload?.url) {
+        const message =
+          payload?.error === "unsupported_type"
+            ? "Envie PNG, JPG, WEBP, GIF ou AVIF."
+            : payload?.error === "invalid_size"
+              ? "A imagem precisa ter ate 2 MB."
+              : "Nao foi possivel concluir o upload agora.";
+
+        throw new Error(message);
+      }
+
+      onUploaded(payload.url);
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Nao foi possivel concluir o upload agora.",
+      );
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-[#d7e3f0] bg-white p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-[#22304a]">{label}</p>
+          <p className="text-xs text-[#61708c]">
+            PNG, JPG, WEBP, GIF ou AVIF com ate 2 MB.
+          </p>
+        </div>
+        {currentUrl ? (
+          <button
+            className="rounded-full border border-[#d7e3f0] px-3 py-1 text-xs font-semibold text-[#22304a]"
+            onClick={onClear}
+            type="button"
+          >
+            Remover
+          </button>
+        ) : null}
+      </div>
+
+      {currentUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          alt={label}
+          className="max-h-48 w-full rounded-xl border border-[#d7e3f0] object-cover"
+          src={currentUrl}
+        />
+      ) : (
+        <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-[#cad5e3] bg-[#f8fbff] text-sm text-[#61708c]">
+          Nenhuma imagem enviada
+        </div>
+      )}
+
+      <label className="inline-flex cursor-pointer rounded-full bg-[#10233f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d3557]">
+        {isUploading ? "Enviando..." : "Escolher imagem"}
+        <input
+          accept={acceptedImageTypes}
+          className="sr-only"
+          disabled={isUploading}
+          onChange={handleFileChange}
+          type="file"
+        />
+      </label>
+
+      {error ? <p className="text-sm font-medium text-[#b42318]">{error}</p> : null}
+    </div>
+  );
+}
 
 function SubmitButton({
   children,
@@ -100,6 +238,7 @@ export function QuizEditor({
   branding: initialBranding,
   description,
   initialQuestions,
+  individualSessionDefaults,
   liveSessionAction,
   quizId,
   saveAction,
@@ -110,6 +249,7 @@ export function QuizEditor({
 }: QuizEditorProps) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [branding, setBranding] = useState(initialBranding);
+  const [defaultIndividualEndsAt] = useState(buildDefaultIndividualEndsAtValue);
   const [saveState, saveFormAction] = useActionState(
     saveAction,
     initialSaveState,
@@ -118,6 +258,7 @@ export function QuizEditor({
   const previewQuestion = questions[0] ?? {
     id: "preview",
     type: "multiple_choice" as const,
+    imageUrl: null,
     question: "Sua primeira pergunta vai aparecer aqui.",
     options: ["Opcao A", "Opcao B", "Opcao C", "Opcao D"],
     correctIndex: 0,
@@ -173,14 +314,53 @@ export function QuizEditor({
               </p>
             </div>
           </div>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-6 flex flex-col gap-4">
             <form action={liveSessionAction}>
               <input name="quizId" type="hidden" value={quizId} />
               <SessionButton>Iniciar sessao live</SessionButton>
             </form>
-            <form action={startIndividualSessionAction}>
+            <form
+              action={startIndividualSessionAction}
+              className="rounded-[1.5rem] border border-[#d7e3f0] bg-[#f8fbff] p-4"
+            >
               <input name="quizId" type="hidden" value={quizId} />
-              <SessionButton>Criar sessao individual</SessionButton>
+              <div className="grid gap-4 sm:grid-cols-[1fr_140px_auto] sm:items-end">
+                <label className="space-y-2 text-sm font-medium text-[#22304a]">
+                  <span>Prazo final</span>
+                  <input
+                    className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
+                    defaultValue={defaultIndividualEndsAt}
+                    name="endsAt"
+                    type="datetime-local"
+                  />
+                </label>
+                <label className="space-y-2 text-sm font-medium text-[#22304a]">
+                  <span>Tentativas</span>
+                  <select
+                    className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
+                    defaultValue={String(individualSessionDefaults.maxAttempts)}
+                    name="maxAttempts"
+                  >
+                    {[1, 2, 3].map((attempts) => (
+                      <option key={attempts} value={attempts}>
+                        {attempts}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-3 rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm font-medium text-[#22304a]">
+                  <input
+                    className="accent-[#0f766e]"
+                    defaultChecked={
+                      individualSessionDefaults.requireParticipantEmail ?? false
+                    }
+                    name="requireParticipantEmail"
+                    type="checkbox"
+                  />
+                  Exigir email do participante
+                </label>
+                <SessionButton>Criar sessao individual</SessionButton>
+              </div>
             </form>
           </div>
         </div>
@@ -188,12 +368,24 @@ export function QuizEditor({
         <div
           className="overflow-hidden rounded-[1.75rem] border border-white/50 shadow-[0_28px_90px_rgba(16,35,63,0.12)]"
           style={{
-            background: `linear-gradient(145deg, ${branding.secondaryColor}, ${branding.primaryColor})`,
+            backgroundImage: branding.backgroundImageUrl
+              ? `linear-gradient(145deg, rgba(16,35,63,0.72), rgba(15,118,110,0.72)), url(${branding.backgroundImageUrl})`
+              : `linear-gradient(145deg, ${branding.secondaryColor}, ${branding.primaryColor})`,
+            backgroundPosition: "center",
+            backgroundSize: "cover",
             color: "#ffffff",
             fontFamily: branding.fontFamily,
           }}
         >
           <div className="border-b border-white/15 px-6 py-5">
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt="Logo do quiz"
+                className="h-12 w-auto rounded-lg bg-white/10 p-2"
+                src={branding.logoUrl}
+              />
+            ) : null}
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
               Preview live
             </p>
@@ -218,6 +410,14 @@ export function QuizEditor({
                   {previewQuestion.timeLimitSeconds}s
                 </span>
               </div>
+              {previewQuestion.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt="Imagem da pergunta"
+                  className="mb-5 max-h-56 w-full rounded-2xl object-cover"
+                  src={previewQuestion.imageUrl}
+                />
+              ) : null}
               <h3 className="text-2xl font-semibold leading-tight">
                 {previewQuestion.question || "Digite o enunciado da pergunta"}
               </h3>
@@ -355,6 +555,42 @@ export function QuizEditor({
                   ))}
                 </select>
               </label>
+              <AssetUploadField
+                assetType="branding-logo"
+                currentUrl={branding.logoUrl}
+                label="Logo"
+                onClear={() =>
+                  setBranding((currentBranding) => ({
+                    ...currentBranding,
+                    logoUrl: null,
+                  }))
+                }
+                onUploaded={(url) =>
+                  setBranding((currentBranding) => ({
+                    ...currentBranding,
+                    logoUrl: url,
+                  }))
+                }
+                quizId={quizId}
+              />
+              <AssetUploadField
+                assetType="branding-background"
+                currentUrl={branding.backgroundImageUrl}
+                label="Background"
+                onClear={() =>
+                  setBranding((currentBranding) => ({
+                    ...currentBranding,
+                    backgroundImageUrl: null,
+                  }))
+                }
+                onUploaded={(url) =>
+                  setBranding((currentBranding) => ({
+                    ...currentBranding,
+                    backgroundImageUrl: url,
+                  }))
+                }
+                quizId={quizId}
+              />
             </div>
           </div>
         </section>
@@ -446,6 +682,32 @@ export function QuizEditor({
                     }
                   />
                 </label>
+
+                <AssetUploadField
+                  assetType="question-image"
+                  currentUrl={question.imageUrl}
+                  label="Imagem opcional da pergunta"
+                  onClear={() =>
+                    setQuestions((currentQuestions) =>
+                      currentQuestions.map((item) =>
+                        item.id === question.id
+                          ? { ...item, imageUrl: null }
+                          : item,
+                      ),
+                    )
+                  }
+                  onUploaded={(url) =>
+                    setQuestions((currentQuestions) =>
+                      currentQuestions.map((item) =>
+                        item.id === question.id
+                          ? { ...item, imageUrl: url }
+                          : item,
+                      ),
+                    )
+                  }
+                  questionId={question.id}
+                  quizId={quizId}
+                />
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm font-medium text-[#22304a]">
@@ -549,6 +811,7 @@ export function QuizEditor({
                 {
                   id: crypto.randomUUID(),
                   type: "multiple_choice",
+                  imageUrl: null,
                   question: "",
                   options: ["Opcao A", "Opcao B", "Opcao C", "Opcao D"],
                   correctIndex: 0,

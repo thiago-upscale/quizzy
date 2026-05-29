@@ -53,6 +53,7 @@ type QuestionResult = {
 type SessionStatePayload = {
   connectedParticipantsCount: number;
   countdownSeconds: number | null;
+  hostRecoveryDeadlineAt: number | null;
   hostLastSeenAt: number | null;
   hostPresenceStatus: "offline" | "online";
   interruptionReason: "host_disconnected" | null;
@@ -86,6 +87,10 @@ function formatEventTime(value: number | null) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeStyle: "short",
   }).format(value);
+}
+
+function formatRemainingSeconds(remainingMs: number) {
+  return Math.max(0, Math.ceil(remainingMs / 1000));
 }
 
 export function HostSessionPanel({
@@ -124,12 +129,18 @@ export function HostSessionPanel({
   );
   const [status, setStatus] = useState(sessionStatus);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [socketPhase, setSocketPhase] = useState<
+    "connecting" | "connected" | "reconnecting" | "disconnected"
+  >("connecting");
+  const [reconnectNote, setReconnectNote] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
   const [operationalState, setOperationalState] = useState<SessionStatePayload>(
     {
       connectedParticipantsCount: initialParticipants.filter(
         (participant) => participant.presenceStatus === "online",
       ).length,
       countdownSeconds: sessionStatus === "countdown" ? 3 : null,
+      hostRecoveryDeadlineAt: null,
       hostLastSeenAt: null,
       hostPresenceStatus: "offline",
       interruptionReason: null,
@@ -186,7 +197,7 @@ export function HostSessionPanel({
     const warnings: string[] = [];
 
     if (!socketConnected) {
-      warnings.push("Painel do host desconectado do realtime");
+      warnings.push("Painel do host sem conexao ativa com o realtime");
     }
 
     if (operationalState.hostPresenceStatus === "offline") {
@@ -211,6 +222,21 @@ export function HostSessionPanel({
     status,
   ]);
 
+  const recoverySecondsRemaining =
+    operationalState.hostRecoveryDeadlineAt !== null
+      ? formatRemainingSeconds(operationalState.hostRecoveryDeadlineAt - now)
+      : null;
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
+
   useEffect(() => {
     const socket: Socket = io(realtimeUrl, {
       transports: ["websocket"],
@@ -218,11 +244,29 @@ export function HostSessionPanel({
 
     socket.on("connect", () => {
       setSocketConnected(true);
+      setSocketPhase("connected");
+      setReconnectNote(null);
       socket.emit("host:watch", { pin, sessionId });
     });
 
     socket.on("disconnect", () => {
       setSocketConnected(false);
+      setSocketPhase("reconnecting");
+      setReconnectNote("Tentando retomar o canal do host...");
+    });
+
+    socket.io.on("reconnect_attempt", (attempt) => {
+      setSocketPhase("reconnecting");
+      setReconnectNote(`Nova tentativa de conexao (${attempt})`);
+    });
+
+    socket.io.on("reconnect_failed", () => {
+      setSocketPhase("disconnected");
+      setReconnectNote("Nao foi possivel retomar o realtime automaticamente.");
+    });
+
+    socket.io.on("error", () => {
+      setSocketPhase("disconnected");
     });
 
     socket.on(
@@ -288,6 +332,9 @@ export function HostSessionPanel({
     });
 
     return () => {
+      socket.io.off("reconnect_attempt");
+      socket.io.off("reconnect_failed");
+      socket.io.off("error");
       socket.disconnect();
     };
   }, [pin, realtimeUrl, sessionId]);
@@ -348,7 +395,13 @@ export function HostSessionPanel({
                 Canal do host
               </p>
               <p className="mt-2 text-sm font-semibold text-[#132238]">
-                {socketConnected ? "Conectado ao realtime" : "Desconectado"}
+                {socketPhase === "connected"
+                  ? "Conectado ao realtime"
+                  : socketPhase === "reconnecting"
+                    ? "Reconectando"
+                    : socketPhase === "disconnected"
+                      ? "Sem conexao"
+                      : "Conectando"}
               </p>
             </div>
 
@@ -383,6 +436,12 @@ export function HostSessionPanel({
               }
             >
               {advanceState.message}
+            </p>
+          ) : null}
+
+          {reconnectNote ? (
+            <p className="rounded-2xl bg-[#eff6ff] px-4 py-3 text-sm font-medium text-[#1d4ed8]">
+              {reconnectNote}
             </p>
           ) : null}
 
@@ -453,6 +512,16 @@ export function HostSessionPanel({
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                  Recuperacao
+                </p>
+                <p className="mt-2 text-sm font-semibold text-[#132238]">
+                  {recoverySecondsRemaining !== null
+                    ? `${recoverySecondsRemaining}s restantes`
+                    : "Sem janela ativa"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
                   Online
                 </p>
                 <p className="mt-2 text-sm font-semibold text-[#132238]">
@@ -492,6 +561,23 @@ export function HostSessionPanel({
             </div>
           </div>
         </div>
+
+        {recoverySecondsRemaining !== null &&
+        operationalState.hostPresenceStatus === "offline" &&
+        status !== "interrupted" ? (
+          <div className="mt-6 rounded-[1.5rem] border border-[#bfdbfe] bg-[#eff6ff] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
+              Janela de reconexao
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-[#132238]">
+              A sala ainda pode ser recuperada sem interromper a rodada
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-[#1e3a8a]">
+              Se o host voltar em ate {recoverySecondsRemaining}s, a sessao
+              segue para um estado seguro automaticamente.
+            </p>
+          </div>
+        ) : null}
 
         {status === "playing" && currentQuestion ? (
           <div className="mt-6 rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-5">

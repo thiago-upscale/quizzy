@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   answers,
+  attempts,
   participants,
   questions,
   quizSessions,
@@ -23,6 +24,7 @@ type SnapshotQuestion = {
 
 type ReportAnswer = {
   answerIndex: number | null;
+  attemptId: string | null;
   isCorrect: boolean;
   pointsEarned: number;
   questionId: string;
@@ -33,6 +35,7 @@ type ReportAnswer = {
 export type SessionReportLeaderboardEntry = {
   accuracyPercent: number;
   answeredCount: number;
+  attemptsCount: number;
   correctCount: number;
   email: string | null;
   nickname: string;
@@ -53,9 +56,12 @@ export type SessionReportQuestionBreakdown = {
 
 export type SessionReportDetailedRow = {
   accuracyPercent: number;
+  attemptId: string | null;
+  attemptNumber: number | null;
   answeredCount: number;
   correctCount: number;
   email: string | null;
+  isBestAttempt: boolean;
   nickname: string;
   participantId: string;
   perQuestion: Array<{
@@ -71,7 +77,23 @@ export type SessionReportDetailedRow = {
   totalTimeMs: number;
 };
 
+export type SessionReportAttemptRow = {
+  accuracyPercent: number;
+  answeredCount: number;
+  attemptId: string;
+  attemptNumber: number;
+  correctCount: number;
+  email: string | null;
+  finishedAt: Date | null;
+  isBestAttempt: boolean;
+  nickname: string;
+  participantId: string;
+  score: number;
+  totalTimeMs: number;
+};
+
 export type SessionReport = {
+  attemptRows: SessionReportAttemptRow[];
   detailedRows: SessionReportDetailedRow[];
   leaderboard: SessionReportLeaderboardEntry[];
   questionBreakdown: SessionReportQuestionBreakdown[];
@@ -199,7 +221,8 @@ export async function getSessionReport(params: {
     return null;
   }
 
-  const [participantRows, answerRows, currentQuestionRows] = await Promise.all([
+  const [participantRows, attemptRows, answerRows, currentQuestionRows] =
+    await Promise.all([
     db
       .select({
         email: participants.email,
@@ -212,7 +235,21 @@ export async function getSessionReport(params: {
       .where(eq(participants.sessionId, session.id)),
     db
       .select({
+        attemptNumber: attempts.attemptNumber,
+        finishedAt: attempts.finishedAt,
+        id: attempts.id,
+        participantId: attempts.participantId,
+        score: attempts.score,
+        status: attempts.status,
+        totalTimeMs: attempts.totalTimeMs,
+      })
+      .from(attempts)
+      .where(eq(attempts.sessionId, session.id))
+      .orderBy(asc(attempts.participantId), asc(attempts.attemptNumber)),
+    db
+      .select({
         answer: answers.answer,
+        attemptId: answers.attemptId,
         isCorrect: answers.isCorrect,
         participantId: answers.participantId,
         pointsEarned: answers.pointsEarned,
@@ -232,7 +269,7 @@ export async function getSessionReport(params: {
       .from(questions)
       .where(eq(questions.quizId, session.quizId))
       .orderBy(asc(questions.orderIndex)),
-  ]);
+    ]);
 
   const questionDefinitions = getQuestionDefinitions({
     currentQuestions: currentQuestionRows,
@@ -240,6 +277,7 @@ export async function getSessionReport(params: {
   });
 
   const answersByParticipant = new Map<string, ReportAnswer[]>();
+  const answersByAttempt = new Map<string, ReportAnswer[]>();
   const answersByQuestionOrder = new Map<number, ReportAnswer[]>();
 
   for (const row of answerRows) {
@@ -247,6 +285,7 @@ export async function getSessionReport(params: {
     const answerEntry: ReportAnswer = {
       answerIndex:
         typeof answerValue?.index === "number" ? answerValue.index : null,
+      attemptId: row.attemptId,
       isCorrect: row.isCorrect,
       pointsEarned: row.pointsEarned,
       questionId: row.questionId,
@@ -263,6 +302,21 @@ export async function getSessionReport(params: {
       answersByQuestionOrder.get(row.questionOrderIndex) ?? [];
     questionAnswers.push(answerEntry);
     answersByQuestionOrder.set(row.questionOrderIndex, questionAnswers);
+
+    if (row.attemptId) {
+      const currentAttemptAnswers = answersByAttempt.get(row.attemptId) ?? [];
+      currentAttemptAnswers.push(answerEntry);
+      answersByAttempt.set(row.attemptId, currentAttemptAnswers);
+    }
+  }
+
+  const attemptsByParticipant = new Map<string, typeof attemptRows>();
+
+  for (const attempt of attemptRows) {
+    const participantAttempts =
+      attemptsByParticipant.get(attempt.participantId) ?? [];
+    participantAttempts.push(attempt);
+    attemptsByParticipant.set(attempt.participantId, participantAttempts);
   }
 
   const leaderboard = participantRows
@@ -276,6 +330,7 @@ export async function getSessionReport(params: {
       return {
         accuracyPercent: safePercent(correctCount, answeredCount),
         answeredCount,
+        attemptsCount: attemptsByParticipant.get(participant.id)?.length ?? 0,
         correctCount,
         email: participant.email,
         nickname: participant.nickname,
@@ -301,7 +356,29 @@ export async function getSessionReport(params: {
       rank: index + 1,
     }));
 
-  const detailedRows = leaderboard.map((entry) => {
+  const bestAttemptIdByParticipant = new Map<string, string>();
+
+  for (const participant of participantRows) {
+    const participantAttempts =
+      attemptsByParticipant.get(participant.id) ?? [];
+    const bestAttempt = [...participantAttempts].sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+
+      if (left.totalTimeMs !== right.totalTimeMs) {
+        return left.totalTimeMs - right.totalTimeMs;
+      }
+
+      return left.attemptNumber - right.attemptNumber;
+    })[0];
+
+    if (bestAttempt) {
+      bestAttemptIdByParticipant.set(participant.id, bestAttempt.id);
+    }
+  }
+
+  const participantDetailedRows = leaderboard.map((entry) => {
     const participantAnswers =
       answersByParticipant.get(entry.participantId) ?? [];
     const byQuestionOrder = new Map(
@@ -310,6 +387,9 @@ export async function getSessionReport(params: {
 
     return {
       ...entry,
+      attemptId: null,
+      attemptNumber: null,
+      isBestAttempt: true,
       perQuestion: questionDefinitions.map((question) => {
         const answer = byQuestionOrder.get(question.orderIndex);
 
@@ -351,10 +431,81 @@ export async function getSessionReport(params: {
     } satisfies SessionReportQuestionBreakdown;
   });
 
+  const individualAttemptRows =
+    session.mode === "individual"
+      ? attemptRows
+          .map((attempt) => {
+            const participant = participantRows.find(
+              (row) => row.id === attempt.participantId,
+            );
+
+            if (!participant) {
+              return null;
+            }
+
+            const currentAttemptAnswers = answersByAttempt.get(attempt.id) ?? [];
+            const answeredCount = currentAttemptAnswers.length;
+            const correctCount = currentAttemptAnswers.filter(
+              (answer) => answer.isCorrect,
+            ).length;
+            const byQuestionOrder = new Map(
+              currentAttemptAnswers.map((answer) => [
+                answer.questionOrderIndex,
+                answer,
+              ]),
+            );
+
+            return {
+              accuracyPercent: safePercent(correctCount, answeredCount),
+              answeredCount,
+              attemptId: attempt.id,
+              attemptNumber: attempt.attemptNumber,
+              correctCount,
+              email: participant.email,
+              finishedAt: attempt.finishedAt,
+              isBestAttempt:
+                bestAttemptIdByParticipant.get(participant.id) === attempt.id,
+              nickname: participant.nickname,
+              perQuestion: questionDefinitions.map((question) => {
+                const answer = byQuestionOrder.get(question.orderIndex);
+
+                return {
+                  answerIndex: answer?.answerIndex ?? null,
+                  isCorrect: answer?.isCorrect ?? false,
+                  orderIndex: question.orderIndex,
+                  pointsEarned: answer?.pointsEarned ?? 0,
+                  prompt: question.prompt,
+                  timeSpentMs: answer?.timeSpentMs ?? null,
+                };
+              }),
+              participantId: participant.id,
+              rank:
+                leaderboard.find(
+                  (leaderboardEntry) =>
+                    leaderboardEntry.participantId === participant.id,
+                )?.rank ?? 0,
+              score: attempt.score,
+              totalTimeMs: attempt.totalTimeMs,
+            } satisfies SessionReportAttemptRow & SessionReportDetailedRow;
+          })
+          .filter(
+            (
+              row,
+            ): row is SessionReportAttemptRow & SessionReportDetailedRow =>
+              Boolean(row),
+          )
+      : [];
+
+  const detailedRows =
+    session.mode === "individual"
+      ? individualAttemptRows
+      : participantDetailedRows;
+
   const answersCount = answerRows.length;
   const totalCorrectAnswers = answerRows.filter((row) => row.isCorrect).length;
 
   return {
+    attemptRows: individualAttemptRows,
     detailedRows,
     leaderboard,
     questionBreakdown,
@@ -420,6 +571,7 @@ export function createSummaryCsv(report: SessionReport) {
   const rows = report.leaderboard.map((entry) => ({
     accuracy_percent: entry.accuracyPercent,
     answered_count: entry.answeredCount,
+    attempts_count: entry.attemptsCount,
     correct_count: entry.correctCount,
     email: entry.email,
     nickname: entry.nickname,
@@ -433,12 +585,32 @@ export function createSummaryCsv(report: SessionReport) {
 }
 
 export function createDetailedCsv(report: SessionReport) {
-  const rows = report.detailedRows.map((entry) => {
+  const sourceRows =
+    report.session.mode === "individual" && report.attemptRows.length > 0
+      ? report.attemptRows.map((attemptRow) => {
+          const detailedRow = report.detailedRows.find(
+            (entry) =>
+              entry.participantId === attemptRow.participantId &&
+              entry.attemptId === attemptRow.attemptId,
+          );
+
+          return {
+            ...attemptRow,
+            perQuestion: detailedRow?.perQuestion ?? [],
+            rank: detailedRow?.rank ?? 0,
+          };
+        })
+      : report.detailedRows;
+
+  const rows = sourceRows.map((entry) => {
     const baseRow: Record<string, string | number | boolean | null> = {
       accuracy_percent: entry.accuracyPercent,
+      attempt_id: "attemptId" in entry ? entry.attemptId : null,
+      attempt_number: "attemptNumber" in entry ? entry.attemptNumber : null,
       answered_count: entry.answeredCount,
       correct_count: entry.correctCount,
       email: entry.email,
+      is_best_attempt: "isBestAttempt" in entry ? entry.isBestAttempt : true,
       nickname: entry.nickname,
       position: entry.rank,
       score: entry.score,

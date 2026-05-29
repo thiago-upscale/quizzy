@@ -151,6 +151,9 @@ export const quizSessions = pgTable(
     endsAt: timestamp("ends_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     maxAttempts: integer("max_attempts").notNull().default(1),
+    requireParticipantEmail: boolean("require_participant_email")
+      .notNull()
+      .default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

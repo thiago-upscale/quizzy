@@ -48,7 +48,7 @@
 | Tipos de pergunta: multipla escolha   | Concluido | Base do live usa esse formato                                 |
 | Tipo Verdadeiro/Falso                 | Parcial   | Precisa confirmar UX dedicada no editor e validacao fim a fim |
 | Tempo limite e pontos por pergunta    | Concluido | Em uso no fluxo live                                          |
-| Imagem opcional por pergunta          | Parcial   | Nao esta fechada como experiencia completa com upload/storage |
+| Imagem opcional por pergunta          | Parcial   | Upload ligado no editor, persistido no quiz e exibido no fluxo live; ainda falta polimento operacional |
 | Preview do quiz                       | Parcial   | Existe preview base, ainda nao no nivel completo do PRD       |
 
 **Proximo passo recomendado:** fechar imagens por pergunta e revisar suporte final a Verdadeiro/Falso.
@@ -60,13 +60,13 @@
 | Item                                | Status   | Observacoes                                                                      |
 | ----------------------------------- | -------- | -------------------------------------------------------------------------------- |
 | Cor primaria/secundaria/destaque    | Parcial  | Base visual e configuracao existem, mas ainda pedem revisao fina                 |
-| Upload de logo                      | Faltando | Nao fechado com storage real                                                     |
-| Upload de background                | Faltando | Nao fechado com storage real                                                     |
+| Upload de logo                      | Parcial  | Upload ligado no branding, preview do editor e entrada live; ainda falta refinamento operacional |
+| Upload de background                | Parcial  | Upload ligado no branding, preview do editor e entrada live; ainda falta refinamento operacional |
 | Selecao de fonte                    | Parcial  | Parte visual existe, precisa confirmar opcoes e persistencia final               |
 | Validacao de contraste WCAG         | Parcial  | Intencao e parte do design existem, falta fechar como requisito tecnico completo |
 | Branding consistente no host/player | Parcial  | Ja aparece no fluxo, mas ainda nao considero 100% do PRD                         |
 
-**Proximo passo recomendado:** integrar storage de assets e fechar o pacote completo de branding.
+**Proximo passo recomendado:** validar o fluxo em Railway com Volume anexado e depois seguir para Sprint 5.
 
 ## Sprint 3 — Sessao Live (Core)
 
@@ -101,11 +101,11 @@
 | Estado restaurado apos reconexao               | Concluido | Lobby, pergunta, resultado e final                                                                        |
 | Host vendo `online/offline`                    | Concluido | Em producao                                                                                               |
 | Contagem real de conectados                    | Concluido | Separada do ranking                                                                                       |
-| Reconexao do host em ate 5 min                 | Parcial   | Ja existe interrupcao e retomada operacional com janela curta; ainda falta validar a meta completa do PRD |
-| Persistencia segura sem depender so de memoria | Parcial   | Respostas criticas ja persistem; ainda vale endurecer mais o restante do estado                           |
+| Reconexao do host em ate 5 min                 | Parcial   | Painel do host agora exibe reconexao, janela de recuperacao e retomada; ainda falta validar a meta completa do PRD |
+| Persistencia segura sem depender so de memoria | Parcial   | Snapshot interno e hidratacao de sala apos restart do realtime entregues; ainda vale validar em carga     |
 | Protecoes de limite/abuso                      | Parcial   | Ja existe rate limit leve de PIN e rejeicao estruturada de respostas; ainda falta endurecimento maior     |
 
-**Proximo passo recomendado:** hardening operacional e reconexao do host.
+**Proximo passo recomendado:** executar teste de carga controlado e observar comportamento de recuperacao.
 
 ## Sprint 5 — Modo Individual
 
@@ -113,16 +113,16 @@
 
 | Item                               | Status   | Observacoes                                     |
 | ---------------------------------- | -------- | ----------------------------------------------- |
-| Criacao de sessao individual       | Faltando | Ainda nao implementado                          |
-| Link individual de acesso          | Faltando | Ainda nao implementado                          |
-| Deadline/encerramento configuravel | Faltando | Ainda nao implementado                          |
-| Controle de tentativas             | Faltando | Ja existe no PRD/schema, nao no fluxo entregue  |
-| Nickname obrigatorio               | Faltando | Depende do fluxo individual                     |
-| Email opcional/configuravel        | Faltando | Depende do fluxo individual                     |
-| Resultado individual final         | Faltando | Ainda nao implementado                          |
-| Sem ranking realtime               | Faltando | Ainda nao implementado porque o modo nao existe |
+| Criacao de sessao individual       | Concluido | Fluxo do dashboard cria a sessao e abre a pagina de detalhes |
+| Link individual de acesso          | Concluido | Link publico `/play/[shareToken]` ativo na pagina da sessao |
+| Deadline/encerramento configuravel | Concluido | Prazo configuravel na criacao da sessao e respeitado no fluxo publico |
+| Controle de tentativas             | Concluido | Modelo com `attempts`, retomada, nova tentativa e limite configuravel funcionando |
+| Nickname obrigatorio               | Concluido | Entrada publica exige apelido antes de iniciar a tentativa |
+| Email opcional/configuravel        | Concluido | Sessao individual pode deixar email opcional ou obrigatorio ja na criacao |
+| Resultado individual final         | Concluido | Participante recebe score, acertos e resumo final ao concluir |
+| Sem ranking realtime               | Concluido | Fluxo assincrono sem dependencia de realtime entregue |
 
-**Proximo passo recomendado:** este e o maior bloco funcional faltante do MVP.
+**Proximo passo recomendado:** validar a migration nova no banco e seguir para hardening operacional e refinamento do beta.
 
 ## Sprint 6 — Relatorios e Acabamento
 
@@ -148,15 +148,15 @@
 | Item                                       | Status    | Observacoes                                                                              |
 | ------------------------------------------ | --------- | ---------------------------------------------------------------------------------------- |
 | Fluxo completo live em producao controlada | Concluido | Ja operavel hoje                                                                         |
-| Modo Individual pronto para beta           | Faltando  | Principal lacuna funcional                                                               |
+| Modo Individual pronto para beta           | Concluido | Fluxo publico, tentativas, retomada e relatorios por tentativa entregues                 |
 | Teste de carga de 80 jogadores             | Faltando  | Ainda precisa execucao formal                                                            |
-| Dashboard operacional para sessoes ativas  | Parcial   | A tela do host agora exibe sinais operacionais; ainda falta uma visao global de operacao |
+| Dashboard operacional para sessoes ativas  | Concluido | Dashboard global agora mostra sessoes ativas, interrupcoes e atividade recente           |
 | Sentry sem novos erros apos staging        | Parcial   | Precisa consolidacao operacional                                                         |
 | Politica de privacidade e termos revisados | Bloqueado | Depende de validacao juridica                                                            |
 | Operadores de dados documentados           | Bloqueado | Depende de processo e documentacao                                                       |
 | Limite comercial prometido no beta         | Bloqueado | Decisao de negocio                                                                       |
 
-**Proximo passo recomendado:** so abrir beta depois de fechar Modo Individual e hardening operacional.
+**Proximo passo recomendado:** fechar observabilidade minima de beta e depois executar teste de carga controlado.
 
 ## Pendencias transversais do PRD
 

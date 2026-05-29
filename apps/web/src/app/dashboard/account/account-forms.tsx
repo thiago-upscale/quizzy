@@ -9,11 +9,6 @@ import {
   type AccountActionState,
 } from "./actions";
 
-type AvatarOption = {
-  label: string;
-  value: string;
-};
-
 function FeedbackMessage({ state }: { state: AccountActionState }) {
   if (state.status === "idle" || !state.message) {
     return null;
@@ -41,13 +36,9 @@ function FeedbackMessage({ state }: { state: AccountActionState }) {
 }
 
 export function ProfileForm({
-  avatarOptions,
-  initialAvatar,
   initialCompany,
   initialName,
 }: {
-  avatarOptions: AvatarOption[];
-  initialAvatar: string;
   initialCompany: string;
   initialName: string;
 }) {
@@ -80,32 +71,6 @@ export function ProfileForm({
           />
         </label>
       </div>
-
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-[#22304a]">Avatar</legend>
-        <div className="grid gap-3 sm:grid-cols-4">
-          {avatarOptions.map((avatar) => (
-            <label
-              key={avatar.value}
-              className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#d9e3f0] bg-[#f8fbff] px-4 py-3"
-            >
-              <input
-                className="accent-[#0f766e]"
-                defaultChecked={avatar.value === initialAvatar}
-                name="avatar"
-                type="radio"
-                value={avatar.value}
-              />
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#10233f] text-sm font-semibold text-white">
-                {avatar.label}
-              </div>
-              <span className="text-sm font-medium text-[#22304a]">
-                {avatar.value}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
 
       <FeedbackMessage state={state} />
 

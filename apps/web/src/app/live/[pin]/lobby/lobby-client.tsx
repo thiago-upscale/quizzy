@@ -26,7 +26,9 @@ type LeaderboardEntry = {
 
 type LiveBranding = {
   accentColor: string;
+  backgroundImageUrl: string | null;
   fontFamily: string;
+  logoUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
 };
@@ -45,6 +47,7 @@ type SessionState = {
 
 type ActiveQuestion = {
   id: string;
+  imageUrl: string | null;
   options: string[];
   orderIndex: number;
   prompt: string;
@@ -58,6 +61,7 @@ type ActiveQuestion = {
 type QuestionResult = {
   correctCount: number;
   correctOptionIndex: number;
+  imageUrl: string | null;
   leaderboard: LeaderboardEntry[];
   options: string[];
   prompt: string;
@@ -424,7 +428,11 @@ export function LobbyClient({
     <main
       className="min-h-screen px-6 py-10 text-white"
       style={{
-        background: `linear-gradient(180deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+        backgroundImage: branding.backgroundImageUrl
+          ? `linear-gradient(180deg, rgba(16,35,63,0.84) 0%, rgba(15,118,110,0.84) 100%), url(${branding.backgroundImageUrl})`
+          : `linear-gradient(180deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
         fontFamily: branding.fontFamily,
       }}
     >
@@ -432,6 +440,14 @@ export function LobbyClient({
         <header className="rounded-[2rem] bg-white/10 p-8 shadow-[0_24px_90px_rgba(15,23,42,0.25)] backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
+              {branding.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt="Logo do quiz"
+                  className="h-12 w-auto rounded-xl bg-white/10 p-2"
+                  src={branding.logoUrl}
+                />
+              ) : null}
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/70">
                 Lobby live
               </p>
@@ -505,6 +521,15 @@ export function LobbyClient({
                     s
                   </span>
                 </div>
+
+                {currentQuestion.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    alt="Imagem da pergunta"
+                    className="mt-6 max-h-64 w-full rounded-2xl object-cover"
+                    src={currentQuestion.imageUrl}
+                  />
+                ) : null}
 
                 <div className="mt-6 grid gap-3">
                   {currentQuestion.options.map((option, optionIndex) => {
@@ -592,6 +617,15 @@ export function LobbyClient({
                     acertaram
                   </span>
                 </div>
+
+                {currentResult.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    alt="Imagem da pergunta"
+                    className="mt-6 max-h-64 w-full rounded-2xl object-cover"
+                    src={currentResult.imageUrl}
+                  />
+                ) : null}
 
                 <div className="mt-6 grid gap-3">
                   {currentResult.options.map((option, optionIndex) => {

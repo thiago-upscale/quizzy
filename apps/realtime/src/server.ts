@@ -39,6 +39,7 @@ type SerializedParticipant = {
 type RoomQuestion = {
   correctIndex: number;
   id: string;
+  imageUrl: string | null;
   options: string[];
   orderIndex: number;
   persistable: boolean;
@@ -70,6 +71,7 @@ type LeaderboardEntry = {
 type QuestionResultSnapshot = {
   correctCount: number;
   correctOptionIndex: number;
+  imageUrl: string | null;
   leaderboard: LeaderboardEntry[];
   options: string[];
   prompt: string;
@@ -82,6 +84,7 @@ type QuestionResultSnapshot = {
 type SessionStatePayload = {
   connectedParticipantsCount: number;
   countdownSeconds: number | null;
+  hostRecoveryDeadlineAt: number | null;
   hostLastSeenAt: number | null;
   hostPresenceStatus: "offline" | "online";
   interruptionReason: InterruptionReason;
@@ -102,6 +105,7 @@ type RoomState = {
   hostInterruptionTimer: NodeJS.Timeout | null;
   hostLastSeenAt: number | null;
   hostPresenceStatus: "offline" | "online";
+  hostRecoveryDeadlineAt: number | null;
   hostSocketIds: Set<string>;
   interruptedFromStatus:
     | "waiting"
@@ -143,6 +147,31 @@ type PersistAnswerPayload = {
   timeSpentMs: number;
 };
 
+type RecoverySnapshot = {
+  countdownStartedAt: string | null;
+  currentQuestionAnswers: Array<{
+    answerIndex: number;
+    isCorrect: boolean;
+    participantToken: string;
+    pointsEarned: number;
+    timeSpentMs: number;
+  }>;
+  currentQuestionIndex: number | null;
+  participants: Array<{
+    avatar: string;
+    id: string;
+    nickname: string;
+    participantToken: string;
+    score: number;
+    totalTimeMs: number;
+  }>;
+  pin: string;
+  questionStartedAt: string | null;
+  questions: RoomQuestion[];
+  sessionId: string;
+  status: SessionStatus;
+};
+
 const HOST_RECOVERY_GRACE_MS = 60_000;
 
 function createEmptyRoom(): RoomState {
@@ -157,6 +186,7 @@ function createEmptyRoom(): RoomState {
     hostInterruptionTimer: null,
     hostLastSeenAt: null,
     hostPresenceStatus: "offline",
+    hostRecoveryDeadlineAt: null,
     hostSocketIds: new Set(),
     interruptedFromStatus: null,
     interruptionReason: null,
@@ -172,6 +202,7 @@ function createEmptyRoom(): RoomState {
 }
 
 const liveRooms = new Map<string, RoomState>();
+const pendingHydrations = new Map<string, Promise<RoomState>>();
 
 function getOrCreateRoom(pin: string) {
   const existingRoom = liveRooms.get(pin);
@@ -306,6 +337,7 @@ function serializeCurrentQuestion(room: RoomState) {
 
   return {
     id: currentQuestion.id,
+    imageUrl: currentQuestion.imageUrl,
     options: currentQuestion.options,
     orderIndex: currentQuestion.orderIndex,
     prompt: currentQuestion.prompt,
@@ -348,6 +380,7 @@ function buildQuestionResult(room: RoomState) {
   return {
     correctCount,
     correctOptionIndex: currentQuestion.correctIndex,
+    imageUrl: currentQuestion.imageUrl,
     leaderboard,
     options: currentQuestion.options,
     prompt: currentQuestion.prompt,
@@ -362,6 +395,7 @@ function buildSessionStatePayload(room: RoomState): SessionStatePayload {
   return {
     connectedParticipantsCount: getConnectedParticipantCount(room),
     countdownSeconds: room.countdownSeconds,
+    hostRecoveryDeadlineAt: room.hostRecoveryDeadlineAt,
     hostLastSeenAt: room.hostLastSeenAt,
     hostPresenceStatus: room.hostPresenceStatus,
     interruptionReason: room.interruptionReason,
@@ -407,6 +441,50 @@ async function persistAnswer(payload: PersistAnswerPayload) {
   }
 }
 
+async function fetchRecoverySnapshot(params: {
+  pin: string;
+  sessionId?: string;
+}) {
+  try {
+    const url = new URL("/api/internal/live/session", env.WEB_ORIGIN);
+    url.searchParams.set("pin", params.pin);
+
+    if (params.sessionId) {
+      url.searchParams.set("sessionId", params.sessionId);
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+      },
+    });
+
+    if (!response.ok) {
+      logger.warn(
+        {
+          pin: params.pin,
+          sessionId: params.sessionId,
+          status: response.status,
+        },
+        "session.snapshot_unavailable",
+      );
+      return null;
+    }
+
+    return (await response.json()) as RecoverySnapshot;
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        pin: params.pin,
+        sessionId: params.sessionId,
+      },
+      "session.snapshot_fetch_failed",
+    );
+    return null;
+  }
+}
+
 async function parseJsonBody<T>(request: import("node:http").IncomingMessage) {
   const chunks: Buffer[] = [];
 
@@ -419,6 +497,266 @@ async function parseJsonBody<T>(request: import("node:http").IncomingMessage) {
   }
 
   return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T;
+}
+
+function populateRoomParticipantsFromSnapshot(
+  room: RoomState,
+  participants: RecoverySnapshot["participants"],
+) {
+  const previousParticipants = room.participants;
+  const nextParticipants = new Map<string, RoomParticipant>();
+
+  for (const participant of participants) {
+    const previousParticipant = previousParticipants.get(
+      participant.participantToken,
+    );
+
+    nextParticipants.set(participant.participantToken, {
+      avatar: previousParticipant?.avatar ?? participant.avatar,
+      connected: previousParticipant?.connected ?? false,
+      id: participant.id,
+      nickname: participant.nickname,
+      participantToken: participant.participantToken,
+      score: participant.score,
+      socketId: previousParticipant?.socketId ?? null,
+      totalTimeMs: participant.totalTimeMs,
+    });
+  }
+
+  room.participants = nextParticipants;
+}
+
+function populateCurrentQuestionAnswersFromSnapshot(
+  room: RoomState,
+  snapshot: RecoverySnapshot,
+) {
+  room.answersByQuestion = new Map();
+
+  if (snapshot.currentQuestionIndex === null) {
+    return;
+  }
+
+  const currentQuestion = snapshot.questions[snapshot.currentQuestionIndex];
+
+  if (!currentQuestion) {
+    return;
+  }
+
+  room.currentQuestionIndex = snapshot.currentQuestionIndex;
+  room.answersByQuestion.set(
+    getQuestionAnswerKey(currentQuestion),
+    new Map(
+      snapshot.currentQuestionAnswers.map((answer) => [
+        answer.participantToken,
+        {
+          answerIndex: answer.answerIndex,
+          isCorrect: answer.isCorrect,
+          pointsEarned: answer.pointsEarned,
+          timeSpentMs: answer.timeSpentMs,
+        } satisfies RoomAnswer,
+      ]),
+    ),
+  );
+}
+
+function scheduleRecoveredQuestionTimer(io: Server, pin: string, room: RoomState) {
+  const currentQuestion = getCurrentQuestion(room);
+
+  if (!currentQuestion || room.questionStartedAt === null || !room.sessionId) {
+    return;
+  }
+
+  const remainingMs =
+    room.questionStartedAt + currentQuestion.timeLimitSeconds * 1000 - Date.now();
+
+  if (remainingMs <= 0) {
+    if (closeQuestion(io, { pin, room })) {
+      void notifyWebOfStateChange({
+        pin,
+        questionIndex: room.currentQuestionIndex ?? undefined,
+        sessionId: room.sessionId,
+        status: "question_result",
+      });
+    }
+
+    return;
+  }
+
+  room.activeQuestionTimer = setTimeout(() => {
+    const currentRoom = getOrCreateRoom(pin);
+
+    if (
+      currentRoom.sessionId &&
+      closeQuestion(io, { pin, room: currentRoom })
+    ) {
+      void notifyWebOfStateChange({
+        pin,
+        questionIndex: currentRoom.currentQuestionIndex ?? undefined,
+        sessionId: currentRoom.sessionId,
+        status: "question_result",
+      });
+    }
+  }, remainingMs);
+}
+
+function scheduleRecoveredCountdown(
+  io: Server,
+  params: {
+    pin: string;
+    room: RoomState;
+    startedAtMs: number;
+  },
+) {
+  const { pin, room, startedAtMs } = params;
+
+  if (!room.sessionId) {
+    return;
+  }
+
+  const remainingMs = startedAtMs + 3000 - Date.now();
+
+  if (remainingMs <= 0) {
+    const started = startQuestion(io, {
+      pin,
+      questionIndex: 0,
+      room,
+    });
+
+    if (started && room.sessionId) {
+      void notifyWebOfStateChange({
+        pin,
+        questionIndex: 0,
+        sessionId: room.sessionId,
+        status: "playing",
+      });
+    }
+
+    return;
+  }
+
+  room.countdownSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
+  room.countdownTimer = setTimeout(() => {
+    const currentRoom = getOrCreateRoom(pin);
+    const started = startQuestion(io, {
+      pin,
+      questionIndex: 0,
+      room: currentRoom,
+    });
+
+    if (started && currentRoom.sessionId) {
+      void notifyWebOfStateChange({
+        pin,
+        questionIndex: 0,
+        sessionId: currentRoom.sessionId,
+        status: "playing",
+      });
+    }
+  }, remainingMs);
+}
+
+function hydrateRoomFromSnapshot(
+  io: Server,
+  params: {
+    pin: string;
+    room: RoomState;
+    snapshot: RecoverySnapshot;
+  },
+) {
+  const { pin, room, snapshot } = params;
+
+  clearQuestionTimer(room);
+  clearCountdownTimer(room);
+  clearHostInterruptionTimer(room);
+
+  room.sessionId = snapshot.sessionId;
+  room.questions = snapshot.questions;
+  room.status = snapshot.status;
+  room.currentQuestionIndex = snapshot.currentQuestionIndex;
+  room.currentQuestionResult = null;
+  room.questionClosedAt = null;
+  room.questionStartedAt = null;
+  room.interruptedFromStatus = null;
+  room.interruptionReason = null;
+  room.countdownSeconds = null;
+  room.hostRecoveryDeadlineAt = null;
+  room.rejectedAnswersCount = 0;
+  populateRoomParticipantsFromSnapshot(room, snapshot.participants);
+  populateCurrentQuestionAnswersFromSnapshot(room, snapshot);
+
+  if (snapshot.status === "countdown" && snapshot.countdownStartedAt) {
+    const startedAtMs = Date.parse(snapshot.countdownStartedAt);
+
+    if (!Number.isNaN(startedAtMs)) {
+      scheduleRecoveredCountdown(io, {
+        pin,
+        room,
+        startedAtMs,
+      });
+    } else {
+      room.status = "waiting";
+    }
+  }
+
+  if (snapshot.currentQuestionIndex !== null && snapshot.questionStartedAt) {
+    const startedAtMs = Date.parse(snapshot.questionStartedAt);
+
+    if (!Number.isNaN(startedAtMs)) {
+      room.questionStartedAt = startedAtMs;
+      room.questionClosedAt = null;
+
+      if (snapshot.status === "playing") {
+        scheduleRecoveredQuestionTimer(io, pin, room);
+      } else if (
+        snapshot.status === "question_result" ||
+        snapshot.status === "interrupted"
+      ) {
+        room.questionStartedAt = null;
+        room.questionClosedAt = Date.now();
+        room.currentQuestionResult = buildQuestionResult(room);
+      }
+    }
+  }
+
+  markRoomEvent(room);
+}
+
+async function ensureRoomHydrated(
+  io: Server,
+  params: {
+    pin: string;
+    room: RoomState;
+    sessionId?: string;
+  },
+): Promise<RoomState> {
+  const { pin, room, sessionId } = params;
+
+  if (room.questions.length > 0 && room.sessionId) {
+    return room;
+  }
+
+  let promise = pendingHydrations.get(pin);
+  if (!promise) {
+    promise = (async () => {
+      try {
+        const snapshot = await fetchRecoverySnapshot({ pin, sessionId });
+        if (snapshot) {
+          hydrateRoomFromSnapshot(io, {
+            pin,
+            room,
+            snapshot,
+          });
+        }
+      } catch (err) {
+        logger.error({ err, pin }, "Failed to hydrate room from snapshot");
+      } finally {
+        pendingHydrations.delete(pin);
+      }
+      return room;
+    })();
+    pendingHydrations.set(pin, promise);
+  }
+
+  return promise;
 }
 
 function emitRoomSnapshot(io: Server, pin: string, room: RoomState) {
@@ -492,6 +830,7 @@ function finishSession(io: Server, params: { pin: string; room: RoomState }) {
   room.questionStartedAt = null;
   room.questionClosedAt = Date.now();
   room.currentQuestionResult = null;
+  room.hostRecoveryDeadlineAt = null;
   room.interruptedFromStatus = null;
   room.interruptionReason = null;
   markRoomEvent(room);
@@ -534,6 +873,7 @@ function closeQuestion(io: Server, params: { pin: string; room: RoomState }) {
   room.questionClosedAt = Date.now();
   room.questionStartedAt = null;
   room.currentQuestionResult = result;
+  room.hostRecoveryDeadlineAt = null;
   room.interruptedFromStatus = null;
   room.interruptionReason = null;
   markRoomEvent(room);
@@ -564,6 +904,7 @@ function interruptRoom(io: Server, params: { pin: string; room: RoomState }) {
   room.interruptedFromStatus = previousStatus;
   room.status = "interrupted";
   room.interruptionReason = "host_disconnected";
+  room.hostRecoveryDeadlineAt = null;
   room.countdownSeconds = null;
   room.questionStartedAt = null;
   room.questionClosedAt = Date.now();
@@ -609,6 +950,7 @@ function resumeInterruptedRoom(
 
   room.interruptedFromStatus = null;
   room.interruptionReason = null;
+  room.hostRecoveryDeadlineAt = null;
 
   if (previousStatus === "playing") {
     const result = buildQuestionResult(room);
@@ -651,6 +993,9 @@ function resumeInterruptedRoom(
 
 function scheduleHostInterruption(io: Server, pin: string, room: RoomState) {
   clearHostInterruptionTimer(room);
+  room.hostRecoveryDeadlineAt = Date.now() + HOST_RECOVERY_GRACE_MS;
+  markRoomEvent(room);
+  emitRoomSnapshot(io, pin, room);
 
   room.hostInterruptionTimer = setTimeout(() => {
     const currentRoom = getOrCreateRoom(pin);
@@ -683,6 +1028,7 @@ function startQuestion(
   room.countdownSeconds = null;
   room.currentQuestionIndex = questionIndex;
   room.currentQuestionResult = null;
+  room.hostRecoveryDeadlineAt = null;
   room.questionClosedAt = null;
   room.questionStartedAt = Date.now();
   room.interruptedFromStatus = null;
@@ -800,10 +1146,12 @@ const httpServer = createServer(async (request, response) => {
       clearHostInterruptionTimer(room);
       room.sessionId = sessionId;
       room.questions = questions;
+      room.answersByQuestion = new Map();
       room.status = "countdown";
       room.countdownSeconds = 3;
       room.currentQuestionIndex = null;
       room.currentQuestionResult = null;
+      room.hostRecoveryDeadlineAt = null;
       room.questionClosedAt = null;
       room.questionStartedAt = null;
       room.interruptedFromStatus = null;
@@ -866,7 +1214,11 @@ const httpServer = createServer(async (request, response) => {
         return;
       }
 
-      const room = getOrCreateRoom(pin);
+      const room = await ensureRoomHydrated(io, {
+        pin,
+        room: getOrCreateRoom(pin),
+        sessionId,
+      });
       if (room.sessionId !== sessionId || room.questions.length === 0) {
         response.writeHead(409, { "content-type": "application/json" });
         response.end(JSON.stringify({ error: "session_not_ready" }));
@@ -983,7 +1335,7 @@ io.on("connection", (socket) => {
 
   socket.on(
     "session:join",
-    (payload: {
+    async (payload: {
       avatar?: string;
       nickname?: string;
       participantId?: string;
@@ -1001,7 +1353,10 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const room = getOrCreateRoom(pin);
+      const room = await ensureRoomHydrated(io, {
+        pin,
+        room: getOrCreateRoom(pin),
+      });
       const previousParticipant = room.participants.get(participantToken);
       room.participants.set(participantToken, {
         avatar: payload.avatar?.trim() || previousParticipant?.avatar || "live",
@@ -1047,7 +1402,9 @@ io.on("connection", (socket) => {
     },
   );
 
-  socket.on("host:watch", (payload: { pin?: string; sessionId?: string }) => {
+  socket.on(
+    "host:watch",
+    async (payload: { pin?: string; sessionId?: string }) => {
     const pin = payload.pin?.trim();
     const sessionId = payload.sessionId?.trim();
 
@@ -1055,7 +1412,11 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const room = getOrCreateRoom(pin);
+    const room = await ensureRoomHydrated(io, {
+      pin,
+      room: getOrCreateRoom(pin),
+      sessionId,
+    });
     if (sessionId && !room.sessionId) {
       room.sessionId = sessionId;
     }
@@ -1066,6 +1427,7 @@ io.on("connection", (socket) => {
     room.hostPresenceStatus = "online";
     room.hostLastSeenAt = Date.now();
     room.hostDisconnectedAt = null;
+    room.hostRecoveryDeadlineAt = null;
     clearHostInterruptionTimer(room);
     markRoomEvent(room);
 
@@ -1089,11 +1451,12 @@ io.on("connection", (socket) => {
         "host.reconnected",
       );
     }
-  });
+    },
+  );
 
   socket.on(
     "answer:submit",
-    (payload: {
+    async (payload: {
       answerIndex?: number;
       participantToken?: string;
       pin?: string;
@@ -1120,7 +1483,10 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const room = getOrCreateRoom(pin);
+      const room = await ensureRoomHydrated(io, {
+        pin,
+        room: getOrCreateRoom(pin),
+      });
       const currentQuestion = getCurrentQuestion(room);
       const participant = room.participants.get(participantToken);
 

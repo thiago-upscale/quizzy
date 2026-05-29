@@ -1,27 +1,235 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq, inArray } from "drizzle-orm";
 import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
-import { quizzes } from "@/db/schema";
+import {
+  participants,
+  quizSessions,
+  quizzes,
+  sessionEvents,
+} from "@/db/schema";
+import { env } from "@/env";
 import { createQuiz } from "./actions";
 import { SignOutButton } from "./sign-out-button";
 
 export const dynamic = "force-dynamic";
 
+const activeSessionStatuses = [
+  "waiting",
+  "countdown",
+  "playing",
+  "question_result",
+  "interrupted",
+] as const;
+
+function formatDate(value: Date | null) {
+  if (!value) {
+    return "Nao definido";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(value);
+}
+
+function formatEventType(eventType: string) {
+  return eventType
+    .split(".")
+    .map((chunk) =>
+      chunk.length > 0 ? chunk[0]!.toUpperCase() + chunk.slice(1) : chunk,
+    )
+    .join(" ");
+}
+
+function getSessionStatusTone(status: string) {
+  if (status === "interrupted") {
+    return "bg-[#fef2f2] text-[#b91c1c]";
+  }
+
+  if (status === "playing" || status === "question_result") {
+    return "bg-[#ecfdf3] text-[#0f766e]";
+  }
+
+  if (status === "countdown") {
+    return "bg-[#eff6ff] text-[#1d4ed8]";
+  }
+
+  return "bg-[#f8fafc] text-[#475569]";
+}
+
+type SessionEventSummary = {
+  createdAt: Date;
+  eventType: string;
+  sessionId: string;
+};
+
+type RealtimeHealth =
+  | {
+      checkedAt: Date;
+      label: string;
+      status: "healthy";
+    }
+  | {
+      checkedAt: Date;
+      label: string;
+      status: "degraded";
+    };
+
+async function getRealtimeHealth(): Promise<RealtimeHealth> {
+  const checkedAt = new Date();
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+
+    const response = await fetch(`${env.REALTIME_URL}/health`, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return {
+        checkedAt,
+        label: `HTTP ${response.status}`,
+        status: "degraded",
+      };
+    }
+
+    return {
+      checkedAt,
+      label: "Respondendo normalmente",
+      status: "healthy",
+    };
+  } catch (error) {
+    return {
+      checkedAt,
+      label: error instanceof Error ? error.message : "sem resposta",
+      status: "degraded",
+    };
+  }
+}
+
 export default async function DashboardPage() {
   const session = await requireAuthSession();
 
-  const quizList = await db
-    .select({
-      id: quizzes.id,
-      title: quizzes.title,
-      description: quizzes.description,
-      status: quizzes.status,
-      updatedAt: quizzes.updatedAt,
-    })
-    .from(quizzes)
-    .where(eq(quizzes.organizationId, session.user.organizationId))
-    .orderBy(desc(quizzes.updatedAt));
+  const [quizList, activeSessionsRaw, recentEvents, realtimeHealth] =
+    await Promise.all([
+    db
+      .select({
+        id: quizzes.id,
+        title: quizzes.title,
+        description: quizzes.description,
+        status: quizzes.status,
+        updatedAt: quizzes.updatedAt,
+      })
+      .from(quizzes)
+      .where(eq(quizzes.organizationId, session.user.organizationId))
+      .orderBy(desc(quizzes.updatedAt)),
+    db
+      .select({
+        id: quizSessions.id,
+        quizId: quizSessions.quizId,
+        pin: quizSessions.pin,
+        shareToken: quizSessions.shareToken,
+        mode: quizSessions.mode,
+        status: quizSessions.status,
+        startsAt: quizSessions.startsAt,
+        endsAt: quizSessions.endsAt,
+        expiresAt: quizSessions.expiresAt,
+        createdAt: quizSessions.createdAt,
+        finishedAt: quizSessions.finishedAt,
+        quizTitle: quizzes.title,
+        participantCount: count(participants.id),
+      })
+      .from(quizSessions)
+      .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+      .leftJoin(participants, eq(participants.sessionId, quizSessions.id))
+      .where(
+        eq(quizzes.organizationId, session.user.organizationId),
+      )
+      .groupBy(quizSessions.id, quizzes.id)
+      .orderBy(desc(quizSessions.createdAt)),
+    db
+      .select({
+        id: sessionEvents.id,
+        sessionId: sessionEvents.sessionId,
+        eventType: sessionEvents.eventType,
+        createdAt: sessionEvents.createdAt,
+        payload: sessionEvents.payload,
+        sessionMode: quizSessions.mode,
+        sessionStatus: quizSessions.status,
+        quizTitle: quizzes.title,
+      })
+      .from(sessionEvents)
+      .innerJoin(quizSessions, eq(sessionEvents.sessionId, quizSessions.id))
+      .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+      .where(eq(quizzes.organizationId, session.user.organizationId))
+      .orderBy(desc(sessionEvents.createdAt))
+      .limit(12),
+    getRealtimeHealth(),
+    ]);
+
+  const activeSessions = activeSessionsRaw.filter((sessionItem) =>
+    activeSessionStatuses.includes(
+      sessionItem.status as (typeof activeSessionStatuses)[number],
+    ),
+  );
+  const activeSessionIds = activeSessions.map((sessionItem) => sessionItem.id);
+
+  const latestEventBySession = new Map<string, SessionEventSummary>();
+
+  for (const event of recentEvents) {
+    if (!latestEventBySession.has(event.sessionId)) {
+      latestEventBySession.set(event.sessionId, event);
+    }
+  }
+
+  if (activeSessionIds.length > 0) {
+    const activeSessionEvents = await db
+      .select({
+        id: sessionEvents.id,
+        sessionId: sessionEvents.sessionId,
+        eventType: sessionEvents.eventType,
+        createdAt: sessionEvents.createdAt,
+        payload: sessionEvents.payload,
+      })
+      .from(sessionEvents)
+      .where(inArray(sessionEvents.sessionId, activeSessionIds))
+      .orderBy(desc(sessionEvents.createdAt));
+
+    for (const event of activeSessionEvents) {
+      if (!latestEventBySession.has(event.sessionId)) {
+        latestEventBySession.set(event.sessionId, event);
+      }
+    }
+  }
+
+  const publishedQuizzes = quizList.filter((quiz) => quiz.status === "published");
+  const activeLiveSessions = activeSessions.filter(
+    (sessionItem) => sessionItem.mode === "live",
+  );
+  const interruptedSessions = activeSessions.filter(
+    (sessionItem) => sessionItem.status === "interrupted",
+  );
+  const openIndividualSessions = activeSessions.filter(
+    (sessionItem) => sessionItem.mode === "individual",
+  );
+  const activeParticipants = activeLiveSessions.reduce(
+    (total, sessionItem) => total + sessionItem.participantCount,
+    0,
+  );
+  const sessionsNeedingAttention = activeSessions
+    .filter(
+      (sessionItem) =>
+        sessionItem.status === "interrupted" ||
+        sessionItem.status === "playing" ||
+        sessionItem.status === "question_result" ||
+        sessionItem.status === "countdown",
+    )
+    .slice(0, 6);
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_#f7fafc_0%,_#eef7ff_100%)] px-6 py-8 text-[#132238]">
@@ -32,7 +240,7 @@ export default async function DashboardPage() {
               Dashboard
             </p>
             <h1 className="mt-3 text-4xl font-semibold">
-              Seus quizzes, em rascunho e prontos para publicar.
+              Operacao do Quizzy, dos quizzes ao que esta rodando agora.
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
               Logado como {session.user.name} em {session.user.email}.
@@ -57,7 +265,243 @@ export default async function DashboardPage() {
           </div>
         </header>
 
-        <section className="mt-8 grid gap-4">
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+              Quizzes publicados
+            </p>
+            <p className="mt-3 text-4xl font-semibold text-[#132238]">
+              {publishedQuizzes.length}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[#61708c]">
+              {quizList.length} quizzes no total na organizacao.
+            </p>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+              Sessoes live ativas
+            </p>
+            <p className="mt-3 text-4xl font-semibold text-[#132238]">
+              {activeLiveSessions.length}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[#61708c]">
+              {activeParticipants} participantes registrados nas sessoes abertas.
+            </p>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+              Sessoes individuais abertas
+            </p>
+            <p className="mt-3 text-4xl font-semibold text-[#132238]">
+              {openIndividualSessions.length}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[#61708c]">
+              Links ainda ativos para tentativas assincronas.
+            </p>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+              Atencao operacional
+            </p>
+            <p className="mt-3 text-4xl font-semibold text-[#132238]">
+              {interruptedSessions.length}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[#61708c]">
+              Sessoes interrompidas aguardando retomada do host.
+            </p>
+          </article>
+        </section>
+
+        <section className="mt-4 rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                Observabilidade minima
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
+                Saude do realtime para o beta
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                  realtimeHealth.status === "healthy"
+                    ? "bg-[#ecfdf3] text-[#0f766e]"
+                    : "bg-[#fef2f2] text-[#b91c1c]"
+                }`}
+              >
+                {realtimeHealth.status === "healthy"
+                  ? "realtime online"
+                  : "realtime degradado"}
+              </span>
+              <span className="text-sm text-[#61708c]">
+                Checado em {formatDate(realtimeHealth.checkedAt)}
+              </span>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-7 text-[#61708c]">
+            {realtimeHealth.label}. Falhas de sincronizacao de inicio e avanco
+            da sessao agora tambem ficam registradas no historico operacional.
+          </p>
+        </section>
+
+        <section className="mt-8 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                  Sessoes que pedem atencao
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
+                  Operacao viva agora
+                </h2>
+              </div>
+              <span className="rounded-full bg-[#f8fbff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                {sessionsNeedingAttention.length} exibidas
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {sessionsNeedingAttention.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[#d7e3f0] bg-[#f8fbff] p-6 text-sm leading-7 text-[#61708c]">
+                  Nenhuma sessao ativa exigindo acompanhamento imediato.
+                </div>
+              ) : (
+                sessionsNeedingAttention.map((sessionItem) => {
+                  const latestEvent = latestEventBySession.get(sessionItem.id);
+
+                  return (
+                    <Link
+                      key={sessionItem.id}
+                      className="block rounded-2xl border border-[#e2e8f0] bg-[#f8fbff] p-5 transition hover:border-[#c8d4e4] hover:bg-white"
+                      href={`/dashboard/sessions/${sessionItem.id}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-semibold text-[#132238]">
+                            {sessionItem.quizTitle}
+                          </p>
+                          <p className="mt-1 text-sm text-[#61708c]">
+                            {sessionItem.mode === "live"
+                              ? `PIN ${sessionItem.pin ?? "sem PIN"}`
+                              : "Sessao individual"}{" "}
+                            • {sessionItem.participantCount} participantes
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
+                            {sessionItem.mode}
+                          </span>
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${getSessionStatusTone(
+                              sessionItem.status,
+                            )}`}
+                          >
+                            {sessionItem.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-3 text-sm text-[#61708c] sm:grid-cols-3">
+                        <div>
+                          <p className="font-semibold text-[#132238]">Criada</p>
+                          <p className="mt-1">{formatDate(sessionItem.createdAt)}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-[#132238]">
+                            Expira
+                          </p>
+                          <p className="mt-1">
+                            {formatDate(
+                              sessionItem.expiresAt ?? sessionItem.endsAt,
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-[#132238]">
+                            Ultimo evento
+                          </p>
+                          <p className="mt-1">
+                            {latestEvent
+                              ? `${formatEventType(latestEvent.eventType)} • ${formatDate(latestEvent.createdAt)}`
+                              : "Sem eventos ainda"}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </article>
+
+          <aside className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+              Atividade recente
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
+              Ultimos sinais da plataforma
+            </h2>
+
+            <div className="mt-6 space-y-4">
+              {recentEvents.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[#d7e3f0] bg-[#f8fbff] p-6 text-sm leading-7 text-[#61708c]">
+                  Ainda nao temos eventos recentes nesta organizacao.
+                </div>
+              ) : (
+                recentEvents.map((event) => (
+                  <Link
+                    key={event.id}
+                    className="block rounded-2xl border border-[#e2e8f0] bg-[#f8fbff] p-4 transition hover:border-[#c8d4e4] hover:bg-white"
+                    href={`/dashboard/sessions/${event.sessionId}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[#132238]">
+                          {formatEventType(event.eventType)}
+                        </p>
+                        <p className="mt-1 text-sm text-[#61708c]">
+                          {event.quizTitle}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${getSessionStatusTone(
+                          event.sessionStatus,
+                        )}`}
+                      >
+                        {event.sessionStatus}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-xs leading-6 text-[#61708c]">
+                      {event.sessionMode} • {formatDate(event.createdAt)}
+                    </p>
+                  </Link>
+                ))
+              )}
+            </div>
+          </aside>
+        </section>
+
+        <section className="mt-8">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                Biblioteca de quizzes
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
+                Rascunhos e publicacoes
+              </h2>
+            </div>
+            <p className="text-sm text-[#61708c]">
+              {quizList.length} itens atualizados recentemente.
+            </p>
+          </div>
+        </section>
+
+        <section className="mt-4 grid gap-4">
           {quizList.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-[#c8d4e4] bg-white/80 p-10 text-center shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
               <h2 className="text-2xl font-semibold">

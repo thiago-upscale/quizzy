@@ -4,7 +4,6 @@ import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import { env } from "@/env";
-import { accountAvatarOptions, getDefaultAvatarForName } from "@/lib/account";
 import {
   PasswordChangeForm,
   PasswordResetRequestInline,
@@ -19,7 +18,6 @@ export default async function AccountPage() {
 
   const [user] = await db
     .select({
-      avatar: users.avatar,
       company: users.company,
       email: users.email,
       name: users.name,
@@ -32,12 +30,6 @@ export default async function AccountPage() {
   if (!user) {
     throw new Error("Usuario nao encontrado.");
   }
-
-  const currentAvatar = user.avatar ?? getDefaultAvatarForName(user.name);
-  const avatarOptions = accountAvatarOptions.map((avatar) => ({
-    label: avatar.slice(0, 2).toUpperCase(),
-    value: avatar,
-  }));
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_#f7fafc_0%,_#eef7ff_100%)] px-6 py-8 text-[#132238]">
@@ -70,13 +62,11 @@ export default async function AccountPage() {
               Dados basicos
             </h2>
             <p className="mt-3 text-sm leading-7 text-[#61708c]">
-              Nome, empresa e avatar que identificam seu espaco de criador.
+              Nome e empresa para identificar seu espaco de criador.
             </p>
 
             <div className="mt-6">
               <ProfileForm
-                avatarOptions={avatarOptions}
-                initialAvatar={currentAvatar}
                 initialCompany={user.company ?? ""}
                 initialName={user.name}
               />
