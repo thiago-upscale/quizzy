@@ -34,6 +34,7 @@ export type RuntimeLiveQuestion = {
 
 export type LiveRecoveryParticipant = {
   avatar: string;
+  currentStreak: number;
   id: string;
   nickname: string;
   participantToken: string;
@@ -192,6 +193,7 @@ export async function getParticipantByToken(params: {
       email: participants.email,
       participantToken: participants.participantToken,
       avatar: participants.avatar,
+      currentStreak: participants.currentStreak,
       score: participants.score,
       totalTimeMs: participants.totalTimeMs,
       joinedAt: participants.joinedAt,
@@ -214,6 +216,7 @@ export async function getSessionParticipants(sessionId: string) {
       id: participants.id,
       nickname: participants.nickname,
       avatar: participants.avatar,
+      currentStreak: participants.currentStreak,
       score: participants.score,
       totalTimeMs: participants.totalTimeMs,
       joinedAt: participants.joinedAt,
@@ -340,6 +343,7 @@ export async function buildLiveRecoverySnapshot(params: {
     db
       .select({
         avatar: participants.avatar,
+        currentStreak: participants.currentStreak,
         id: participants.id,
         nickname: participants.nickname,
         participantToken: participants.participantToken,

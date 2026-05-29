@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { answers, participants, sessionEvents } from "@/db/schema";
 import { env } from "@/env";
 
 type Payload = {
   answerIndex?: number;
+  currentStreak?: number;
   isCorrect?: boolean;
   participantToken?: string;
   pin?: string;
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
   const answerIndex = payload.answerIndex;
   const questionOrderIndex = payload.questionOrderIndex;
   const timeSpentMs = payload.timeSpentMs;
+  const currentStreak = payload.currentStreak;
   const isCorrect = Boolean(payload.isCorrect);
   const pointsEarned =
     typeof payload.pointsEarned === "number" ? payload.pointsEarned : 0;
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
     !participantToken ||
     !sessionId ||
     typeof answerIndex !== "number" ||
+    typeof currentStreak !== "number" ||
     typeof questionOrderIndex !== "number" ||
     typeof timeSpentMs !== "number"
   ) {
@@ -80,6 +83,8 @@ export async function POST(request: Request) {
   }
 
   await db.transaction(async (tx) => {
+    let shouldPersistScore = true;
+
     if (questionId && !questionId.startsWith("virtual-")) {
       const [existingAnswer] = await tx
         .select({ id: answers.id })
@@ -93,7 +98,9 @@ export async function POST(request: Request) {
         )
         .limit(1);
 
-      if (!existingAnswer) {
+      if (existingAnswer) {
+        shouldPersistScore = false;
+      } else {
         await tx.insert(answers).values({
           participantId: participant.id,
           questionId,
@@ -106,11 +113,16 @@ export async function POST(request: Request) {
       }
     }
 
+    if (!shouldPersistScore) {
+      return;
+    }
+
     await tx
       .update(participants)
       .set({
-        score: participant.score + pointsEarned,
-        totalTimeMs: participant.totalTimeMs + timeSpentMs,
+        currentStreak,
+        score: sql`${participants.score} + ${pointsEarned}`,
+        totalTimeMs: sql`${participants.totalTimeMs} + ${timeSpentMs}`,
       })
       .where(eq(participants.id, participant.id));
 

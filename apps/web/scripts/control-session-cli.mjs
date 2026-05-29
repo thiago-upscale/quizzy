@@ -24,8 +24,14 @@ if (!databaseUrl) {
 }
 
 const realtimeUrl = process.env.REALTIME_URL || "http://localhost:4001";
-const internalToken =
-  process.env.REALTIME_INTERNAL_TOKEN || "quizzy-internal-dev-token";
+const internalToken = process.env.REALTIME_INTERNAL_TOKEN;
+
+if (!internalToken || internalToken.length < 32) {
+  console.error(
+    "Erro: REALTIME_INTERNAL_TOKEN precisa estar configurado com pelo menos 32 caracteres.",
+  );
+  process.exit(1);
+}
 
 const sql = postgres(databaseUrl);
 

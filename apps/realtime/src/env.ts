@@ -10,7 +10,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4001),
   WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
   REDIS_URL: z.string().url().optional(),
-  REALTIME_INTERNAL_TOKEN: z.string().default("quizzy-internal-dev-token"),
+  REALTIME_INTERNAL_TOKEN: z.string().min(32),
   LOG_LEVEL: z.string().default("info"),
 });
 

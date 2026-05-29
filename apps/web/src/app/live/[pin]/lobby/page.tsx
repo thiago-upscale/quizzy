@@ -57,6 +57,7 @@ export default async function LiveLobbyPage({
       branding={branding}
       initialParticipants={sessionParticipants.map((currentParticipant) => ({
         avatar: currentParticipant.avatar,
+        currentStreak: currentParticipant.currentStreak,
         id: currentParticipant.id,
         nickname: currentParticipant.nickname,
         presenceStatus: "offline",
@@ -66,6 +67,7 @@ export default async function LiveLobbyPage({
       initialSessionStatus={liveSession.status}
       participant={{
         avatar: participant.avatar,
+        currentStreak: participant.currentStreak,
         id: participant.id,
         nickname: participant.nickname,
         participantToken: participant.participantToken,

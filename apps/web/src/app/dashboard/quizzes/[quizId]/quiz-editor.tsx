@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { SaveQuizState } from "../../actions";
 
@@ -70,6 +70,111 @@ function buildDefaultIndividualEndsAtValue() {
 
 const acceptedImageTypes =
   "image/png,image/jpeg,image/webp,image/gif,image/avif";
+
+type ContrastWarning = {
+  key: keyof Pick<
+    BrandingState,
+    "accentColor" | "primaryColor" | "secondaryColor"
+  >;
+  label: string;
+  ratio: number;
+  suggestion: string;
+};
+
+function normalizeHexColor(value: string) {
+  const hex = value.trim().replace("#", "");
+
+  if (hex.length !== 6) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(hex, 16);
+
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+
+  return {
+    blue: parsed & 255,
+    green: (parsed >> 8) & 255,
+    red: (parsed >> 16) & 255,
+  };
+}
+
+function channelToLinear(value: number) {
+  const normalized = value / 255;
+  return normalized <= 0.03928
+    ? normalized / 12.92
+    : ((normalized + 0.055) / 1.055) ** 2.4;
+}
+
+function getRelativeLuminance(hex: string) {
+  const rgb = normalizeHexColor(hex);
+
+  if (!rgb) {
+    return 0;
+  }
+
+  return (
+    0.2126 * channelToLinear(rgb.red) +
+    0.7152 * channelToLinear(rgb.green) +
+    0.0722 * channelToLinear(rgb.blue)
+  );
+}
+
+function getContrastRatio(foreground: string, background: string) {
+  const foregroundLuminance = getRelativeLuminance(foreground);
+  const backgroundLuminance = getRelativeLuminance(background);
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function rgbToHex(red: number, green: number, blue: number) {
+  return `#${[red, green, blue]
+    .map((channel) =>
+      Math.max(0, Math.min(255, Math.round(channel)))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+function mixColors(source: string, target: string, amount: number) {
+  const sourceRgb = normalizeHexColor(source);
+  const targetRgb = normalizeHexColor(target);
+
+  if (!sourceRgb || !targetRgb) {
+    return source;
+  }
+
+  return rgbToHex(
+    sourceRgb.red + (targetRgb.red - sourceRgb.red) * amount,
+    sourceRgb.green + (targetRgb.green - sourceRgb.green) * amount,
+    sourceRgb.blue + (targetRgb.blue - sourceRgb.blue) * amount,
+  );
+}
+
+function suggestAccessibleColor(source: string, background: string) {
+  const targets = ["#0b1220", "#ffffff"];
+  let bestCandidate = source;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const target of targets) {
+    for (let step = 1; step <= 20; step += 1) {
+      const candidate = mixColors(source, target, step / 20);
+      const ratio = getContrastRatio(candidate, background);
+
+      if (ratio >= 4.5 && step < bestDistance) {
+        bestCandidate = candidate;
+        bestDistance = step;
+      }
+    }
+  }
+
+  return bestCandidate;
+}
 
 function AssetUploadField({
   assetType,
@@ -268,6 +373,60 @@ export function QuizEditor({
     correctIndex: 0,
     timeLimitSeconds: 20,
   };
+  const contrastWarnings = useMemo<ContrastWarning[]>(() => {
+    const warnings: ContrastWarning[] = [];
+    const checks: Array<{
+      background: string;
+      foreground: string;
+      key: ContrastWarning["key"];
+      label: string;
+    }> = [
+      {
+        background: branding.primaryColor,
+        foreground: "#ffffff",
+        key: "primaryColor",
+        label: "Texto branco sobre a cor primaria",
+      },
+      {
+        background: branding.secondaryColor,
+        foreground: "#ffffff",
+        key: "secondaryColor",
+        label: "Texto branco sobre a cor secundaria",
+      },
+      {
+        background: branding.accentColor,
+        foreground: "#10233f",
+        key: "accentColor",
+        label: "Texto navy sobre a cor de destaque",
+      },
+    ];
+
+    for (const check of checks) {
+      const ratio = getContrastRatio(check.foreground, check.background);
+
+      if (ratio < 4.5) {
+        warnings.push({
+          key: check.key,
+          label: check.label,
+          ratio,
+          suggestion: suggestAccessibleColor(
+            branding[check.key],
+            check.foreground,
+          ),
+        });
+      }
+    }
+
+    return warnings;
+  }, [branding]);
+  const warningsByKey = useMemo(() => {
+    return contrastWarnings.reduce<
+      Partial<Record<ContrastWarning["key"], ContrastWarning[]>>
+    >((accumulator, warning) => {
+      accumulator[warning.key] = [...(accumulator[warning.key] ?? []), warning];
+      return accumulator;
+    }, {});
+  }, [contrastWarnings]);
 
   return (
     <div className="space-y-6">
@@ -370,7 +529,11 @@ export function QuizEditor({
         </div>
 
         <div
-          className="overflow-hidden rounded-[1.75rem] border border-white/50 shadow-[0_28px_90px_rgba(16,35,63,0.12)]"
+          className={
+            contrastWarnings.length > 0
+              ? "overflow-hidden rounded-[1.75rem] border border-[#fca5a5] shadow-[0_28px_90px_rgba(16,35,63,0.12)] ring-2 ring-[#fecaca]"
+              : "overflow-hidden rounded-[1.75rem] border border-white/50 shadow-[0_28px_90px_rgba(16,35,63,0.12)]"
+          }
           style={{
             backgroundImage: branding.backgroundImageUrl
               ? `linear-gradient(145deg, rgba(16,35,63,0.72), rgba(15,118,110,0.72)), url(${branding.backgroundImageUrl})`
@@ -382,6 +545,12 @@ export function QuizEditor({
           }}
         >
           <div className="border-b border-white/15 px-6 py-5">
+            {contrastWarnings.length > 0 ? (
+              <div className="mb-4 rounded-2xl bg-[#7f1d1d]/45 px-4 py-3 text-sm text-white">
+                Contraste insuficiente detectado no preview. Ajuste as cores
+                marcadas abaixo para chegar a pelo menos 4.5:1.
+              </div>
+            ) : null}
             {branding.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -515,30 +684,57 @@ export function QuizEditor({
                   ["accentColor", "Cor de destaque"],
                 ] as const
               ).map(([key, label]) => (
-                <label
+                <div
                   key={key}
-                  className="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3"
+                  className="space-y-2 rounded-2xl bg-white px-4 py-3"
                 >
-                  <span className="text-sm font-medium text-[#22304a]">
-                    {label}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <input
-                      className="h-10 w-10 rounded-full border border-[#d5deea] bg-transparent"
-                      type="color"
-                      value={branding[key]}
-                      onChange={(event) =>
-                        setBranding((currentBranding) => ({
-                          ...currentBranding,
-                          [key]: event.target.value,
-                        }))
-                      }
-                    />
-                    <span className="w-20 text-right text-sm font-semibold text-[#61708c]">
-                      {branding[key]}
+                  <label className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-medium text-[#22304a]">
+                      {label}
                     </span>
-                  </div>
-                </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        className="h-10 w-10 rounded-full border border-[#d5deea] bg-transparent"
+                        type="color"
+                        value={branding[key]}
+                        onChange={(event) =>
+                          setBranding((currentBranding) => ({
+                            ...currentBranding,
+                            [key]: event.target.value,
+                          }))
+                        }
+                      />
+                      <span className="w-20 text-right text-sm font-semibold text-[#61708c]">
+                        {branding[key]}
+                      </span>
+                    </div>
+                  </label>
+                  {(warningsByKey[key] ?? []).map((warning) => (
+                    <div
+                      key={`${warning.key}-${warning.label}`}
+                      className="rounded-2xl border border-[#fed7aa] bg-[#fff7ed] px-3 py-2 text-sm text-[#9a3412]"
+                    >
+                      <p className="font-semibold">
+                        Contraste insuficiente: {warning.ratio.toFixed(2)}:1
+                      </p>
+                      <p className="mt-1 text-xs leading-5">
+                        {warning.label}. Sugestao: {warning.suggestion}
+                      </p>
+                    </div>
+                  ))}
+                  {key === "accentColor" && (warningsByKey[key] ?? []).length === 0 ? (
+                    <p className="text-xs text-[#61708c]">
+                      A cor de destaque aparece em chips, botões e badges do
+                      lobby live.
+                    </p>
+                  ) : null}
+                  {key !== "accentColor" && (warningsByKey[key] ?? []).length === 0 ? (
+                    <p className="text-xs text-[#61708c]">
+                      Sem alerta de contraste para o uso principal desta cor no
+                      preview.
+                    </p>
+                  ) : null}
+                </div>
               ))}
               <label className="space-y-2 text-sm font-medium text-[#22304a]">
                 <span>Fonte</span>

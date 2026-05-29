@@ -5,6 +5,7 @@ import { io, type Socket } from "socket.io-client";
 
 type Participant = {
   avatar: string;
+  currentStreak: number;
   id: string;
   nickname: string;
   presenceStatus: "offline" | "online";
@@ -15,6 +16,7 @@ type Participant = {
 type LeaderboardEntry = {
   answeredCurrentQuestion: boolean;
   avatar: string;
+  currentStreak: number;
   id: string;
   lastIsCorrect: boolean | null;
   lastPointsEarned: number;
@@ -74,6 +76,7 @@ type QuestionResult = {
 type AnswerState = {
   accepted: boolean;
   answerIndex: number | null;
+  currentStreak: number;
   isCorrect: boolean | null;
   pointsEarned: number;
   submitted: boolean;
@@ -82,6 +85,7 @@ type AnswerState = {
 const initialAnswerState: AnswerState = {
   accepted: false,
   answerIndex: null,
+  currentStreak: 0,
   isCorrect: null,
   pointsEarned: 0,
   submitted: false,
@@ -99,6 +103,18 @@ function formatDuration(totalTimeMs: number) {
   return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
 }
 
+function formatStreakMultiplier(currentStreak: number) {
+  return Math.min(1.5, 1 + currentStreak * 0.1).toFixed(1);
+}
+
+function formatRankDelta(delta: number) {
+  if (delta === 0) {
+    return null;
+  }
+
+  return delta > 0 ? `+${delta}` : String(delta);
+}
+
 export function LobbyClient({
   branding,
   initialParticipants,
@@ -113,6 +129,7 @@ export function LobbyClient({
   initialSessionStatus: string;
   participant: {
     avatar: string;
+    currentStreak: number;
     id: string;
     nickname: string;
     participantToken: string;
@@ -153,17 +170,28 @@ export function LobbyClient({
     [],
   );
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardVersion, setLeaderboardVersion] = useState(0);
+  const [rankDeltaById, setRankDeltaById] = useState<Record<string, number>>(
+    {},
+  );
   const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState<
     number | null
   >(null);
   const [answerState, setAnswerState] =
     useState<AnswerState>(initialAnswerState);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [playerCurrentStreak, setPlayerCurrentStreak] = useState(
+    participant.currentStreak,
+  );
+  const [animatedScore, setAnimatedScore] = useState(participant.score);
   const [submissionStats, setSubmissionStats] = useState({
     submittedCount: 0,
     totalParticipants: initialParticipants.length,
   });
   const socketRef = useRef<Socket | null>(null);
+  const animatedScoreRef = useRef(participant.score);
+  const previousLeaderboardRef = useRef<LeaderboardEntry[]>([]);
 
   const roomLabel = useMemo(() => {
     if (sessionState.status === "finished") {
@@ -198,6 +226,13 @@ export function LobbyClient({
     );
   }, [finalLeaderboard, leaderboard, participant.id, sessionState.status]);
 
+  const activeStreak =
+    personalStanding?.currentStreak ?? playerCurrentStreak ?? 0;
+
+  useEffect(() => {
+    animatedScoreRef.current = animatedScore;
+  }, [animatedScore]);
+
   useEffect(() => {
     if (sessionState.status !== "countdown" || !sessionState.countdownSeconds) {
       return;
@@ -229,6 +264,21 @@ export function LobbyClient({
   }, [sessionState.countdownSeconds, sessionState.status]);
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const syncPreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+
+    syncPreference();
+    mediaQuery.addEventListener("change", syncPreference);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncPreference);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!currentQuestion || sessionState.status !== "playing") {
       return;
     }
@@ -249,6 +299,41 @@ export function LobbyClient({
   }, [currentQuestion, sessionState.status]);
 
   useEffect(() => {
+    const targetScore = personalStanding?.score ?? participant.score;
+
+    if (prefersReducedMotion) {
+      setAnimatedScore(targetScore);
+      return;
+    }
+
+    const startScore = animatedScoreRef.current;
+    const delta = targetScore - startScore;
+
+    if (delta === 0) {
+      return;
+    }
+
+    const startedAt = performance.now();
+    let frame = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / 400);
+      const eased = 1 - (1 - progress) * (1 - progress);
+      setAnimatedScore(startScore + Math.round(delta * eased));
+
+      if (progress < 1) {
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+
+    frame = window.requestAnimationFrame(tick);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [participant.score, personalStanding?.score, prefersReducedMotion]);
+
+  useEffect(() => {
     const socket: Socket = io(realtimeUrl, {
       transports: ["websocket"],
     });
@@ -258,6 +343,7 @@ export function LobbyClient({
       setSocketConnected(true);
       socket.emit("session:join", {
         avatar: participant.avatar,
+        currentStreak: participant.currentStreak,
         nickname: participant.nickname,
         participantId: participant.id,
         participantToken: participant.participantToken,
@@ -277,6 +363,12 @@ export function LobbyClient({
       (payload: { connectedCount: number; participants: Participant[] }) => {
         setParticipants(payload.participants);
         setConnectedCount(payload.connectedCount);
+        const currentParticipant = payload.participants.find(
+          (entry) => entry.id === participant.id,
+        );
+        if (currentParticipant) {
+          setPlayerCurrentStreak(currentParticipant.currentStreak);
+        }
         setSubmissionStats((currentStats) => ({
           ...currentStats,
           totalParticipants: payload.connectedCount,
@@ -333,6 +425,30 @@ export function LobbyClient({
     socket.on(
       "leaderboard:update",
       (payload: { entries: LeaderboardEntry[] }) => {
+        const previousRanks = new Map(
+          previousLeaderboardRef.current.map((entry) => [entry.id, entry.rank]),
+        );
+        const nextRankDeltaById = payload.entries.reduce<
+          Record<string, number>
+        >((accumulator, entry) => {
+          const previousRank = previousRanks.get(entry.id);
+
+          if (typeof previousRank === "number" && previousRank !== entry.rank) {
+            accumulator[entry.id] = previousRank - entry.rank;
+          }
+
+          return accumulator;
+        }, {});
+
+        previousLeaderboardRef.current = payload.entries;
+        setRankDeltaById(nextRankDeltaById);
+        setLeaderboardVersion((currentVersion) => currentVersion + 1);
+        const currentParticipant = payload.entries.find(
+          (entry) => entry.id === participant.id,
+        );
+        if (currentParticipant) {
+          setPlayerCurrentStreak(currentParticipant.currentStreak);
+        }
         setLeaderboard(payload.entries);
       },
     );
@@ -368,6 +484,7 @@ export function LobbyClient({
       (payload: {
         accepted: boolean;
         answerIndex?: number;
+        currentStreak?: number;
         isCorrect?: boolean;
         pointsEarned?: number;
       }) => {
@@ -378,10 +495,12 @@ export function LobbyClient({
         setAnswerState({
           accepted: true,
           answerIndex: payload.answerIndex ?? null,
+          currentStreak: payload.currentStreak ?? playerCurrentStreak,
           isCorrect: payload.isCorrect ?? null,
           pointsEarned: payload.pointsEarned ?? 0,
           submitted: true,
         });
+        setPlayerCurrentStreak(payload.currentStreak ?? playerCurrentStreak);
       },
     );
 
@@ -391,6 +510,7 @@ export function LobbyClient({
     };
   }, [
     participant.avatar,
+    participant.currentStreak,
     participant.id,
     participant.nickname,
     participant.participantToken,
@@ -489,6 +609,40 @@ export function LobbyClient({
               todos avancam ao mesmo tempo.
             </p>
 
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white/10 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Sua pontuacao
+                </p>
+                <p className="mt-2 text-2xl font-semibold">
+                  {animatedScore} pontos
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/10 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Sequencia
+                </p>
+                {activeStreak >= 2 ? (
+                  <span
+                    className="mt-2 inline-flex rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
+                    style={{
+                      animation:
+                        activeStreak >= 5 && !prefersReducedMotion
+                          ? "quizzy-pulse-soft 1.2s ease-in-out infinite"
+                          : undefined,
+                      backgroundColor: branding.accentColor,
+                    }}
+                  >
+                    Sequencia x{activeStreak} • {formatStreakMultiplier(activeStreak)}x
+                  </span>
+                ) : (
+                  <p className="mt-2 text-sm font-semibold text-white/75">
+                    Sem bonus acumulado ainda
+                  </p>
+                )}
+              </div>
+            </div>
+
             {sessionState.status === "countdown" ? (
               <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6 text-center">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
@@ -540,7 +694,7 @@ export function LobbyClient({
                         key={`${currentQuestion.id}-${optionIndex}`}
                         className={
                           isChosen
-                            ? "rounded-2xl bg-white px-4 py-4 text-left text-sm font-semibold text-[#10233f]"
+                            ? "scale-[1.03] rounded-2xl bg-white px-4 py-4 text-left text-sm font-semibold text-[#10233f] transition"
                             : "rounded-2xl bg-white/10 px-4 py-4 text-left text-sm font-medium text-white transition hover:bg-white/20"
                         }
                         disabled={
@@ -578,6 +732,11 @@ export function LobbyClient({
                           : "Resposta confirmada. Aguarde o resultado."
                         : "Aguardando sua resposta"}
                     </p>
+                    {answerState.submitted && answerState.currentStreak >= 2 ? (
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+                        Sequencia x{answerState.currentStreak}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -631,17 +790,33 @@ export function LobbyClient({
                   {currentResult.options.map((option, optionIndex) => {
                     const isCorrectOption =
                       optionIndex === currentResult.correctOptionIndex;
+                    const isChosenOption =
+                      answerState.answerIndex === optionIndex;
 
                     return (
                       <div
                         key={`${currentResult.questionId}-${optionIndex}`}
                         className={
                           isCorrectOption
-                            ? "rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-[#10233f]"
-                            : "rounded-2xl bg-white/10 px-4 py-4 text-sm font-medium text-white/78"
+                            ? "rounded-2xl border border-[#d9ff37] bg-white px-4 py-4 text-sm font-semibold text-[#10233f]"
+                            : isChosenOption
+                              ? "rounded-2xl border border-[#fecaca] bg-[#7f1d1d] px-4 py-4 text-sm font-semibold text-white"
+                              : "rounded-2xl bg-white/10 px-4 py-4 text-sm font-medium text-white/78"
                         }
                       >
-                        {option}
+                        <div className="flex items-center justify-between gap-4">
+                          <span>{option}</span>
+                          {isCorrectOption ? (
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0f766e]">
+                              Correta
+                            </span>
+                          ) : null}
+                          {!isCorrectOption && isChosenOption ? (
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">
+                              Sua escolha
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })}
@@ -659,6 +834,11 @@ export function LobbyClient({
                           : "Voce respondeu, mas nao acertou nesta rodada."
                         : "Voce nao respondeu a tempo nesta rodada."}
                     </p>
+                    {activeStreak >= 2 ? (
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+                        Sequencia ativa x{activeStreak}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="rounded-2xl bg-white/10 px-4 py-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
@@ -666,7 +846,7 @@ export function LobbyClient({
                     </p>
                     <p className="mt-2 text-sm font-semibold">
                       {personalStanding
-                        ? `${personalStanding.rank}o lugar com ${personalStanding.score} pontos`
+                        ? `${personalStanding.rank}o lugar com ${animatedScore} pontos`
                         : "Atualizando classificacao"}
                     </p>
                   </div>
@@ -753,6 +933,14 @@ export function LobbyClient({
                   <div
                     key={entry.id}
                     className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3"
+                    style={
+                      prefersReducedMotion
+                        ? undefined
+                        : {
+                            animation: "quizzy-rise 360ms ease both",
+                            animationDelay: `${(leaderboardVersion + entry.rank) % 5 * 70}ms`,
+                          }
+                    }
                   >
                     <div
                       className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-[#10233f]"
@@ -767,6 +955,11 @@ export function LobbyClient({
                         {formatDuration(entry.totalTimeMs)}
                       </p>
                     </div>
+                    {formatRankDelta(rankDeltaById[entry.id] ?? 0) ? (
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75">
+                        {formatRankDelta(rankDeltaById[entry.id] ?? 0)}
+                      </span>
+                    ) : null}
                     {sessionState.status === "question_result" ? (
                       <p className="text-xs font-semibold text-white/70">
                         {entry.answeredCurrentQuestion
