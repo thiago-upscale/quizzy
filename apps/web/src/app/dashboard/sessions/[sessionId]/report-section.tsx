@@ -6,6 +6,14 @@ function formatPercent(value: number) {
   return `${value.toFixed(2)}%`;
 }
 
+function truncateText(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 1)}...`;
+}
+
 export function ReportSection({
   mode,
   report,
@@ -100,6 +108,38 @@ export function ReportSection({
                 </p>
                 <p className="mt-3 text-3xl font-semibold text-[#132238]">
                   {formatPercent(report.summary.accuracyPercent)}
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <section>
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <article className="rounded-[1.5rem] border border-[#fed7aa] bg-[#fff7ed] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9a3412]">
+                  Insight principal
+                </p>
+                <h3 className="mt-3 text-xl font-semibold text-[#7c2d12]">
+                  {report.summary.hardestQuestion
+                    ? `A pergunta mais dificil foi a Q${report.summary.hardestQuestion.orderIndex + 1}.`
+                    : "Ainda nao ha dados suficientes para destacar uma pergunta critica."}
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-[#9a3412]">
+                  {report.summary.hardestQuestion
+                    ? `${truncateText(report.summary.hardestQuestion.prompt, 140)} Apenas ${formatPercent(report.summary.hardestQuestion.accuracyPercent)} de acerto em ${report.summary.hardestQuestion.responsesCount} respostas.`
+                    : "Assim que a sessao acumular respostas, este bloco mostra a principal friccao do quiz."}
+                </p>
+              </article>
+              <article className="rounded-[1.5rem] border border-[#dbeafe] bg-[#eff6ff] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
+                  Ritmo medio
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-[#132238]">
+                  {formatReportDuration(report.summary.averageTimePerAnswerMs)}
+                </p>
+                <p className="mt-3 text-sm leading-7 text-[#44617f]">
+                  Tempo medio por resposta na sessao. Isso ajuda a separar quiz
+                  facil de quiz lento.
                 </p>
               </article>
             </div>
@@ -253,7 +293,7 @@ export function ReportSection({
                 Desempenho por pergunta
               </p>
               <h3 className="mt-2 text-xl font-semibold text-[#132238]">
-                Leitura de acerto da rodada
+                Leitura de acerto e ritmo
               </h3>
             </div>
             <div className="overflow-x-auto rounded-[1.5rem] border border-[#e2e8f0]">

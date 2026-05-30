@@ -110,6 +110,15 @@ export type SessionReport = {
     accuracyPercent: number;
     answersCount: number;
     averageScore: number;
+    averageTimePerAnswerMs: number | null;
+    hardestQuestion:
+      | {
+          accuracyPercent: number;
+          orderIndex: number;
+          prompt: string;
+          responsesCount: number;
+        }
+      | null;
     participantsCount: number;
   };
 };
@@ -501,6 +510,20 @@ export async function getSessionReport(params: {
 
   const answersCount = answerRows.length;
   const totalCorrectAnswers = answerRows.filter((row) => row.isCorrect).length;
+  const hardestQuestion =
+    questionBreakdown.length > 0
+      ? [...questionBreakdown].sort((left, right) => {
+          if (left.accuracyPercent !== right.accuracyPercent) {
+            return left.accuracyPercent - right.accuracyPercent;
+          }
+
+          if (left.responsesCount !== right.responsesCount) {
+            return right.responsesCount - left.responsesCount;
+          }
+
+          return left.orderIndex - right.orderIndex;
+        })[0] ?? null
+      : null;
 
   return {
     attemptRows: individualAttemptRows,
@@ -528,6 +551,21 @@ export async function getSessionReport(params: {
               ) / participantRows.length,
             )
           : 0,
+      averageTimePerAnswerMs:
+        answersCount > 0
+          ? Math.round(
+              answerRows.reduce((total, answer) => total + answer.timeSpentMs, 0) /
+                answersCount,
+            )
+          : null,
+      hardestQuestion: hardestQuestion
+        ? {
+            accuracyPercent: hardestQuestion.accuracyPercent,
+            orderIndex: hardestQuestion.orderIndex,
+            prompt: hardestQuestion.prompt,
+            responsesCount: hardestQuestion.responsesCount,
+          }
+        : null,
       participantsCount: participantRows.length,
     },
   } satisfies SessionReport;
