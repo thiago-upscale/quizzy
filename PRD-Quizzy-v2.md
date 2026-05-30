@@ -1077,11 +1077,13 @@ Synthesized from the /plan-design-review of 2026-05-29. Each task derives from a
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 0 | — | — |
+| Codex Review | `/codex review` | Independent 2nd opinion | 1 | issues_found | 6 issues via Claude subagent outside voice |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | issues_open | 6 issues, 1 critical gap |
 | Design Review | `/plan-design-review` | UI/UX gaps | 1 | issues_open | score: 3/10 → 7/10, 14 decisions |
 | DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
 
-**UNRESOLVED:** 3 decisions deferred — Quizzy logo/identity, session setup screen IA (screen 6), host ranking countdown timer duration.
+**CROSS-MODEL:** Outside voice (Claude subagent) confirmed 3 of the primary review's findings and added 2 new ones (scaling claim, REALTIME_INTERNAL_TOKEN default). All cross-model tensions resolved.
 
-**VERDICT:** Design Review ran (issues_open — 3 unresolved decisions). Eng review required before shipping.
+**UNRESOLVED:** 3 design decisions deferred — Quizzy logo/identity, session setup screen IA (screen 6), host ranking countdown timer duration.
+
+**VERDICT:** Eng Review ran with 6 bugs to fix (E1–E6 in Engineering Review section above). Fix all E-issues, then run /review before shipping. Design Review issues_open (3 deferred, non-blocking).
