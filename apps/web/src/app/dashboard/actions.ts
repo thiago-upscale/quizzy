@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
 import {
+  answers,
   participants,
   questions,
   quizzes,
@@ -153,6 +154,7 @@ function normalizeBranding(
 function normalizeQuestions(parsedQuestions: QuestionPayload[]) {
   return parsedQuestions
     .map((question, index) => ({
+      id: typeof question.id === "string" ? question.id : undefined,
       orderIndex: index,
       type: question.type,
       content: {
@@ -210,6 +212,22 @@ export async function saveQuiz(
     return { message: "Quiz nao encontrado.", status: "error" };
   }
 
+  const [existingQuestionRows, referencedAnswerRows] = await Promise.all([
+    db
+      .select({
+        id: questions.id,
+      })
+      .from(questions)
+      .where(eq(questions.quizId, quizId)),
+    db
+      .select({
+        questionId: answers.questionId,
+      })
+      .from(answers)
+      .innerJoin(questions, eq(answers.questionId, questions.id))
+      .where(eq(questions.quizId, quizId)),
+  ]);
+
   let parsedQuestions: QuestionPayload[];
   let branding: BrandingPayload;
 
@@ -234,6 +252,31 @@ export async function saveQuiz(
     };
   }
 
+  const existingQuestionIds = new Set(existingQuestionRows.map((row) => row.id));
+  const referencedQuestionIds = new Set(
+    referencedAnswerRows.map((row) => row.questionId),
+  );
+  const retainedExistingQuestionIds = new Set(
+    normalizedQuestions
+      .map((question) => question.id)
+      .filter(
+        (questionId): questionId is string =>
+          typeof questionId === "string" && existingQuestionIds.has(questionId),
+      ),
+  );
+  const removedReferencedQuestions = existingQuestionRows.filter(
+    (row) =>
+      referencedQuestionIds.has(row.id) && !retainedExistingQuestionIds.has(row.id),
+  );
+
+  if (removedReferencedQuestions.length > 0) {
+    return {
+      message:
+        "Este quiz ja tem respostas registradas. Para manter o historico, nao remova perguntas antigas; edite o texto ou crie novas perguntas no fim.",
+      status: "error",
+    };
+  }
+
   const nextStatus = intent === "publish" ? "published" : "draft";
 
   await db.transaction(async (tx) => {
@@ -248,18 +291,47 @@ export async function saveQuiz(
       })
       .where(eq(quizzes.id, quizId));
 
-    await tx.delete(questions).where(eq(questions.quizId, quizId));
+    // Move current rows out of the unique(orderIndex) range before reordering.
+    await tx
+      .update(questions)
+      .set({
+        orderIndex: sql`${questions.orderIndex} + ${normalizedQuestions.length + existingQuestionRows.length + 100}`,
+      })
+      .where(eq(questions.quizId, quizId));
 
-    await tx.insert(questions).values(
-      normalizedQuestions.map((question) => ({
+    for (const question of normalizedQuestions) {
+      if (question.id && existingQuestionIds.has(question.id)) {
+        await tx
+          .update(questions)
+          .set({
+            orderIndex: question.orderIndex,
+            type: question.type,
+            content: question.content,
+            correctAnswer: question.correctAnswer,
+            timeLimitSeconds: question.timeLimitSeconds,
+          })
+          .where(eq(questions.id, question.id));
+        continue;
+      }
+
+      await tx.insert(questions).values({
         quizId,
         orderIndex: question.orderIndex,
         type: question.type,
         content: question.content,
         correctAnswer: question.correctAnswer,
         timeLimitSeconds: question.timeLimitSeconds,
-      })),
-    );
+      });
+    }
+
+    const removableQuestionIds = existingQuestionRows
+      .filter((row) => !retainedExistingQuestionIds.has(row.id))
+      .map((row) => row.id)
+      .filter((questionId) => !referencedQuestionIds.has(questionId));
+
+    if (removableQuestionIds.length > 0) {
+      await tx.delete(questions).where(inArray(questions.id, removableQuestionIds));
+    }
 
     if (intent === "publish") {
       const [lastVersion] = await tx
