@@ -1,4 +1,10 @@
 import Link from "next/link";
+import {
+  EmptyStateCard,
+  MetricCard,
+  SectionHeading,
+  StatusAlert,
+} from "@/components/phase-one-ui";
 import type { SessionReport } from "@/lib/session-report";
 import { formatReportDuration } from "@/lib/session-report";
 
@@ -27,133 +33,138 @@ export function ReportSection({
 }) {
   const isAvailable = sessionStatus === "finished" || mode === "individual";
   const isFinished = sessionStatus === "finished";
+  const topRank = report?.leaderboard[0] ?? null;
 
   return (
     <section className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-            Relatorio
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-            Resultado da sessao
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-[#61708c]">
-            {isFinished
-              ? "Use esta leitura para revisar ranking, acerto por pergunta e exportar os dados da sessao."
-              : mode === "individual"
-                ? "A sessao individual atualiza o relatorio conforme as tentativas sao concluidas."
-                : "O relatorio completo fica disponivel assim que a sessao for encerrada."}
-          </p>
-        </div>
-        {isAvailable ? (
-          <div className="flex flex-wrap gap-3">
-            <Link
-              className="rounded-full border border-[#d2d8e5] px-4 py-2 text-sm font-semibold text-[#10233f] transition hover:bg-[#f8fbff]"
-              href={`/dashboard/sessions/${sessionId}/report/summary.csv`}
-              prefetch={false}
-            >
-              Baixar CSV resumo
-            </Link>
-            <Link
-              className="rounded-full bg-[#10233f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d3557]"
-              href={`/dashboard/sessions/${sessionId}/report/detailed.csv`}
-              prefetch={false}
-            >
-              Baixar CSV detalhado
-            </Link>
-          </div>
-        ) : null}
-      </div>
+      <SectionHeading
+        eyebrow="Relatorio"
+        helper={
+          isFinished
+            ? "Leia primeiro o resumo executivo da sessao e depois desca para ranking, tentativas e detalhe por pergunta."
+            : mode === "individual"
+              ? "A sessao individual atualiza o relatorio conforme as tentativas sao concluidas."
+              : "O relatorio completo fica disponivel assim que a sessao for encerrada."
+        }
+        title="Resultado da sessao"
+        trailing={
+          isAvailable ? (
+            <>
+              <Link
+                className="rounded-full border border-[var(--quizzy-border)] px-4 py-2 text-sm font-semibold text-[var(--quizzy-navy)] transition hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_65%,white)]"
+                href={`/dashboard/sessions/${sessionId}/report/summary.csv`}
+                prefetch={false}
+              >
+                Baixar CSV resumo
+              </Link>
+              <Link
+                className="rounded-full bg-[var(--quizzy-navy)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#1d3557]"
+                href={`/dashboard/sessions/${sessionId}/report/detailed.csv`}
+                prefetch={false}
+              >
+                Baixar CSV detalhado
+              </Link>
+            </>
+          ) : null
+        }
+      />
 
       {!isAvailable || !report ? (
-        <div className="mt-6 rounded-[1.5rem] border border-dashed border-[#d2d8e5] bg-[#f8fbff] p-6">
-          <p className="text-sm font-medium text-[#44516a]">
-            {mode === "individual"
-              ? "Assim que as primeiras tentativas forem concluidas, este painel passa a refletir ranking, desempenho por pergunta e exportacoes em CSV."
-              : "Assim que o host encerrar a sessao, o dashboard libera ranking final, desempenho por pergunta e exportacoes em CSV."}
-          </p>
+        <div className="mt-6">
+          <EmptyStateCard
+            description={
+              mode === "individual"
+                ? "Assim que as primeiras tentativas forem concluidas, este painel passa a refletir ranking, desempenho por pergunta e exportacoes em CSV."
+                : "Assim que o host encerrar a sessao, o dashboard libera ranking final, desempenho por pergunta e exportacoes em CSV."
+            }
+            title={
+              mode === "individual"
+                ? "Aguardando as primeiras respostas"
+                : "Relatorio liberado no fechamento"
+            }
+          />
         </div>
       ) : (
         <div className="mt-6 space-y-6">
-          <section>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <article className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Participantes
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-[#132238]">
-                  {report.summary.participantsCount}
-                </p>
-              </article>
-              <article className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Respostas
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-[#132238]">
-                  {report.summary.answersCount}
-                </p>
-              </article>
-              <article className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Media de score
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-[#132238]">
-                  {report.summary.averageScore}
-                </p>
-              </article>
-              <article className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Taxa de acerto
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-[#132238]">
-                  {formatPercent(report.summary.accuracyPercent)}
-                </p>
-              </article>
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              helper="Participantes com resultado consolidado nesta sessao."
+              label="Participantes"
+              value={report.summary.participantsCount}
+            />
+            <MetricCard
+              helper="Volume bruto de respostas aproveitadas no relatorio."
+              label="Respostas"
+              value={report.summary.answersCount}
+            />
+            <MetricCard
+              accent="teal"
+              helper="Leitura rapida da media de desempenho do grupo."
+              label="Media de score"
+              value={report.summary.averageScore}
+            />
+            <MetricCard
+              accent="amber"
+              helper="Taxa media de acerto entre todas as respostas registradas."
+              label="Taxa de acerto"
+              value={formatPercent(report.summary.accuracyPercent)}
+            />
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <article className="rounded-[1.5rem] border border-[#fed7aa] bg-[#fff7ed] p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9a3412]">
+                Insight principal
+              </p>
+              <h3 className="mt-3 text-xl font-semibold text-[#7c2d12]">
+                {report.summary.hardestQuestion
+                  ? `A pergunta mais dificil foi a Q${report.summary.hardestQuestion.orderIndex + 1}.`
+                  : "Ainda nao ha dados suficientes para destacar uma pergunta critica."}
+              </h3>
+              <p className="mt-3 text-sm leading-7 text-[#9a3412]">
+                {report.summary.hardestQuestion
+                  ? `${truncateText(report.summary.hardestQuestion.prompt, 140)} Apenas ${formatPercent(report.summary.hardestQuestion.accuracyPercent)} de acerto em ${report.summary.hardestQuestion.responsesCount} respostas.`
+                  : "Assim que a sessao acumular respostas, este bloco mostra a principal friccao do quiz."}
+              </p>
+            </article>
+            <div className="grid gap-4">
+              <MetricCard
+                accent="navy"
+                helper="Tempo medio por resposta para calibrar ritmo e clareza."
+                label="Ritmo medio"
+                value={formatReportDuration(report.summary.averageTimePerAnswerMs)}
+              />
+              <MetricCard
+                accent="teal"
+                helper={
+                  topRank
+                    ? `${topRank.score} pontos em ${formatReportDuration(topRank.totalTimeMs)}.`
+                    : "O ranking principal aparece assim que houver desempenho consolidado."
+                }
+                label="Lider da sessao"
+                value={topRank ? topRank.nickname : "Sem lider"}
+              />
             </div>
           </section>
 
-          <section>
-            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-              <article className="rounded-[1.5rem] border border-[#fed7aa] bg-[#fff7ed] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#9a3412]">
-                  Insight principal
-                </p>
-                <h3 className="mt-3 text-xl font-semibold text-[#7c2d12]">
-                  {report.summary.hardestQuestion
-                    ? `A pergunta mais dificil foi a Q${report.summary.hardestQuestion.orderIndex + 1}.`
-                    : "Ainda nao ha dados suficientes para destacar uma pergunta critica."}
-                </h3>
-                <p className="mt-3 text-sm leading-7 text-[#9a3412]">
-                  {report.summary.hardestQuestion
-                    ? `${truncateText(report.summary.hardestQuestion.prompt, 140)} Apenas ${formatPercent(report.summary.hardestQuestion.accuracyPercent)} de acerto em ${report.summary.hardestQuestion.responsesCount} respostas.`
-                    : "Assim que a sessao acumular respostas, este bloco mostra a principal friccao do quiz."}
-                </p>
-              </article>
-              <article className="rounded-[1.5rem] border border-[#dbeafe] bg-[#eff6ff] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
-                  Ritmo medio
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-[#132238]">
-                  {formatReportDuration(report.summary.averageTimePerAnswerMs)}
-                </p>
-                <p className="mt-3 text-sm leading-7 text-[#44617f]">
-                  Tempo medio por resposta na sessao. Isso ajuda a separar quiz
-                  facil de quiz lento.
-                </p>
-              </article>
-            </div>
-          </section>
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <StatusAlert tone="info">
+              Comece pelo resumo executivo e use as tabelas abaixo para
+              verificacao detalhada ou exportacao operacional.
+            </StatusAlert>
+            <StatusAlert tone="success">
+              {mode === "individual"
+                ? "As exportacoes incluem tentativas separadas para leitura de progresso e melhor resultado."
+                : "As exportacoes consolidam ranking final, respostas e metadados essenciais da sessao live."}
+            </StatusAlert>
+          </div>
 
           <section className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Ranking final
-              </p>
-              <h3 className="mt-2 text-xl font-semibold text-[#132238]">
-                Classificacao dos participantes
-              </h3>
-            </div>
+            <SectionHeading
+              eyebrow="Ranking final"
+              helper="Leitura consolidada da classificacao com score, tempo, tentativas e precisao."
+              title="Classificacao dos participantes"
+            />
             <div className="overflow-x-auto rounded-[1.5rem] border border-[#e2e8f0]">
               <table className="min-w-full border-collapse bg-white text-left text-sm">
                 <thead className="bg-[#f8fbff] text-[#61708c]">
@@ -172,8 +183,11 @@ export function ReportSection({
                 <tbody>
                   {report.leaderboard.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-5 text-[#61708c]" colSpan={9}>
-                        Nenhum participante foi registrado nesta sessao.
+                      <td className="px-4 py-5" colSpan={9}>
+                        <EmptyStateCard
+                          description="Sem participantes registrados ainda. Assim que a sessao acumular resultados, o ranking consolidado aparece aqui."
+                          title="Nenhum participante foi registrado nesta sessao"
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -219,14 +233,11 @@ export function ReportSection({
 
           {report.session.mode === "individual" ? (
             <section className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Tentativas
-                </p>
-                <h3 className="mt-2 text-xl font-semibold text-[#132238]">
-                  Historico por participante
-                </h3>
-              </div>
+              <SectionHeading
+                eyebrow="Tentativas"
+                helper="Separacao por participante e por execucao para identificar melhor resultado e consistencia."
+                title="Historico por participante"
+              />
               <div className="overflow-x-auto rounded-[1.5rem] border border-[#e2e8f0]">
                 <table className="min-w-full border-collapse bg-white text-left text-sm">
                   <thead className="bg-[#f8fbff] text-[#61708c]">
@@ -244,8 +255,11 @@ export function ReportSection({
                   <tbody>
                     {report.attemptRows.length === 0 ? (
                       <tr>
-                        <td className="px-4 py-5 text-[#61708c]" colSpan={8}>
-                          Nenhuma tentativa concluida ainda nesta sessao.
+                        <td className="px-4 py-5" colSpan={8}>
+                          <EmptyStateCard
+                            description="Assim que a primeira tentativa for concluida, o relatorio passa a distinguir historico, melhor pontuacao e consistencia do participante."
+                            title="Nenhuma tentativa concluida ainda nesta sessao"
+                          />
                         </td>
                       </tr>
                     ) : (
@@ -288,14 +302,11 @@ export function ReportSection({
           ) : null}
 
           <section className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Desempenho por pergunta
-              </p>
-              <h3 className="mt-2 text-xl font-semibold text-[#132238]">
-                Leitura de acerto e ritmo
-              </h3>
-            </div>
+            <SectionHeading
+              eyebrow="Desempenho por pergunta"
+              helper="Use esta visao para detectar friccao, ritmo e clareza do conteudo em cada etapa do quiz."
+              title="Leitura de acerto e ritmo"
+            />
             <div className="overflow-x-auto rounded-[1.5rem] border border-[#e2e8f0]">
               <table className="min-w-full border-collapse bg-white text-left text-sm">
                 <thead className="bg-[#f8fbff] text-[#61708c]">

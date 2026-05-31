@@ -5,6 +5,12 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import { env } from "@/env";
 import {
+  MetricCard,
+  SectionHeading,
+  StatusAlert,
+  SurfaceCard,
+} from "@/components/phase-one-ui";
+import {
   PasswordChangeForm,
   PasswordResetRequestInline,
   ProfileForm,
@@ -34,36 +40,63 @@ export default async function AccountPage() {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_#f7fafc_0%,_#eef7ff_100%)] px-6 py-8 text-[#132238]">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <header className="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+        <header className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
           <Link
             className="text-sm font-semibold text-[#0f766e]"
             href="/dashboard"
           >
             Voltar ao dashboard
           </Link>
-          <p className="mt-4 text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-            Conta
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold">
-            Perfil e seguranca do criador
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
-            Atualize seus dados, troque sua senha e deixe o acesso pronto para o
-            beta.
-          </p>
+          <div className="mt-4 grid gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
+                Conta
+              </p>
+              <h1 className="mt-3 text-4xl font-semibold">
+                Perfil e seguranca do criador
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
+                Ajuste identidade, acesso e recuperacao em uma area pensada para
+                deixar a operacao pronta para o beta.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <MetricCard
+                helper="Nome e empresa atualizados no espaco de criador."
+                label="Perfil"
+                value="Pronto"
+              />
+              <MetricCard
+                accent={user.passwordHash ? "teal" : "amber"}
+                helper={
+                  user.passwordHash
+                    ? "Senha local ativa e pronta para ser trocada."
+                    : "Conta ainda depende da ativacao do fluxo social."
+                }
+                label="Seguranca"
+                value={user.passwordHash ? "Ativa" : "Parcial"}
+              />
+              <MetricCard
+                accent={hasGoogle ? "teal" : "amber"}
+                helper={
+                  hasGoogle
+                    ? "Credenciais presentes para liberar o provider no login."
+                    : "A integracao entra no ar quando as credenciais forem adicionadas."
+                }
+                label="Google"
+                value={hasGoogle ? "Configurado" : "Pendente"}
+              />
+            </div>
+          </div>
         </header>
 
         <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Perfil
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-              Dados basicos
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-[#61708c]">
-              Nome e empresa para identificar seu espaco de criador.
-            </p>
+          <SurfaceCard>
+            <SectionHeading
+              eyebrow="Perfil"
+              helper="Nome e empresa orientam seu espaco de criador e aparecem como referencia operacional nas areas autenticadas."
+              title="Identidade principal"
+            />
 
             <div className="mt-6">
               <ProfileForm
@@ -71,48 +104,48 @@ export default async function AccountPage() {
                 initialName={user.name}
               />
             </div>
-          </article>
+          </SurfaceCard>
 
           <div className="grid gap-4">
-            <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Seguranca
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-                Senha e recuperacao
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                Email atual: <span className="font-semibold">{user.email}</span>
-              </p>
+            <SurfaceCard>
+              <SectionHeading
+                eyebrow="Seguranca"
+                helper={`Email atual: ${user.email}`}
+                title="Senha e recuperacao"
+              />
 
               {user.passwordHash ? (
                 <div className="mt-6 space-y-6">
                   <PasswordChangeForm />
-                  <div className="border-t border-[#e2e8f0] pt-6">
+                  <div className="border-t border-[var(--quizzy-border)] pt-6">
                     <PasswordResetRequestInline email={user.email} />
                   </div>
                 </div>
               ) : (
-                <p className="mt-6 rounded-2xl bg-[#f8fbff] px-4 py-3 text-sm leading-7 text-[#61708c]">
-                  Esta conta ainda nao usa senha local. O acesso por senha pode
-                  ser introduzido depois da ativacao do Google, se necessario.
-                </p>
+                <div className="mt-6">
+                  <StatusAlert tone="warning">
+                    Esta conta ainda nao usa senha local. O acesso por senha
+                    pode ser introduzido depois da ativacao do Google, se isso
+                    fizer sentido para a operacao.
+                  </StatusAlert>
+                </div>
               )}
-            </article>
+            </SurfaceCard>
 
-            <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Login social
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-                Google
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                {hasGoogle
-                  ? "O provider Google esta configurado e pronto para aparecer no login."
-                  : "O provider Google ja esta preparado no produto e entra no ar assim que as credenciais forem adicionadas."}
-              </p>
-            </article>
+            <SurfaceCard>
+              <SectionHeading
+                eyebrow="Login social"
+                helper="A integracao com Google deve comunicar estado real de prontidao, sem parecer um controle morto."
+                title="Google"
+              />
+              <div className="mt-6">
+                <StatusAlert tone={hasGoogle ? "success" : "info"}>
+                  {hasGoogle
+                    ? "O provider Google esta configurado e pronto para aparecer no login."
+                    : "O provider Google ja esta preparado no produto e entra no ar assim que as credenciais forem adicionadas."}
+                </StatusAlert>
+              </div>
+            </SurfaceCard>
           </div>
         </section>
       </div>

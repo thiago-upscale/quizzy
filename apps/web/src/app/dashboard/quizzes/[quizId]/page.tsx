@@ -138,7 +138,7 @@ export default async function QuizDetailPage({
             primaryColor: branding.primaryColor ?? "#0f766e",
             secondaryColor: branding.secondaryColor ?? "#10233f",
             accentColor: branding.accentColor ?? "#f59e0b",
-            fontFamily: branding.fontFamily ?? "Manrope",
+            fontFamily: branding.fontFamily ?? "DM Sans",
             backgroundImageUrl: branding.backgroundImageUrl ?? null,
             logoUrl: branding.logoUrl ?? null,
           }}

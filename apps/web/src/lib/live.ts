@@ -66,7 +66,7 @@ export const defaultLiveBranding: LiveBranding = {
   primaryColor: "#0f766e",
   secondaryColor: "#10233f",
   accentColor: "#f59e0b",
-  fontFamily: "Manrope",
+  fontFamily: "DM Sans",
   backgroundImageUrl: null,
   logoUrl: null,
 };

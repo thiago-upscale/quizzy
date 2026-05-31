@@ -2,6 +2,10 @@
 
 import { useActionState } from "react";
 import {
+  FieldPanel,
+  StatusAlert,
+} from "@/components/phase-one-ui";
+import {
   changeAccountPassword,
   requestPasswordReset,
   updateAccountProfile,
@@ -17,13 +21,7 @@ function FeedbackMessage({ state }: { state: AccountActionState }) {
   }
 
   return (
-    <div
-      className={
-        state.status === "success"
-          ? "rounded-2xl bg-[#ecfdf3] px-4 py-3 text-sm font-medium text-[#0f766e]"
-          : "rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-medium text-[#b42318]"
-      }
-    >
+    <StatusAlert tone={state.status === "success" ? "success" : "error"}>
       <p>{state.message}</p>
       {state.previewUrl ? (
         <a
@@ -33,7 +31,7 @@ function FeedbackMessage({ state }: { state: AccountActionState }) {
           {state.previewUrl}
         </a>
       ) : null}
-    </div>
+    </StatusAlert>
   );
 }
 
@@ -51,28 +49,30 @@ export function ProfileForm({
 
   return (
     <form action={formAction} className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-[#22304a]">Nome</span>
-          <input
-            className="w-full rounded-xl border border-[#c9d5e7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
-            defaultValue={initialName}
-            name="name"
-            required
-            type="text"
-          />
-        </label>
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-[#22304a]">Empresa</span>
-          <input
-            className="w-full rounded-xl border border-[#c9d5e7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
-            defaultValue={initialCompany}
-            name="company"
-            placeholder="Sua empresa"
-            type="text"
-          />
-        </label>
-      </div>
+      <FieldPanel>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-[#22304a]">Nome</span>
+            <input
+              className="w-full rounded-xl border border-[var(--quizzy-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--quizzy-teal)]"
+              defaultValue={initialName}
+              name="name"
+              required
+              type="text"
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-[#22304a]">Empresa</span>
+            <input
+              className="w-full rounded-xl border border-[var(--quizzy-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--quizzy-teal)]"
+              defaultValue={initialCompany}
+              name="company"
+              placeholder="Sua empresa"
+              type="text"
+            />
+          </label>
+        </div>
+      </FieldPanel>
 
       <FeedbackMessage state={state} />
 
@@ -95,39 +95,45 @@ export function PasswordChangeForm() {
 
   return (
     <form action={formAction} className="space-y-4">
-      <label className="space-y-2">
-        <span className="text-sm font-medium text-[#22304a]">Senha atual</span>
-        <input
-          className="w-full rounded-xl border border-[#c9d5e7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#10233f]"
-          name="currentPassword"
-          required
-          type="password"
-        />
-      </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-[#22304a]">Nova senha</span>
-          <input
-            className="w-full rounded-xl border border-[#c9d5e7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#10233f]"
-            minLength={8}
-            name="nextPassword"
-            required
-            type="password"
-          />
-        </label>
+      <FieldPanel className="space-y-4">
         <label className="space-y-2">
           <span className="text-sm font-medium text-[#22304a]">
-            Confirmar nova senha
+            Senha atual
           </span>
           <input
-            className="w-full rounded-xl border border-[#c9d5e7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#10233f]"
-            minLength={8}
-            name="confirmPassword"
+            className="w-full rounded-xl border border-[var(--quizzy-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--quizzy-navy)]"
+            name="currentPassword"
             required
             type="password"
           />
         </label>
-      </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-[#22304a]">
+              Nova senha
+            </span>
+            <input
+              className="w-full rounded-xl border border-[var(--quizzy-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--quizzy-navy)]"
+              minLength={8}
+              name="nextPassword"
+              required
+              type="password"
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-[#22304a]">
+              Confirmar nova senha
+            </span>
+            <input
+              className="w-full rounded-xl border border-[var(--quizzy-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--quizzy-navy)]"
+              minLength={8}
+              name="confirmPassword"
+              required
+              type="password"
+            />
+          </label>
+        </div>
+      </FieldPanel>
 
       <FeedbackMessage state={state} />
 
@@ -151,9 +157,15 @@ export function PasswordResetRequestInline({ email }: { email: string }) {
   return (
     <form action={formAction} className="space-y-4">
       <input name="email" type="hidden" value={email} />
+      <FieldPanel>
+        <p className="text-sm leading-7 text-[var(--quizzy-muted)]">
+          Gere um link interno para testar a recuperacao de senha com rapidez
+          antes do beta. O link fica disponivel logo abaixo.
+        </p>
+      </FieldPanel>
       <FeedbackMessage state={state} />
       <button
-        className="rounded-full border border-[#d2d8e5] px-5 py-3 text-sm font-semibold text-[#10233f] transition hover:bg-white disabled:opacity-60"
+        className="rounded-full border border-[var(--quizzy-border)] px-5 py-3 text-sm font-semibold text-[var(--quizzy-navy)] transition hover:bg-white disabled:opacity-60"
         disabled={pending}
         type="submit"
       >

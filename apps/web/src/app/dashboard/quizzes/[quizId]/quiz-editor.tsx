@@ -2,6 +2,14 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
+import {
+  EmptyStateCard,
+  FieldPanel,
+  MetricCard,
+  SectionHeading,
+  StatusAlert,
+  SurfaceCard,
+} from "@/components/phase-one-ui";
 import type { SaveQuizState } from "../../actions";
 
 type EditorQuestion = {
@@ -52,11 +60,11 @@ const initialSaveState: SaveQuizState = {
 };
 
 const fontOptions = [
-  "Manrope",
+  "DM Sans",
+  "Montserrat",
+  "Raleway",
+  "Playfair Display",
   "Space Grotesk",
-  "IBM Plex Sans",
-  "Outfit",
-  "Archivo",
 ];
 
 function buildDefaultIndividualEndsAtValue() {
@@ -249,7 +257,7 @@ function AssetUploadField({
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-[#d7e3f0] bg-white p-4">
+    <FieldPanel className="space-y-3 bg-white">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-[#22304a]">{label}</p>
@@ -293,9 +301,9 @@ function AssetUploadField({
       </label>
 
       {error ? (
-        <p className="text-sm font-medium text-[#b42318]">{error}</p>
+        <StatusAlert tone="error">{error}</StatusAlert>
       ) : null}
-    </div>
+    </FieldPanel>
   );
 }
 
@@ -431,51 +439,38 @@ export function QuizEditor({
   return (
     <div className="space-y-6">
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
-                Sessoes
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold">
-                Publicar e iniciar
-              </h2>
-            </div>
-            <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
-              {status}
-            </span>
-          </div>
-          <p className="mt-3 text-sm leading-7 text-[#61708c]">
-            Quando o quiz estiver publicado, podemos gerar um PIN live ou uma
-            sessao individual para compartilhar.
-          </p>
+        <SurfaceCard>
+          <SectionHeading
+            eyebrow="Operar"
+            helper="Publicacao, PIN live e sessao individual ficam juntos aqui para evitar que a criacao de conteudo se misture com a operacao."
+            title="Publicar e iniciar"
+            trailing={
+              <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
+                {status}
+              </span>
+            }
+          />
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-[#d7e3f0] bg-[#f8fbff] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Live ativo
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[#132238]">
-                {sessionSummary.activeLiveCount}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#d7e3f0] bg-[#fffaf0] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Ultimo PIN
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[#132238]">
-                {sessionSummary.latestLivePin ?? "--"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#d7e3f0] bg-[#f7f7ff] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Sessao individual
-              </p>
-              <p className="mt-2 truncate text-sm font-semibold text-[#132238]">
-                {sessionSummary.latestShareToken
+            <MetricCard
+              helper="Quantidade de salas live que ainda pedem acompanhamento."
+              label="Live ativo"
+              value={sessionSummary.activeLiveCount}
+            />
+            <MetricCard
+              accent="amber"
+              helper="Ultimo codigo pronto para ser compartilhado com a sala."
+              label="Ultimo PIN"
+              value={sessionSummary.latestLivePin ?? "--"}
+            />
+            <MetricCard
+              helper="Ultimo link individual gerado para tarefa assincrona."
+              label="Sessao individual"
+              value={
+                sessionSummary.latestShareToken
                   ? `${sessionSummary.latestShareToken.slice(0, 12)}...`
-                  : "Nenhuma ainda"}
-              </p>
-            </div>
+                  : "Nenhuma"
+              }
+            />
           </div>
           <div className="mt-6 flex flex-col gap-4">
             <form action={liveSessionAction}>
@@ -484,7 +479,7 @@ export function QuizEditor({
             </form>
             <form
               action={startIndividualSessionAction}
-              className="rounded-[1.5rem] border border-[#d7e3f0] bg-[#f8fbff] p-4"
+              className="rounded-[1.5rem] border border-[var(--quizzy-border)] bg-[color:color-mix(in_srgb,var(--quizzy-surface)_70%,white)] p-4"
             >
               <input name="quizId" type="hidden" value={quizId} />
               <div className="grid gap-4 sm:grid-cols-[1fr_140px_auto] sm:items-end">
@@ -526,7 +521,7 @@ export function QuizEditor({
               </div>
             </form>
           </div>
-        </div>
+        </SurfaceCard>
 
         <div
           className={
@@ -546,7 +541,7 @@ export function QuizEditor({
         >
           <div className="border-b border-white/15 px-6 py-5">
             {contrastWarnings.length > 0 ? (
-              <div className="mb-4 rounded-2xl bg-[#7f1d1d]/45 px-4 py-3 text-sm text-white">
+              <div className="mb-4 rounded-2xl border border-white/10 bg-[#7f1d1d]/45 px-4 py-3 text-sm text-white">
                 Contraste insuficiente detectado no preview. Ajuste as cores
                 marcadas abaixo para chegar a pelo menos 4.5:1.
               </div>
@@ -567,13 +562,39 @@ export function QuizEditor({
             </h2>
             <p className="mt-2 text-sm text-white/75">
               O branding precisa aparecer com clareza antes de chegar ao lobby,
-              pergunta e ranking.
+              pergunta e ranking. Este preview e a referencia principal para a
+              experiencia do participante.
             </p>
           </div>
           <div className="space-y-5 px-6 py-6">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-white/10 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                  Fonte
+                </p>
+                <p className="mt-2 text-sm font-semibold">{branding.fontFamily}</p>
+              </div>
+              <div className="rounded-2xl bg-white/10 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                  Destaque
+                </p>
+                <p className="mt-2 text-sm font-semibold">{branding.accentColor}</p>
+              </div>
+              <div className="rounded-2xl bg-white/10 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                  Estrutura
+                </p>
+                <p className="mt-2 text-sm font-semibold">
+                  {questions.length} pergunta(s)
+                </p>
+              </div>
+            </div>
             <div className="rounded-3xl bg-white/8 p-5 backdrop-blur-sm">
               <div className="mb-4 flex items-center justify-between">
-                <span className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#10233f]">
+                <span
+                  className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#10233f]"
+                  style={{ backgroundColor: branding.accentColor }}
+                >
                   Pergunta 1
                 </span>
                 <span
@@ -623,20 +644,19 @@ export function QuizEditor({
         />
 
         {saveState.status !== "idle" ? (
-          <p
-            className={
-              saveState.status === "success"
-                ? "rounded-2xl bg-[#ecfdf3] px-4 py-3 text-sm font-medium text-[#0f766e]"
-                : "rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-medium text-[#b42318]"
-            }
-          >
+          <StatusAlert tone={saveState.status === "success" ? "success" : "error"}>
             {saveState.message}
-          </p>
+          </StatusAlert>
         ) : null}
 
-        <section className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+        <SurfaceCard>
           <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="space-y-5">
+              <SectionHeading
+                eyebrow="Construir conteudo"
+                helper="Defina titulo, descricao e estrutura do quiz antes de descer para cada pergunta individual."
+                title="Base editorial"
+              />
               <div className="space-y-2">
                 <label
                   className="text-sm font-medium text-[#22304a]"
@@ -668,15 +688,12 @@ export function QuizEditor({
               </div>
             </div>
 
-            <div className="space-y-4 rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Branding
-                </p>
-                <h2 className="mt-2 text-xl font-semibold text-[#132238]">
-                  Identidade visual do quiz
-                </h2>
-              </div>
+            <FieldPanel className="space-y-4">
+              <SectionHeading
+                eyebrow="Aplicar marca"
+                helper="Escolha cores, fonte e assets com foco na leitura final do participante, nao so no preenchimento tecnico."
+                title="Identidade visual do quiz"
+              />
               {(
                 [
                   ["primaryColor", "Cor primaria"],
@@ -686,7 +703,7 @@ export function QuizEditor({
               ).map(([key, label]) => (
                 <div
                   key={key}
-                  className="space-y-2 rounded-2xl bg-white px-4 py-3"
+                  className="space-y-2 rounded-2xl bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(216,226,238,0.92)]"
                 >
                   <label className="flex items-center justify-between gap-4">
                     <span className="text-sm font-medium text-[#22304a]">
@@ -791,15 +808,25 @@ export function QuizEditor({
                 }
                 quizId={quizId}
               />
-            </div>
+            </FieldPanel>
           </div>
-        </section>
+        </SurfaceCard>
 
         <section className="space-y-4">
+          <SectionHeading
+            eyebrow="Perguntas"
+            helper="Cada bloco abaixo representa uma etapa do quiz com tempo, resposta correta e assets opcionais."
+            title="Construir o fluxo da sessao"
+          />
+          {questions.length === 0 ? (
+            <EmptyStateCard
+              description="Adicione a primeira pergunta para transformar o rascunho em uma sessao pronta para publicar e operar."
+              title="Nenhuma pergunta no quiz ainda"
+            />
+          ) : null}
           {questions.map((question, index) => (
-            <article
+            <SurfaceCard
               key={question.id}
-              className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]"
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -809,6 +836,10 @@ export function QuizEditor({
                   <h2 className="mt-2 text-xl font-semibold text-[#132238]">
                     Editor da pergunta
                   </h2>
+                  <p className="mt-2 text-sm leading-6 text-[#61708c]">
+                    Ajuste tipo, enunciado, tempo e resposta correta com foco em
+                    clareza na tela do participante.
+                  </p>
                 </div>
                 <button
                   className="rounded-full border border-[#f1c6c2] px-4 py-2 text-sm font-medium text-[#b42318] transition hover:bg-[#fff5f4]"
@@ -966,7 +997,7 @@ export function QuizEditor({
                   </label>
                 </div>
 
-                <div className="grid gap-3">
+                <FieldPanel className="grid gap-3 bg-[color:color-mix(in_srgb,var(--quizzy-surface)_58%,white)]">
                   <p className="text-sm font-medium text-[#22304a]">
                     Alternativas
                   </p>
@@ -996,9 +1027,9 @@ export function QuizEditor({
                       placeholder={`Opcao ${optionIndex + 1}`}
                     />
                   ))}
-                </div>
+                </FieldPanel>
               </div>
-            </article>
+            </SurfaceCard>
           ))}
         </section>
 
