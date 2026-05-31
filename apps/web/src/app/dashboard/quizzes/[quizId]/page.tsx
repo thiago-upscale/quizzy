@@ -7,9 +7,11 @@ import { questions, quizzes, quizSessions } from "@/db/schema";
 import {
   createIndividualSession,
   createLiveSession,
+  deleteQuiz,
   saveQuiz,
 } from "../../actions";
 import { QuizEditor } from "./quiz-editor";
+import { DeleteQuizButton } from "../../delete-quiz-button";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +132,14 @@ export default async function QuizDetailPage({
             <p className="mt-2 text-sm text-[#61708c]">
               Status atual: {quiz.status}
             </p>
+          </div>
+          <div className="group">
+            <DeleteQuizButton
+              alwaysVisible
+              deleteAction={deleteQuiz}
+              quizId={quiz.id}
+              quizTitle={quiz.title}
+            />
           </div>
         </div>
 

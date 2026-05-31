@@ -16,8 +16,9 @@ import {
   StatusAlert,
   SurfaceCard,
 } from "@/components/phase-one-ui";
-import { createQuiz } from "./actions";
+import { createQuiz, deleteQuiz } from "./actions";
 import { SignOutButton } from "./sign-out-button";
+import { DeleteQuizButton } from "./delete-quiz-button";
 
 export const dynamic = "force-dynamic";
 
@@ -499,30 +500,41 @@ export default async function DashboardPage() {
             />
           ) : (
             quizList.map((quiz) => (
-              <Link
+              <div
                 key={quiz.id}
-                className="grid gap-4 rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_90px_rgba(15,23,42,0.1)] sm:grid-cols-[1fr_auto]"
-                href={`/dashboard/quizzes/${quiz.id}`}
+                className="group relative grid gap-4 rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_90px_rgba(15,23,42,0.1)] sm:grid-cols-[1fr_auto]"
               >
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-xl font-semibold">{quiz.title}</h2>
-                    <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
-                      {quiz.status}
-                    </span>
+                <Link
+                  className="contents"
+                  href={`/dashboard/quizzes/${quiz.id}`}
+                >
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-xl font-semibold">{quiz.title}</h2>
+                      <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
+                        {quiz.status}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-[#61708c]">
+                      {quiz.description || "Sem descricao ainda."}
+                    </p>
                   </div>
-                  <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                    {quiz.description || "Sem descricao ainda."}
-                  </p>
+                  <div className="text-sm text-[#7b879a]">
+                    Atualizado em{" "}
+                    {new Intl.DateTimeFormat("pt-BR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    }).format(quiz.updatedAt)}
+                  </div>
+                </Link>
+                <div className="absolute right-4 top-4">
+                  <DeleteQuizButton
+                    deleteAction={deleteQuiz}
+                    quizId={quiz.id}
+                    quizTitle={quiz.title}
+                  />
                 </div>
-                <div className="text-sm text-[#7b879a]">
-                  Atualizado em{" "}
-                  {new Intl.DateTimeFormat("pt-BR", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  }).format(quiz.updatedAt)}
-                </div>
-              </Link>
+              </div>
             ))
           )}
         </section>

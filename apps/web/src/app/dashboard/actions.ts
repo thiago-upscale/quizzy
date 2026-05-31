@@ -7,6 +7,7 @@ import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
 import {
   answers,
+  attempts,
   participants,
   questions,
   quizzes,
@@ -854,4 +855,82 @@ export async function getSessionParticipantsForDashboard(sessionId: string) {
     })
     .from(participants)
     .where(eq(participants.sessionId, sessionId));
+}
+
+export async function deleteQuiz(formData: FormData) {
+  const session = await requireAuthSession();
+  const quizId = String(formData.get("quizId") ?? "");
+
+  if (!quizId) {
+    throw new Error("Quiz invalido.");
+  }
+
+  const [existingQuiz] = await db
+    .select({ id: quizzes.id })
+    .from(quizzes)
+    .where(
+      and(
+        eq(quizzes.id, quizId),
+        eq(quizzes.organizationId, session.user.organizationId),
+      ),
+    )
+    .limit(1);
+
+  if (!existingQuiz) {
+    throw new Error("Quiz nao encontrado.");
+  }
+
+  // Fetch all sessions for this quiz to cascade delete dependents
+  const sessionRows = await db
+    .select({ id: quizSessions.id })
+    .from(quizSessions)
+    .where(eq(quizSessions.quizId, quizId));
+
+  const sessionIds = sessionRows.map((s) => s.id);
+
+  await db.transaction(async (tx) => {
+    if (sessionIds.length > 0) {
+      // Delete answers linked to these sessions
+      await tx.delete(answers).where(inArray(answers.sessionId, sessionIds));
+
+      // Fetch participants to delete their attempts
+      const participantRows = await tx
+        .select({ id: participants.id })
+        .from(participants)
+        .where(inArray(participants.sessionId, sessionIds));
+
+      const participantIds = participantRows.map((p) => p.id);
+
+      if (participantIds.length > 0) {
+        await tx
+          .delete(attempts)
+          .where(inArray(attempts.participantId, participantIds));
+        await tx
+          .delete(participants)
+          .where(inArray(participants.id, participantIds));
+      }
+
+      // Delete session events
+      await tx
+        .delete(sessionEvents)
+        .where(inArray(sessionEvents.sessionId, sessionIds));
+
+      // Delete sessions
+      await tx
+        .delete(quizSessions)
+        .where(inArray(quizSessions.id, sessionIds));
+    }
+
+    // Delete quiz versions
+    await tx.delete(quizVersions).where(eq(quizVersions.quizId, quizId));
+
+    // Delete questions
+    await tx.delete(questions).where(eq(questions.quizId, quizId));
+
+    // Delete the quiz itself
+    await tx.delete(quizzes).where(eq(quizzes.id, quizId));
+  });
+
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
 }
