@@ -1692,11 +1692,12 @@ io.on("connection", (socket) => {
         connectedCount: getConnectedParticipantCount(room),
         participants: serializeParticipants(room),
       });
+      const connectedCount = getConnectedParticipantCount(room);
       io.to(pin).emit("question:stats", {
         questionId: currentQuestion.id,
         questionOrderIndex: currentQuestion.orderIndex,
         submittedCount: questionAnswers.size,
-        totalParticipants: getConnectedParticipantCount(room),
+        totalParticipants: connectedCount,
       });
       io.to(pin).emit("leaderboard:update", {
         entries: buildLeaderboard(room, currentQuestion),
@@ -1716,6 +1717,21 @@ io.on("connection", (socket) => {
         },
         "answer.accepted",
       );
+
+      if (
+        connectedCount > 0 &&
+        questionAnswers.size >= connectedCount &&
+        room.status === "playing"
+      ) {
+        if (closeQuestion(io, { pin, room }) && room.sessionId) {
+          void notifyWebOfStateChange({
+            pin,
+            questionIndex: room.currentQuestionIndex ?? 0,
+            sessionId: room.sessionId,
+            status: "question_result",
+          });
+        }
+      }
 
       if (room.sessionId) {
         queuePersistAnswer({
