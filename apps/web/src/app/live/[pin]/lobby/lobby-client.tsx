@@ -874,39 +874,41 @@ export function LobbyClient({
             ) : null}
 
             {sessionState.status === "finished" ? (
-              <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                  Resultado final
-                </p>
-                <h2 className="mt-3 text-3xl font-semibold">
-                  Sessao encerrada
+              <div className="mt-8 rounded-[2rem] bg-white/10 p-8 text-center">
+                <p className="text-4xl">🏆</p>
+                <h2 className="mt-4 text-3xl font-bold">
+                  Agradecemos a participação!
                 </h2>
-                <p className="mt-3 text-sm leading-7 text-white/75">
-                  O ranking final ja esta consolidado. Obrigado por jogar.
-                </p>
+                <p className="mt-2 text-sm text-white/60">{quizTitle}</p>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white/10 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                      Sua posicao
-                    </p>
-                    <p className="mt-2 text-sm font-semibold">
-                      {personalStanding
-                        ? `${personalStanding.rank}o lugar`
-                        : "Posicao indisponivel"}
-                    </p>
+                {personalStanding ? (
+                  <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-white/10 px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
+                        Posição final
+                      </p>
+                      <p className="mt-2 text-3xl font-black">
+                        {personalStanding.rank}º
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/10 px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
+                        Pontuação
+                      </p>
+                      <p className="mt-2 text-3xl font-black">
+                        {personalStanding.score}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/10 px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
+                        Tempo total
+                      </p>
+                      <p className="mt-2 text-3xl font-black">
+                        {formatDuration(personalStanding.totalTimeMs)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-2xl bg-white/10 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                      Pontuacao final
-                    </p>
-                    <p className="mt-2 text-sm font-semibold">
-                      {personalStanding
-                        ? `${personalStanding.score} pontos em ${formatDuration(personalStanding.totalTimeMs)}`
-                        : "Sem pontuacao registrada"}
-                    </p>
-                  </div>
-                </div>
+                ) : null}
               </div>
             ) : null}
 

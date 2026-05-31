@@ -41,6 +41,11 @@ type SessionState = {
   countdownSeconds: number | null;
 };
 
+type QuestionStat = {
+  correctCount: number;
+  submittedCount: number;
+};
+
 const OPTION_STYLES = [
   { bg: "#e21b3c", icon: "▲" },
   { bg: "#1368ce", icon: "◆" },
@@ -101,6 +106,8 @@ export function DisplayClient({
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [submittedCount, setSubmittedCount] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
+  const [showSummary, setShowSummary] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -137,6 +144,13 @@ export function DisplayClient({
       setCurrentResult(payload.result);
       setRemainingSeconds(0);
       if (timerRef.current) clearInterval(timerRef.current);
+      setQuestionStats((prev) => [
+        ...prev,
+        {
+          correctCount: payload.result.correctCount,
+          submittedCount: payload.result.submittedCount,
+        },
+      ]);
     });
 
     socket.on(
@@ -182,9 +196,75 @@ export function DisplayClient({
     };
   }, [currentQuestion, sessionState.status]);
 
-  // ── FINISHED — podium ────────────────────────────────────────────────────────
+  // ── FINISHED — podium + summary ─────────────────────────────────────────────
   if (sessionState.status === "finished") {
     const top3 = leaderboard.slice(0, 3);
+
+    // Session summary calculations
+    const totalAnswered = questionStats.reduce((s, q) => s + q.submittedCount, 0);
+    const totalCorrect = questionStats.reduce((s, q) => s + q.correctCount, 0);
+    const pctCorrect = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+    const hardQuestions = questionStats.filter(
+      (q) => q.submittedCount > 0 && q.correctCount / q.submittedCount < 0.5,
+    ).length;
+    const insight =
+      pctCorrect >= 80
+        ? "A maioria dos participantes respondeu corretamente. Excelente desempenho!"
+        : pctCorrect >= 50
+          ? "A turma foi bem! Algumas perguntas geraram mais dúvidas."
+          : "As perguntas foram desafiadoras. Vale revisar o conteúdo.";
+
+    if (showSummary) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-10 bg-[#0d1b2a] px-12 py-10">
+          <div className="w-full max-w-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-black text-white">Resumo da sessão</h2>
+              <button
+                className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+                onClick={() => setShowSummary(false)}
+                type="button"
+              >
+                ← Pódio
+              </button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white/10 p-6 text-center">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white/10 text-3xl font-black text-white ring-4 ring-white/20">
+                  {pctCorrect}%
+                </div>
+                <p className="mt-3 text-sm font-semibold text-white/70">
+                  Respostas corretas
+                </p>
+                <p className="mt-1 text-lg font-bold text-white">
+                  {pctCorrect >= 80 ? "Grande desempenho!" : pctCorrect >= 50 ? "Bom esforço!" : "Pode melhorar!"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white/10 p-6 text-center">
+                <div
+                  className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black text-white ring-4 ring-white/20"
+                  style={{ backgroundColor: hardQuestions > 0 ? "#e21b3c" : "#26890c" }}
+                >
+                  {hardQuestions}
+                </div>
+                <p className="mt-3 text-sm font-semibold text-white/70">
+                  Perguntas difíceis
+                </p>
+                <p className="mt-1 text-lg font-bold text-white">
+                  {hardQuestions === 0 ? "A prática leva à perfeição!" : `${hardQuestions} pergunta${hardQuestions > 1 ? "s" : ""} com menos de 50% de acertos`}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-white p-6 text-center">
+              <p className="text-xl font-semibold text-[#0d1b2a]">{insight}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="relative flex flex-1 flex-col items-center justify-end overflow-hidden bg-[#0d1b2a] pb-0">
@@ -213,6 +293,15 @@ export function DisplayClient({
           <div className="mt-3 rounded-xl bg-white px-8 py-3 shadow-lg">
             <p className="text-xl font-black text-[#0d1b2a]">{quizTitle}</p>
           </div>
+          {questionStats.length > 0 && (
+            <button
+              className="mt-4 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+              onClick={() => setShowSummary(true)}
+              type="button"
+            >
+              Resumo da sessão →
+            </button>
+          )}
         </div>
 
         {/* Podium */}

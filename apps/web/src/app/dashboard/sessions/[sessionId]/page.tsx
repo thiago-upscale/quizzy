@@ -13,7 +13,7 @@ import {
   sessionEvents,
 } from "@/db/schema";
 import { getSessionReport } from "@/lib/session-report";
-import { advanceLiveSession, startLiveSession } from "../../actions";
+import { advanceLiveSession, restartLiveSession, startLiveSession } from "../../actions";
 import { HostSessionPanel } from "./host-session-panel";
 import { ReportSection } from "./report-section";
 
@@ -164,6 +164,7 @@ export default async function SessionDetailPage({
             publicUrl={publicUrl}
             qrCodeDataUrl={qrCodeDataUrl}
             realtimeUrl={env.REALTIME_URL}
+            restartAction={restartLiveSession}
             sessionId={quizSession.id}
             sessionStatus={quizSession.status}
             startAction={startLiveSession}

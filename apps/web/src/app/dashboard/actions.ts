@@ -812,6 +812,34 @@ export async function advanceLiveSession(
   };
 }
 
+export async function restartLiveSession(
+  _state: StartLiveSessionState,
+  formData: FormData,
+): Promise<StartLiveSessionState> {
+  const sessionId = String(formData.get("sessionId") ?? "");
+  const session = await requireAuthSession();
+
+  const [quizSession] = await db
+    .select({ quizId: quizSessions.quizId })
+    .from(quizSessions)
+    .where(
+      and(
+        eq(quizSessions.id, sessionId),
+        eq(quizSessions.hostId, session.user.id),
+      ),
+    )
+    .limit(1);
+
+  if (!quizSession) {
+    return { status: "error", message: "Sessao nao encontrada." };
+  }
+
+  const proxyFormData = new FormData();
+  proxyFormData.set("quizId", quizSession.quizId);
+  await createLiveSession(proxyFormData);
+  return { status: "idle" };
+}
+
 export async function getSessionParticipantsForDashboard(sessionId: string) {
   await requireAuthSession();
 

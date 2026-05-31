@@ -100,6 +100,7 @@ export function HostSessionPanel({
   publicUrl,
   qrCodeDataUrl,
   realtimeUrl,
+  restartAction,
   sessionId,
   sessionStatus,
   startAction,
@@ -113,6 +114,10 @@ export function HostSessionPanel({
   publicUrl: string;
   qrCodeDataUrl: string;
   realtimeUrl: string;
+  restartAction: (
+    state: StartLiveSessionState,
+    formData: FormData,
+  ) => Promise<StartLiveSessionState>;
   sessionId: string;
   sessionStatus: string;
   startAction: (
@@ -167,6 +172,10 @@ export function HostSessionPanel({
   );
   const [advanceState, advanceFormAction] = useActionState(
     advanceAction,
+    initialActionState,
+  );
+  const [restartState, restartFormAction] = useActionState(
+    restartAction,
     initialActionState,
   );
 
@@ -439,6 +448,12 @@ export function HostSessionPanel({
             </p>
           ) : null}
 
+          {restartState.status === "error" ? (
+            <p className="rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-medium text-[#b42318]">
+              {restartState.message}
+            </p>
+          ) : null}
+
           {reconnectNote ? (
             <p className="rounded-2xl bg-[#eff6ff] px-4 py-3 text-sm font-medium text-[#1d4ed8]">
               {reconnectNote}
@@ -469,6 +484,18 @@ export function HostSessionPanel({
                 {nextButtonLabel}
               </button>
             </form>
+
+            {status === "finished" ? (
+              <form action={restartFormAction}>
+                <input name="sessionId" type="hidden" value={sessionId} />
+                <button
+                  className="rounded-full bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0d6460]"
+                  type="submit"
+                >
+                  Recomeçar
+                </button>
+              </form>
+            ) : null}
           </div>
         </div>
       </article>
