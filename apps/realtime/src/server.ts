@@ -1499,6 +1499,21 @@ io.on("connection", (socket) => {
         connectedCount: getConnectedParticipantCount(room),
         participants: serializeParticipants(room),
       });
+      socket.emit("session:state", buildSessionStatePayload(room));
+      socket.emit("leaderboard:update", { entries: buildLeaderboard(room) });
+      if (room.status === "playing") {
+        const currentQuestion = serializeCurrentQuestion(room);
+        if (currentQuestion) {
+          socket.emit("session:question", { question: currentQuestion });
+        }
+        const questionStats = getQuestionStats(room);
+        if (questionStats) {
+          socket.emit("question:stats", questionStats);
+        }
+      }
+      if (room.status === "question_result" && room.currentQuestionResult) {
+        socket.emit("question:result", { result: room.currentQuestionResult });
+      }
     },
   );
 
