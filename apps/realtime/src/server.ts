@@ -1486,6 +1486,23 @@ io.on("connection", (socket) => {
   );
 
   socket.on(
+    "display:watch",
+    async (payload: { pin?: string }) => {
+      const pin = payload.pin?.trim();
+      if (!pin) return;
+      await socket.join(pin);
+      const room = await ensureRoomHydrated(io, {
+        pin,
+        room: getOrCreateRoom(pin),
+      });
+      socket.emit("participant:list", {
+        connectedCount: getConnectedParticipantCount(room),
+        participants: serializeParticipants(room),
+      });
+    },
+  );
+
+  socket.on(
     "host:watch",
     async (payload: { pin?: string; sessionId?: string }) => {
       const pin = payload.pin?.trim();
