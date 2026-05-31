@@ -9,6 +9,13 @@ import {
   sessionEvents,
 } from "@/db/schema";
 import { env } from "@/env";
+import {
+  EmptyStateCard,
+  MetricCard,
+  SectionHeading,
+  StatusAlert,
+  SurfaceCard,
+} from "@/components/phase-one-ui";
 import { createQuiz } from "./actions";
 import { SignOutButton } from "./sign-out-button";
 
@@ -234,142 +241,117 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_#f7fafc_0%,_#eef7ff_100%)] px-6 py-8 text-[#132238]">
       <div className="mx-auto w-full max-w-6xl">
-        <header className="flex flex-col gap-4 rounded-[2rem] border border-white/70 bg-white/70 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-              Dashboard
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold">
-              Operacao do Quizzy, dos quizzes ao que esta rodando agora.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
-              Logado como {session.user.name} em {session.user.email}.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              className="rounded-full border border-[#cad5e3] px-5 py-3 text-sm font-semibold text-[#18202f] transition hover:bg-white"
-              href="/dashboard/account"
-            >
-              Conta
-            </Link>
-            <form action={createQuiz}>
-              <button
-                className="rounded-full bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59]"
-                type="submit"
+        <header className="rounded-[2rem] border border-white/70 bg-white/72 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
+                Dashboard
+              </p>
+              <h1 className="mt-3 max-w-4xl text-4xl font-semibold">
+                Operacao do Quizzy, dos quizzes ao que esta rodando agora.
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
+                Logado como {session.user.name} em {session.user.email}. Use
+                esta visao para abrir novas sessoes, acompanhar sinais do
+                realtime e detectar o que pede atencao agora.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                className="rounded-full border border-[var(--quizzy-border)] px-5 py-3 text-sm font-semibold text-[var(--quizzy-navy)] transition hover:bg-white"
+                href="/dashboard/account"
               >
-                Novo quiz
-              </button>
-            </form>
-            <SignOutButton />
+                Conta
+              </Link>
+              <form action={createQuiz}>
+                <button
+                  className="rounded-full bg-[var(--quizzy-teal)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59]"
+                  type="submit"
+                >
+                  Novo quiz
+                </button>
+              </form>
+              <SignOutButton />
+            </div>
           </div>
         </header>
 
         <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Quizzes publicados
-            </p>
-            <p className="mt-3 text-4xl font-semibold text-[#132238]">
-              {publishedQuizzes.length}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-[#61708c]">
-              {quizList.length} quizzes no total na organizacao.
-            </p>
-          </article>
-
-          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Sessoes live ativas
-            </p>
-            <p className="mt-3 text-4xl font-semibold text-[#132238]">
-              {activeLiveSessions.length}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-[#61708c]">
-              {activeParticipants} participantes registrados nas sessoes
-              abertas.
-            </p>
-          </article>
-
-          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Sessoes individuais abertas
-            </p>
-            <p className="mt-3 text-4xl font-semibold text-[#132238]">
-              {openIndividualSessions.length}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-[#61708c]">
-              Links ainda ativos para tentativas assincronas.
-            </p>
-          </article>
-
-          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Atencao operacional
-            </p>
-            <p className="mt-3 text-4xl font-semibold text-[#132238]">
-              {interruptedSessions.length}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-[#61708c]">
-              Sessoes interrompidas aguardando retomada do host.
-            </p>
-          </article>
+          <MetricCard
+            helper={`${quizList.length} quizzes no total na organizacao.`}
+            label="Quizzes publicados"
+            value={publishedQuizzes.length}
+          />
+          <MetricCard
+            accent="teal"
+            helper={`${activeParticipants} participantes registrados nas sessoes abertas.`}
+            label="Sessoes live ativas"
+            value={activeLiveSessions.length}
+          />
+          <MetricCard
+            helper="Links ainda ativos para tentativas assincronas."
+            label="Sessoes individuais abertas"
+            value={openIndividualSessions.length}
+          />
+          <MetricCard
+            accent={interruptedSessions.length > 0 ? "amber" : "navy"}
+            helper="Sessoes interrompidas aguardando retomada do host."
+            label="Atencao operacional"
+            value={interruptedSessions.length}
+          />
         </section>
 
-        <section className="mt-4 rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Observabilidade minima
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-                Saude do realtime para o beta
-              </h2>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                  realtimeHealth.status === "healthy"
-                    ? "bg-[#ecfdf3] text-[#0f766e]"
-                    : "bg-[#fef2f2] text-[#b91c1c]"
-                }`}
-              >
-                {realtimeHealth.status === "healthy"
-                  ? "realtime online"
-                  : "realtime degradado"}
-              </span>
-              <span className="text-sm text-[#61708c]">
-                Checado em {formatDate(realtimeHealth.checkedAt)}
-              </span>
-            </div>
+        <SurfaceCard className="mt-4">
+          <SectionHeading
+            eyebrow="Observabilidade minima"
+            helper="A leitura do realtime precisa ficar obvia para o host antes de virar problema de operacao."
+            title="Saude do realtime para o beta"
+            trailing={
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                    realtimeHealth.status === "healthy"
+                      ? "bg-[#ecfdf3] text-[#0f766e]"
+                      : "bg-[#fef2f2] text-[#b91c1c]"
+                  }`}
+                >
+                  {realtimeHealth.status === "healthy"
+                    ? "realtime online"
+                    : "realtime degradado"}
+                </span>
+                <span className="text-sm text-[#61708c]">
+                  Checado em {formatDate(realtimeHealth.checkedAt)}
+                </span>
+              </div>
+            }
+          />
+          <div className="mt-5">
+            <StatusAlert tone={realtimeHealth.status === "healthy" ? "success" : "warning"}>
+              {realtimeHealth.label}. Falhas de sincronizacao de inicio e avanco
+              da sessao tambem ficam registradas no historico operacional.
+            </StatusAlert>
           </div>
-          <p className="mt-4 text-sm leading-7 text-[#61708c]">
-            {realtimeHealth.label}. Falhas de sincronizacao de inicio e avanco
-            da sessao agora tambem ficam registradas no historico operacional.
-          </p>
-        </section>
+        </SurfaceCard>
 
         <section className="mt-8 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-          <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Sessoes que pedem atencao
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-                  Operacao viva agora
-                </h2>
-              </div>
-              <span className="rounded-full bg-[#f8fbff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                {sessionsNeedingAttention.length} exibidas
-              </span>
-            </div>
+          <SurfaceCard>
+            <SectionHeading
+              eyebrow="Sessoes que pedem atencao"
+              helper="Priorize o que esta em andamento, interrompido ou precisando de decisao do host."
+              title="Operacao viva agora"
+              trailing={
+                <span className="rounded-full bg-[#f8fbff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                  {sessionsNeedingAttention.length} exibidas
+                </span>
+              }
+            />
 
             <div className="mt-6 space-y-4">
               {sessionsNeedingAttention.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#d7e3f0] bg-[#f8fbff] p-6 text-sm leading-7 text-[#61708c]">
-                  Nenhuma sessao ativa exigindo acompanhamento imediato.
-                </div>
+                <EmptyStateCard
+                  description="Nenhuma sessao ativa exigindo acompanhamento imediato. Quando algo pedir acao do host, este bloco passa a priorizar a leitura."
+                  title="Sem alerta operacional agora"
+                />
               ) : (
                 sessionsNeedingAttention.map((sessionItem) => {
                   const latestEvent = latestEventBySession.get(sessionItem.id);
@@ -437,21 +419,21 @@ export default async function DashboardPage() {
                 })
               )}
             </div>
-          </article>
+          </SurfaceCard>
 
-          <aside className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Atividade recente
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-              Ultimos sinais da plataforma
-            </h2>
+          <SurfaceCard>
+            <SectionHeading
+              eyebrow="Atividade recente"
+              helper="Use o historico recente para verificar sinais de entrada, avanco e incidentes antes de abrir a sessao."
+              title="Ultimos sinais da plataforma"
+            />
 
             <div className="mt-6 space-y-4">
               {recentEvents.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#d7e3f0] bg-[#f8fbff] p-6 text-sm leading-7 text-[#61708c]">
-                  Ainda nao temos eventos recentes nesta organizacao.
-                </div>
+                <EmptyStateCard
+                  description="Assim que a organizacao acumular sessoes, esta area passa a mostrar os ultimos eventos relevantes da plataforma."
+                  title="Ainda nao temos eventos recentes nesta organizacao"
+                />
               ) : (
                 recentEvents.map((event) => (
                   <Link
@@ -483,44 +465,38 @@ export default async function DashboardPage() {
                 ))
               )}
             </div>
-          </aside>
+          </SurfaceCard>
         </section>
 
         <section className="mt-8">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Biblioteca de quizzes
+          <SectionHeading
+            eyebrow="Biblioteca de quizzes"
+            helper="Biblioteca pronta para abrir um rascunho, publicar de novo ou iniciar uma nova sessao a partir de um quiz existente."
+            title="Rascunhos e publicacoes"
+            trailing={
+              <p className="text-sm text-[#61708c]">
+                {quizList.length} itens atualizados recentemente.
               </p>
-              <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-                Rascunhos e publicacoes
-              </h2>
-            </div>
-            <p className="text-sm text-[#61708c]">
-              {quizList.length} itens atualizados recentemente.
-            </p>
-          </div>
+            }
+          />
         </section>
 
         <section className="mt-4 grid gap-4">
           {quizList.length === 0 ? (
-            <div className="rounded-[2rem] border border-dashed border-[#c8d4e4] bg-white/80 p-10 text-center shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
-              <h2 className="text-2xl font-semibold">
-                Nenhum quiz criado ainda
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                Comecamos com um rascunho automaticamente quando voce cria o
-                primeiro quiz.
-              </p>
-              <form action={createQuiz} className="mt-6">
-                <button
-                  className="rounded-full bg-[#10233f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d3557]"
-                  type="submit"
-                >
-                  Criar primeiro quiz
-                </button>
-              </form>
-            </div>
+            <EmptyStateCard
+              action={
+                <form action={createQuiz}>
+                  <button
+                    className="rounded-full bg-[#10233f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d3557]"
+                    type="submit"
+                  >
+                    Criar primeiro quiz
+                  </button>
+                </form>
+              }
+              description="Com a cara da sua empresa: adicione logo, cores e fontes para publicar o primeiro quiz e depois abrir uma sessao live ou individual."
+              title="Crie seu primeiro quiz"
+            />
           ) : (
             quizList.map((quiz) => (
               <Link

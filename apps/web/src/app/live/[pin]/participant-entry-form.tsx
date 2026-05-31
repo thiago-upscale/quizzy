@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { StatusAlert } from "@/components/phase-one-ui";
 import type { JoinLiveState } from "../actions";
 
 const initialState: JoinLiveState = {
@@ -24,15 +25,17 @@ export function ParticipantEntryForm({
       <input name="pin" type="hidden" value={pin} />
 
       {state.status === "error" ? (
-        <p className="rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-medium text-[#b42318]">
+        <StatusAlert tone="error">
           {state.message}
-        </p>
+        </StatusAlert>
       ) : null}
 
       <label className="block space-y-2">
-        <span className="text-sm font-medium text-white/80">Nickname</span>
+        <span className="text-sm font-medium text-[var(--quizzy-muted)]">
+          Nickname
+        </span>
         <input
-          className="w-full rounded-2xl border border-white/15 bg-white/92 px-5 py-4 text-base text-[#10233f] outline-none"
+          className="w-full rounded-[1.35rem] border border-[var(--quizzy-border)] bg-[color:color-mix(in_srgb,var(--quizzy-surface)_65%,white)] px-5 py-4 text-base text-[var(--quizzy-navy)] outline-none transition focus:border-[var(--quizzy-teal)]"
           maxLength={20}
           name="nickname"
           placeholder="Seu nome na sala"
@@ -41,19 +44,29 @@ export function ParticipantEntryForm({
       </label>
 
       <label className="block space-y-2">
-        <span className="text-sm font-medium text-white/80">
+        <span className="text-sm font-medium text-[var(--quizzy-muted)]">
           Email opcional
         </span>
         <input
-          className="w-full rounded-2xl border border-white/15 bg-white/92 px-5 py-4 text-base text-[#10233f] outline-none"
+          className="w-full rounded-[1.35rem] border border-[var(--quizzy-border)] bg-[color:color-mix(in_srgb,var(--quizzy-surface)_65%,white)] px-5 py-4 text-base text-[var(--quizzy-navy)] outline-none transition focus:border-[var(--quizzy-teal)]"
           name="email"
           placeholder="voce@empresa.com"
           type="email"
         />
       </label>
 
+      <div className="rounded-[1.35rem] border border-[var(--quizzy-border)] bg-[color:color-mix(in_srgb,var(--quizzy-surface)_72%,white)] px-4 py-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-muted)]">
+          Antes de continuar
+        </p>
+        <p className="mt-2 text-sm leading-6 text-[var(--quizzy-muted)]">
+          Seu nome fica visivel para o host e para o ranking da sala. Se voce
+          perder a conexao, o sistema tenta preservar seu progresso.
+        </p>
+      </div>
+
       <button
-        className="w-full rounded-full bg-[#f59e0b] px-5 py-4 text-sm font-semibold text-[#10233f] transition hover:bg-[#fbbf24]"
+        className="w-full rounded-full bg-[var(--quizzy-accent)] px-5 py-4 text-sm font-semibold text-[var(--quizzy-navy)] transition hover:bg-[#f7b338]"
         type="submit"
       >
         Entrar na sala

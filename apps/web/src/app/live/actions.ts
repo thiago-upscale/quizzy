@@ -84,7 +84,7 @@ export async function joinLiveSession(
 
   const liveSession = await getLiveSessionByPin(pin);
 
-  if (!liveSession || !isJoinableLiveStatus(liveSession.status)) {
+  if (!liveSession) {
     const failedAttempts = registerFailedPinEntry(clientIdentifier);
 
     logger.warn(
@@ -92,13 +92,38 @@ export async function joinLiveSession(
         clientIdentifier,
         failedAttempts,
         pin,
-        reason: "session_unavailable",
+        reason: "session_not_found",
       },
       "pin.entry_failed",
     );
 
     return {
-      message: "Essa sessao nao esta disponivel para entrada agora.",
+      message: "PIN invalido. Verifique os 6 digitos com o host.",
+      status: "error",
+    };
+  }
+
+  if (!isJoinableLiveStatus(liveSession.status)) {
+    const failedAttempts = registerFailedPinEntry(clientIdentifier);
+
+    logger.warn(
+      {
+        clientIdentifier,
+        failedAttempts,
+        pin,
+        reason: "session_closed_for_entry",
+        status: liveSession.status,
+      },
+      "pin.entry_failed",
+    );
+
+    return {
+      message:
+        liveSession.status === "finished"
+          ? "Essa sessao encerrou. Se o quiz continua, peca um novo PIN ao host."
+          : liveSession.status === "interrupted"
+            ? "A sala esta em pausa operacional. Aguarde o host retomar a sessao."
+            : "Essa sessao nao esta aceitando novas entradas agora.",
       status: "error",
     };
   }
@@ -116,7 +141,8 @@ export async function joinLiveSession(
 
   if (existingNickname.length > 0) {
     return {
-      message: "Esse nickname ja esta em uso nesta sessao.",
+      message:
+        "Esse nickname ja esta em uso nesta sessao. Tente uma variacao para entrar sem conflito.",
       status: "error",
     };
   }
@@ -141,7 +167,7 @@ export async function joinLiveSession(
 
   if (!participant) {
     return {
-      message: "Nao foi possivel entrar na sessao agora.",
+      message: "Nao foi possivel conectar. Tente novamente.",
       status: "error",
     };
   }

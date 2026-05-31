@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { StatusAlert } from "@/components/phase-one-ui";
 import { io, type Socket } from "socket.io-client";
 
 type Participant = {
@@ -192,6 +193,7 @@ export function LobbyClient({
   const socketRef = useRef<Socket | null>(null);
   const animatedScoreRef = useRef(participant.score);
   const previousLeaderboardRef = useRef<LeaderboardEntry[]>([]);
+  const playerCurrentStreakRef = useRef(participant.currentStreak);
 
   const roomLabel = useMemo(() => {
     if (sessionState.status === "finished") {
@@ -232,6 +234,10 @@ export function LobbyClient({
   useEffect(() => {
     animatedScoreRef.current = animatedScore;
   }, [animatedScore]);
+
+  useEffect(() => {
+    playerCurrentStreakRef.current = playerCurrentStreak;
+  }, [playerCurrentStreak]);
 
   useEffect(() => {
     if (sessionState.status !== "countdown" || !sessionState.countdownSeconds) {
@@ -300,9 +306,7 @@ export function LobbyClient({
 
   useEffect(() => {
     const targetScore = personalStanding?.score ?? participant.score;
-
     if (prefersReducedMotion) {
-      setAnimatedScore(targetScore);
       return;
     }
 
@@ -495,12 +499,14 @@ export function LobbyClient({
         setAnswerState({
           accepted: true,
           answerIndex: payload.answerIndex ?? null,
-          currentStreak: payload.currentStreak ?? playerCurrentStreak,
+          currentStreak: payload.currentStreak ?? playerCurrentStreakRef.current,
           isCorrect: payload.isCorrect ?? null,
           pointsEarned: payload.pointsEarned ?? 0,
           submitted: true,
         });
-        setPlayerCurrentStreak(payload.currentStreak ?? playerCurrentStreak);
+        setPlayerCurrentStreak(
+          payload.currentStreak ?? playerCurrentStreakRef.current,
+        );
       },
     );
 
@@ -519,6 +525,10 @@ export function LobbyClient({
     pin,
     realtimeUrl,
   ]);
+
+  const displayedScore = prefersReducedMotion
+    ? (personalStanding?.score ?? participant.score)
+    : animatedScore;
 
   function submitAnswer(answerIndex: number) {
     if (
@@ -615,7 +625,7 @@ export function LobbyClient({
                   Sua pontuacao
                 </p>
                 <p className="mt-2 text-2xl font-semibold">
-                  {animatedScore} pontos
+                  {displayedScore} pontos
                 </p>
               </div>
               <div className="rounded-2xl bg-white/10 px-4 py-3">
@@ -642,6 +652,15 @@ export function LobbyClient({
                 )}
               </div>
             </div>
+
+            {!socketConnected ? (
+              <div className="mt-6">
+                <StatusAlert tone="warning">
+                  Reconectando... sua sessao continua preservada enquanto o
+                  canal realtime tenta retomar a conexao.
+                </StatusAlert>
+              </div>
+            ) : null}
 
             {sessionState.status === "countdown" ? (
               <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6 text-center">
@@ -694,8 +713,8 @@ export function LobbyClient({
                         key={`${currentQuestion.id}-${optionIndex}`}
                         className={
                           isChosen
-                            ? "scale-[1.03] rounded-2xl bg-white px-4 py-4 text-left text-sm font-semibold text-[#10233f] transition"
-                            : "rounded-2xl bg-white/10 px-4 py-4 text-left text-sm font-medium text-white transition hover:bg-white/20"
+                            ? "min-h-14 scale-[1.03] rounded-2xl bg-white px-4 py-4 text-left text-sm font-semibold text-[#10233f] transition"
+                            : "min-h-14 rounded-2xl bg-white/10 px-4 py-4 text-left text-sm font-medium text-white transition hover:bg-white/20"
                         }
                         disabled={
                           answerState.submitted ||
@@ -846,7 +865,7 @@ export function LobbyClient({
                     </p>
                     <p className="mt-2 text-sm font-semibold">
                       {personalStanding
-                        ? `${personalStanding.rank}o lugar com ${animatedScore} pontos`
+                        ? `${personalStanding.rank}o lugar com ${displayedScore} pontos`
                         : "Atualizando classificacao"}
                     </p>
                   </div>
@@ -924,10 +943,12 @@ export function LobbyClient({
 
             <div className="mt-6 space-y-3">
               {leaderboardToRender.length === 0 ? (
-                <p className="text-sm leading-7 text-white/75">
-                  O ranking aparece assim que a rodada comecar e as primeiras
-                  respostas forem chegando.
-                </p>
+                <div className="rounded-2xl bg-white/10 px-4 py-4">
+                  <p className="text-sm leading-7 text-white/75">
+                    O ranking aparece assim que a rodada comecar e as primeiras
+                    respostas forem chegando.
+                  </p>
+                </div>
               ) : (
                 leaderboardToRender.slice(0, 5).map((entry) => (
                   <div
@@ -1004,7 +1025,13 @@ export function LobbyClient({
                         <p className="text-xs text-white/65">
                           {currentParticipant.score} pontos
                         </p>
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">
+                        <span
+                          className={
+                            currentParticipant.presenceStatus === "online"
+                              ? "text-[10px] font-semibold uppercase tracking-[0.14em] text-[#dfff4f]"
+                              : "text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55"
+                          }
+                        >
                           {currentParticipant.presenceStatus}
                         </span>
                       </div>
