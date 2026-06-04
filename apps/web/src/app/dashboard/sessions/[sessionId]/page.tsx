@@ -103,7 +103,7 @@ export default async function SessionDetailPage({
       : null;
 
   const publicUrl = quizSession.pin
-    ? `${env.NEXTAUTH_URL}/live/${quizSession.pin}`
+    ? `${env.NEXTAUTH_URL}/live/${quizSession.pin}/display`
     : null;
   const qrCodeDataUrl = publicUrl
     ? await QRCode.toDataURL(publicUrl, {
