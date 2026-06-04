@@ -52,18 +52,18 @@ function formatEventType(eventType: string) {
 
 function getSessionStatusTone(status: string) {
   if (status === "interrupted") {
-    return "bg-[#fef2f2] text-[#b91c1c]";
+    return "bg-[color:color-mix(in_srgb,var(--quizzy-warning)_10%,white)] text-[var(--quizzy-warning)]";
   }
 
   if (status === "playing" || status === "question_result") {
-    return "bg-[#ecfdf3] text-[#0f766e]";
+    return "bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] text-[var(--quizzy-success)]";
   }
 
   if (status === "countdown") {
-    return "bg-[#eff6ff] text-[#1d4ed8]";
+    return "bg-[color:color-mix(in_srgb,var(--quizzy-navy)_10%,white)] text-[var(--quizzy-navy)]";
   }
 
-  return "bg-[#f8fafc] text-[#475569]";
+  return "bg-[var(--quizzy-surface)] text-[var(--quizzy-muted)]";
 }
 
 type SessionEventSummary = {
@@ -240,38 +240,40 @@ export default async function DashboardPage() {
     .slice(0, 6);
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,_#f7fafc_0%,_#eef7ff_100%)] px-6 py-8 text-[#132238]">
+    <main className="min-h-screen bg-[var(--quizzy-surface)] px-6 py-8 text-[var(--quizzy-text)]">
       <div className="mx-auto w-full max-w-6xl">
-        <header className="rounded-[2rem] border border-white/70 bg-white/72 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <header className="rounded-[2rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-8 shadow-[0_8px_30px_rgba(16,35,63,0.04)]">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--quizzy-teal)]">
                 Dashboard
               </p>
               <h1 className="mt-3 max-w-4xl text-4xl font-semibold">
                 Operacao do Quizzy, dos quizzes ao que esta rodando agora.
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
-                Logado como {session.user.name} em {session.user.email}. Use
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--quizzy-muted)]">
+                Logado como {session.user.name?.toUpperCase()} em {session.user.email}. Use
                 esta visao para abrir novas sessoes, acompanhar sinais do
                 realtime e detectar o que pede atencao agora.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                className="rounded-full border border-[var(--quizzy-border)] px-5 py-3 text-sm font-semibold text-[var(--quizzy-navy)] transition hover:bg-white"
-                href="/dashboard/account"
-              >
-                Conta
-              </Link>
-              <form action={createQuiz}>
-                <button
-                  className="rounded-full bg-[var(--quizzy-teal)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#115e59]"
-                  type="submit"
+            <div className="flex flex-col items-end gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  className="rounded-full border border-[var(--quizzy-border)] px-5 py-2 text-sm font-semibold text-[var(--quizzy-text)] transition hover:bg-[var(--quizzy-surface)]"
+                  href="/dashboard/account"
                 >
-                  Novo quiz
-                </button>
-              </form>
+                  Conta
+                </Link>
+                <form action={createQuiz}>
+                  <button
+                    className="rounded-full bg-[var(--quizzy-teal)] px-5 py-2 text-sm font-semibold text-white transition hover:brightness-90"
+                    type="submit"
+                  >
+                    Novo quiz
+                  </button>
+                </form>
+              </div>
               <SignOutButton />
             </div>
           </div>
@@ -312,15 +314,15 @@ export default async function DashboardPage() {
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
                     realtimeHealth.status === "healthy"
-                      ? "bg-[#ecfdf3] text-[#0f766e]"
-                      : "bg-[#fef2f2] text-[#b91c1c]"
+                      ? "bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] text-[var(--quizzy-success)]"
+                      : "bg-[color:color-mix(in_srgb,var(--quizzy-warning)_10%,white)] text-[var(--quizzy-warning)]"
                   }`}
                 >
                   {realtimeHealth.status === "healthy"
                     ? "realtime online"
                     : "realtime degradado"}
                 </span>
-                <span className="text-sm text-[#61708c]">
+                <span className="text-sm text-[var(--quizzy-muted)]">
                   Checado em {formatDate(realtimeHealth.checkedAt)}
                 </span>
               </div>
@@ -360,15 +362,15 @@ export default async function DashboardPage() {
                   return (
                     <Link
                       key={sessionItem.id}
-                      className="block rounded-2xl border border-[#e2e8f0] bg-[#f8fbff] p-5 transition hover:border-[#c8d4e4] hover:bg-white"
+                      className="block rounded-2xl border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-5 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
                       href={`/dashboard/sessions/${sessionItem.id}`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <p className="text-lg font-semibold text-[#132238]">
+                          <p className="text-lg font-semibold text-[var(--quizzy-text)]">
                             {sessionItem.quizTitle}
                           </p>
-                          <p className="mt-1 text-sm text-[#61708c]">
+                          <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
                             {sessionItem.mode === "live"
                               ? `PIN ${sessionItem.pin ?? "sem PIN"}`
                               : "Sessao individual"}{" "}
@@ -376,7 +378,7 @@ export default async function DashboardPage() {
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
+                          <span className="rounded-full bg-[color:color-mix(in_srgb,var(--quizzy-navy)_10%,white)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-navy)]">
                             {sessionItem.mode}
                           </span>
                           <span
@@ -389,15 +391,15 @@ export default async function DashboardPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-3 text-sm text-[#61708c] sm:grid-cols-3">
+                      <div className="mt-4 grid gap-3 text-sm text-[var(--quizzy-muted)] sm:grid-cols-3">
                         <div>
-                          <p className="font-semibold text-[#132238]">Criada</p>
+                          <p className="font-semibold text-[var(--quizzy-text)]">Criada</p>
                           <p className="mt-1">
                             {formatDate(sessionItem.createdAt)}
                           </p>
                         </div>
                         <div>
-                          <p className="font-semibold text-[#132238]">Expira</p>
+                          <p className="font-semibold text-[var(--quizzy-text)]">Expira</p>
                           <p className="mt-1">
                             {formatDate(
                               sessionItem.expiresAt ?? sessionItem.endsAt,
@@ -405,7 +407,7 @@ export default async function DashboardPage() {
                           </p>
                         </div>
                         <div>
-                          <p className="font-semibold text-[#132238]">
+                          <p className="font-semibold text-[var(--quizzy-text)]">
                             Ultimo evento
                           </p>
                           <p className="mt-1">
@@ -439,15 +441,15 @@ export default async function DashboardPage() {
                 recentEvents.map((event) => (
                   <Link
                     key={event.id}
-                    className="block rounded-2xl border border-[#e2e8f0] bg-[#f8fbff] p-4 transition hover:border-[#c8d4e4] hover:bg-white"
+                    className="block rounded-2xl border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-4 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
                     href={`/dashboard/sessions/${event.sessionId}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-[#132238]">
+                        <p className="text-sm font-semibold text-[var(--quizzy-text)]">
                           {formatEventType(event.eventType)}
                         </p>
-                        <p className="mt-1 text-sm text-[#61708c]">
+                        <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
                           {event.quizTitle}
                         </p>
                       </div>
@@ -459,7 +461,7 @@ export default async function DashboardPage() {
                         {event.sessionStatus}
                       </span>
                     </div>
-                    <p className="mt-3 text-xs leading-6 text-[#61708c]">
+                    <p className="mt-3 text-xs leading-6 text-[var(--quizzy-muted)]">
                       {event.sessionMode} • {formatDate(event.createdAt)}
                     </p>
                   </Link>
@@ -475,7 +477,7 @@ export default async function DashboardPage() {
             helper="Biblioteca pronta para abrir um rascunho, publicar de novo ou iniciar uma nova sessao a partir de um quiz existente."
             title="Rascunhos e publicacoes"
             trailing={
-              <p className="text-sm text-[#61708c]">
+              <p className="text-sm text-[var(--quizzy-muted)]">
                 {quizList.length} itens atualizados recentemente.
               </p>
             }
@@ -488,7 +490,7 @@ export default async function DashboardPage() {
               action={
                 <form action={createQuiz}>
                   <button
-                    className="rounded-full bg-[#10233f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d3557]"
+                    className="rounded-full bg-[var(--quizzy-navy)] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-90"
                     type="submit"
                   >
                     Criar primeiro quiz
@@ -502,7 +504,7 @@ export default async function DashboardPage() {
             quizList.map((quiz) => (
               <div
                 key={quiz.id}
-                className="group relative grid gap-4 rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_90px_rgba(15,23,42,0.1)] sm:grid-cols-[1fr_auto]"
+                className="group relative grid gap-4 rounded-[1.75rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-6 shadow-[0_8px_30px_rgba(16,35,63,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(16,35,63,0.08)] sm:grid-cols-[1fr_auto]"
               >
                 <Link
                   className="contents"
@@ -510,16 +512,16 @@ export default async function DashboardPage() {
                 >
                   <div>
                     <div className="flex items-center gap-3">
-                      <h2 className="text-xl font-semibold">{quiz.title}</h2>
-                      <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
+                      <h2 className="text-xl font-semibold text-[var(--quizzy-text)]">{quiz.title}</h2>
+                      <span className="rounded-full bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-success)]">
                         {quiz.status}
                       </span>
                     </div>
-                    <p className="mt-3 text-sm leading-7 text-[#61708c]">
+                    <p className="mt-3 text-sm leading-7 text-[var(--quizzy-muted)]">
                       {quiz.description || "Sem descricao ainda."}
                     </p>
                   </div>
-                  <div className="text-sm text-[#7b879a]">
+                  <div className="text-sm text-[var(--quizzy-muted)]">
                     Atualizado em{" "}
                     {new Intl.DateTimeFormat("pt-BR", {
                       dateStyle: "short",

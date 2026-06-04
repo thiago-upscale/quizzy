@@ -70,10 +70,10 @@ export function StatusAlert({
 }) {
   const tones = {
     error:
-      "border-[#f4c7c3] bg-[#fff3f2] text-[#b42318]",
-    info: "border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]",
-    success: "border-[#b7e4c7] bg-[#ecfdf3] text-[#0f766e]",
-    warning: "border-[#fed7aa] bg-[#fff7ed] text-[#9a3412]",
+      "border-[color:color-mix(in_srgb,var(--quizzy-warning)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-warning)_10%,white)] text-[var(--quizzy-warning)]",
+    info: "border-[color:color-mix(in_srgb,var(--quizzy-navy)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-navy)_10%,white)] text-[var(--quizzy-navy)]",
+    success: "border-[color:color-mix(in_srgb,var(--quizzy-success)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] text-[var(--quizzy-success)]",
+    warning: "border-[color:color-mix(in_srgb,var(--quizzy-warning)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-warning)_10%,white)] text-[var(--quizzy-warning)]",
   } as const;
 
   return (
@@ -98,7 +98,7 @@ export function EmptyStateCard({
   title: string;
 }) {
   return (
-    <div className="rounded-[1.5rem] border border-dashed border-[var(--quizzy-border)] bg-[color:color-mix(in_srgb,var(--quizzy-surface)_70%,white)] p-6">
+    <div className="rounded-[1.5rem] border border-dashed border-[var(--quizzy-border)] bg-[var(--quizzy-surface)] p-6">
       <h3 className="text-lg font-semibold text-[var(--quizzy-text)]">
         {title}
       </h3>
@@ -122,9 +122,9 @@ export function MetricCard({
   value: ReactNode;
 }) {
   const accentClasses = {
-    amber: "border-[#fed7aa] bg-[#fff7ed]",
-    navy: "border-[var(--quizzy-border)] bg-[color:color-mix(in_srgb,var(--quizzy-surface)_65%,white)]",
-    teal: "border-[#b7e4c7] bg-[#ecfdf3]",
+    amber: "border-[color:color-mix(in_srgb,var(--quizzy-warning)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-warning)_5%,white)]",
+    navy: "border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)]",
+    teal: "border-[color:color-mix(in_srgb,var(--quizzy-success)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-success)_5%,white)]",
   } as const;
 
   return (

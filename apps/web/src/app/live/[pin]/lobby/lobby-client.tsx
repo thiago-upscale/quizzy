@@ -817,7 +817,7 @@ export function LobbyClient({
                         key={`${currentResult.questionId}-${optionIndex}`}
                         className={
                           isCorrectOption
-                            ? "rounded-2xl border border-[#d9ff37] bg-white px-4 py-4 text-sm font-semibold text-[#10233f]"
+                            ? "scale-[1.03] rounded-2xl bg-[#16a34a] px-4 py-4 text-sm font-semibold text-white shadow-lg transition-transform"
                             : isChosenOption
                               ? "rounded-2xl border border-[#fecaca] bg-[#7f1d1d] px-4 py-4 text-sm font-semibold text-white"
                               : "rounded-2xl bg-white/10 px-4 py-4 text-sm font-medium text-white/78"
@@ -961,7 +961,7 @@ export function LobbyClient({
                         ? undefined
                         : {
                             animation: "quizzy-rise 360ms ease both",
-                            animationDelay: `${(leaderboardVersion + entry.rank) % 5 * 70}ms`,
+                            animationDelay: `${(4 - leaderboardToRender.slice(0, 5).indexOf(entry)) * 70}ms`,
                           }
                     }
                   >
@@ -979,7 +979,11 @@ export function LobbyClient({
                       </p>
                     </div>
                     {formatRankDelta(rankDeltaById[entry.id] ?? 0) ? (
-                      <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75">
+                      <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                        (rankDeltaById[entry.id] ?? 0) > 0 
+                          ? "bg-[#ecfdf3] text-[#0f766e]" 
+                          : "bg-[#fef2f2] text-[#b91c1c]"
+                      }`}>
                         {formatRankDelta(rankDeltaById[entry.id] ?? 0)}
                       </span>
                     ) : null}
