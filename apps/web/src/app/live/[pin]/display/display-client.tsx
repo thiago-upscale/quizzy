@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { startLiveSession } from "@/app/dashboard/actions";
 import { io } from "socket.io-client";
 
 type Participant = {
@@ -82,6 +83,7 @@ export function DisplayClient({
   pinFormatted,
   baseUrl,
   realtimeUrl,
+  sessionId,
 }: {
   initialParticipants: Participant[];
   pin: string;
@@ -90,6 +92,7 @@ export function DisplayClient({
   pinFormatted: string;
   baseUrl: string;
   realtimeUrl: string;
+  sessionId: string;
 }) {
   const [participants, setParticipants] =
     useState<Participant[]>(initialParticipants);
@@ -109,6 +112,7 @@ export function DisplayClient({
   const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
   const [showSummary, setShowSummary] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [, startFormAction] = useActionState(startLiveSession, { message: "", status: "idle" });
 
   useEffect(() => {
     const socket = io(realtimeUrl, { transports: ["websocket"] });
@@ -372,80 +376,132 @@ export function DisplayClient({
   // ── LOBBY ────────────────────────────────────────────────────────────────────
   if (sessionState.status === "waiting" || sessionState.status === "countdown") {
     return (
-      <div className="flex flex-1 gap-0">
-        <aside className="flex w-72 flex-col items-center justify-center gap-8 bg-[#0a1520] px-8 py-10">
-          <div>
-            <p className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-white/40">
-              Entrar
-            </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <div className="mt-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-              <img alt="QR code da sessão" className="h-auto w-full" src={qrCodeDataUrl} />
-            </div>
-          </div>
-          <div className="w-full text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/40">
-              PIN do jogo
-            </p>
-            <p className="mt-3 text-5xl font-black tracking-[0.14em] text-white">
-              {pinFormatted}
-            </p>
-            <p className="mt-3 text-xs leading-5 text-white/30">
-              Acesse{" "}
-              <span className="text-white/50">
-                {baseUrl.replace(/^https?:\/\//, "")}
-              </span>
-            </p>
-          </div>
-        </aside>
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        {/* Geometric background */}
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          preserveAspectRatio="xMidYMid slice"
+          viewBox="0 0 1920 1080"
+        >
+          <polygon fill="#1e2448" points="0,1080 420,340 840,1080" />
+          <polygon fill="#1c2242" points="380,1080 820,220 1260,1080" />
+          <polygon fill="#1b2040" points="820,1080 1320,150 1800,1080" />
+          <polygon fill="#20263e" opacity="0.55" points="1100,1080 1540,320 1920,680 1920,1080" />
+        </svg>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-12 text-center">
-          {sessionState.status === "countdown" ? (
-            <>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/35">
-                Começando em
-              </p>
-              <p className="mt-6 text-[10rem] font-black leading-none text-white">
-                {sessionState.countdownSeconds ?? 3}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/35">
-                Tudo pronto para começar?
-              </p>
-              <h1 className="mt-6 text-6xl font-black leading-tight text-white">
-                {quizTitle}
-              </h1>
-              <p className="mt-6 text-base text-white/40">
-                Escaneie o QR code ou use o PIN para entrar na sala.
-              </p>
-            </>
-          )}
+        {/* Iniciar — top right */}
+        <div className="relative z-20 flex justify-end px-6 pt-5">
+          <form action={startFormAction}>
+            <input name="sessionId" type="hidden" value={sessionId} />
+            <button
+              className="rounded-lg bg-white px-7 py-2.5 text-sm font-black text-[#1a1f3c] shadow-lg transition hover:bg-gray-100 active:scale-95"
+              type="submit"
+            >
+              Iniciar
+            </button>
+          </form>
         </div>
 
-        <aside className="w-72 overflow-y-auto bg-[#0a1520] px-8 py-10">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
-              Participantes
-            </p>
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white">
-              {connectedCount}
-            </span>
-          </div>
-          <div className="mt-4 space-y-2">
-            {participants.length === 0 ? (
-              <p className="text-sm text-white/30">Aguardando participantes...</p>
-            ) : (
-              participants.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 rounded-xl bg-white/5 px-4 py-2">
-                  <span className={p.presenceStatus === "online" ? "h-2 w-2 rounded-full bg-[#4ade80]" : "h-2 w-2 rounded-full bg-white/20"} />
-                  <span className="text-sm font-medium text-white">{p.nickname}</span>
+        {/* 3-column row */}
+        <div className="relative z-10 flex flex-1 overflow-hidden">
+          {/* Left: QR + PIN */}
+          <aside className="flex w-72 flex-shrink-0 flex-col justify-center gap-8 bg-[#11152b] px-8 py-10">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/40">
+                Entrar
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <div className="mt-3 overflow-hidden rounded-2xl bg-white p-3">
+                <img alt="QR code da sessão" className="h-auto w-full" src={qrCodeDataUrl} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/40">
+                PIN do jogo
+              </p>
+              <p className="mt-2 text-5xl font-black tracking-[0.16em] text-white">
+                {pinFormatted}
+              </p>
+              <p className="mt-3 text-xs leading-6 text-white/35">
+                Participe em{" "}
+                <span className="font-semibold text-white/55">
+                  {baseUrl.replace(/^https?:\/\//, "")}
+                </span>
+                <br />
+                ou pelo <span className="font-semibold text-white/55">aplicativo do Quizzy</span>
+              </p>
+            </div>
+          </aside>
+
+          {/* Center */}
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 px-12 text-center">
+            {sessionState.status === "countdown" ? (
+              <>
+                <div className="rounded-full bg-black/40 px-7 py-2.5">
+                  <p className="text-sm font-bold text-white/70">Começando em</p>
                 </div>
-              ))
+                <p className="text-[12rem] font-black leading-none text-white drop-shadow-2xl">
+                  {sessionState.countdownSeconds ?? 3}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="rounded-full bg-black/35 px-7 py-2.5">
+                  <p className="text-sm font-bold text-white/70">
+                    Tudo pronto para começar?
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white px-10 py-5 shadow-2xl">
+                  <h1 className="text-4xl font-black text-[#1a1f3c]">{quizTitle}</h1>
+                </div>
+              </>
             )}
           </div>
-        </aside>
+
+          {/* Right: participants */}
+          <aside className="w-72 flex-shrink-0 overflow-y-auto bg-[#11152b] px-8 py-10">
+            <div className="flex items-center gap-3">
+              <p className="text-sm font-bold text-white">Participantes:</p>
+              <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-sm font-black text-white">
+                {connectedCount}
+              </span>
+            </div>
+            <div className="mt-5 space-y-1">
+              {participants.length === 0 ? (
+                <p className="text-sm text-white/30">Aguardando...</p>
+              ) : (
+                participants.map((p) => (
+                  <p key={p.id} className="py-1.5 text-sm font-semibold text-white/80">
+                    {p.nickname}
+                  </p>
+                ))
+              )}
+            </div>
+          </aside>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="relative z-20 flex items-center justify-between bg-[#0d1220] px-7 py-3">
+          <div className="flex items-center gap-4">
+            <a
+              className="rounded-lg bg-[#26890c] px-5 py-2 text-sm font-black text-white transition hover:bg-[#22780a]"
+              href={`/live/${pin}`}
+            >
+              Entrar
+            </a>
+            <span className="text-xs text-white/50">
+              🔒 {baseUrl.replace(/^https?:\/\//, "")} PIN:{" "}
+              <strong className="font-bold text-white/75">{pin}</strong>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-white/60">
+            <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+              <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-7 9a7 7 0 1 1 14 0H3z" />
+            </svg>
+            {connectedCount}
+          </div>
+        </div>
       </div>
     );
   }
