@@ -546,17 +546,19 @@ export function QuizEditor({
                 marcadas abaixo para chegar a pelo menos 4.5:1.
               </div>
             ) : null}
-            {branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                alt="Logo do quiz"
-                className="h-12 w-auto rounded-lg bg-white/10 p-2"
-                src={branding.logoUrl}
-              />
-            ) : null}
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
-              Preview live
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
+                Preview — projetor e lobby
+              </p>
+              {branding.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt="Logo do quiz"
+                  className="h-10 w-auto rounded-lg bg-white/10 p-2"
+                  src={branding.logoUrl}
+                />
+              ) : null}
+            </div>
             <h2 className="mt-3 text-3xl font-semibold">
               {title || "Novo quiz"}
             </h2>
@@ -696,36 +698,87 @@ export function QuizEditor({
               />
               {(
                 [
-                  ["primaryColor", "Cor primaria"],
-                  ["secondaryColor", "Cor secundaria"],
-                  ["accentColor", "Cor de destaque"],
+                  ["primaryColor", "Cor primaria", ["#0f766e","#1d4ed8","#7c3aed","#be123c","#b45309","#166534"]],
+                  ["secondaryColor", "Cor secundaria", ["#10233f","#1e3a5f","#1e1b4b","#3b0764","#1c1917","#052e16"]],
+                  ["accentColor", "Cor de destaque", ["#f59e0b","#f97316","#ef4444","#10b981","#3b82f6","#a855f7"]],
                 ] as const
-              ).map(([key, label]) => (
+              ).map(([key, label, swatches]) => (
                 <div
                   key={key}
-                  className="space-y-2 rounded-2xl bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(216,226,238,0.92)]"
+                  className="space-y-3 rounded-2xl bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(216,226,238,0.92)]"
                 >
-                  <label className="flex items-center justify-between gap-4">
+                  <div className="flex items-center justify-between gap-4">
                     <span className="text-sm font-medium text-[#22304a]">
                       {label}
                     </span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      {/* Native color picker */}
+                      <div className="relative h-8 w-8 overflow-hidden rounded-full border border-[#d5deea]">
+                        <div className="pointer-events-none absolute inset-0 rounded-full" style={{ backgroundColor: branding[key] }} />
+                        <input
+                          className="absolute inset-[-4px] h-[calc(100%+8px)] w-[calc(100%+8px)] cursor-pointer opacity-0"
+                          type="color"
+                          value={branding[key]}
+                          onChange={(event) =>
+                            setBranding((currentBranding) => ({
+                              ...currentBranding,
+                              [key]: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      {/* Hex text input */}
                       <input
-                        className="h-10 w-10 rounded-full border border-[#d5deea] bg-transparent"
-                        type="color"
+                        className="w-24 rounded-lg border border-[#d5deea] px-2 py-1 text-right font-mono text-sm text-[#22304a] outline-none focus:border-[#0f766e]"
+                        maxLength={7}
+                        type="text"
                         value={branding[key]}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const val = event.target.value;
+                          if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                            setBranding((currentBranding) => ({
+                              ...currentBranding,
+                              [key]: val,
+                            }));
+                          } else {
+                            setBranding((currentBranding) => ({
+                              ...currentBranding,
+                              [key]: val,
+                            }));
+                          }
+                        }}
+                        onBlur={(event) => {
+                          if (!/^#[0-9a-fA-F]{6}$/.test(event.target.value)) {
+                            setBranding((currentBranding) => ({
+                              ...currentBranding,
+                              [key]: currentBranding[key],
+                            }));
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* Preset swatches */}
+                  <div className="flex gap-2">
+                    {swatches.map((swatch) => (
+                      <button
+                        key={swatch}
+                        className="h-6 w-6 flex-shrink-0 rounded-full border-2 transition hover:scale-110"
+                        style={{
+                          backgroundColor: swatch,
+                          borderColor: branding[key] === swatch ? "#0f766e" : "transparent",
+                        }}
+                        title={swatch}
+                        type="button"
+                        onClick={() =>
                           setBranding((currentBranding) => ({
                             ...currentBranding,
-                            [key]: event.target.value,
+                            [key]: swatch,
                           }))
                         }
                       />
-                      <span className="w-20 text-right text-sm font-semibold text-[#61708c]">
-                        {branding[key]}
-                      </span>
-                    </div>
-                  </label>
+                    ))}
+                  </div>
                   {(warningsByKey[key] ?? []).map((warning) => (
                     <div
                       key={`${warning.key}-${warning.label}`}
@@ -739,16 +792,11 @@ export function QuizEditor({
                       </p>
                     </div>
                   ))}
-                  {key === "accentColor" && (warningsByKey[key] ?? []).length === 0 ? (
+                  {(warningsByKey[key] ?? []).length === 0 ? (
                     <p className="text-xs text-[#61708c]">
-                      A cor de destaque aparece em chips, botões e badges do
-                      lobby live.
-                    </p>
-                  ) : null}
-                  {key !== "accentColor" && (warningsByKey[key] ?? []).length === 0 ? (
-                    <p className="text-xs text-[#61708c]">
-                      Sem alerta de contraste para o uso principal desta cor no
-                      preview.
+                      {key === "accentColor"
+                        ? "Aparece em chips, botões e badges do lobby live."
+                        : "Sem alerta de contraste no preview."}
                     </p>
                   ) : null}
                 </div>

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { startLiveSession } from "@/app/dashboard/actions";
+import type { LiveBranding } from "@/lib/live";
 import { io } from "socket.io-client";
 
 type Participant = {
@@ -84,6 +85,7 @@ export function DisplayClient({
   baseUrl,
   realtimeUrl,
   sessionId,
+  branding,
 }: {
   initialParticipants: Participant[];
   pin: string;
@@ -93,6 +95,7 @@ export function DisplayClient({
   baseUrl: string;
   realtimeUrl: string;
   sessionId: string;
+  branding: LiveBranding;
 }) {
   const [participants, setParticipants] =
     useState<Participant[]>(initialParticipants);
@@ -220,7 +223,13 @@ export function DisplayClient({
 
     if (showSummary) {
       return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-10 bg-[#0d1b2a] px-12 py-10">
+        <div
+          className="flex flex-1 flex-col items-center justify-center gap-10 px-12 py-10"
+          style={{
+            background: `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+            fontFamily: branding.fontFamily,
+          }}
+        >
           <div className="w-full max-w-2xl">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-2xl font-black text-white">Resumo da sessão</h2>
@@ -271,7 +280,13 @@ export function DisplayClient({
     }
 
     return (
-      <div className="relative flex flex-1 flex-col items-center justify-end overflow-hidden bg-[#0d1b2a] pb-0">
+      <div
+        className="relative flex flex-1 flex-col items-center justify-end overflow-hidden pb-0"
+        style={{
+          background: `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+          fontFamily: branding.fontFamily,
+        }}
+      >
         {/* Confetti */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {CONFETTI.map((c) => (
@@ -376,18 +391,27 @@ export function DisplayClient({
   // ── LOBBY ────────────────────────────────────────────────────────────────────
   if (sessionState.status === "waiting" || sessionState.status === "countdown") {
     return (
-      <div className="relative flex flex-1 flex-col overflow-hidden">
-        {/* Geometric background */}
+      <div
+        className="relative flex flex-1 flex-col overflow-hidden"
+        style={{
+          backgroundImage: branding.backgroundImageUrl
+            ? `linear-gradient(180deg, rgba(16,35,63,0.82) 0%, rgba(0,0,0,0.65) 100%), url(${branding.backgroundImageUrl})`
+            : `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+          backgroundPosition: "center",
+          backgroundSize: "cover",
+          fontFamily: branding.fontFamily,
+        }}
+      >
+        {/* Geometric overlay shapes (subtle when using branding gradient) */}
         <svg
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full"
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-30"
           preserveAspectRatio="xMidYMid slice"
           viewBox="0 0 1920 1080"
         >
-          <polygon fill="#1e2448" points="0,1080 420,340 840,1080" />
-          <polygon fill="#1c2242" points="380,1080 820,220 1260,1080" />
-          <polygon fill="#1b2040" points="820,1080 1320,150 1800,1080" />
-          <polygon fill="#20263e" opacity="0.55" points="1100,1080 1540,320 1920,680 1920,1080" />
+          <polygon fill="#ffffff" points="0,1080 420,340 840,1080" opacity="0.05" />
+          <polygon fill="#ffffff" points="380,1080 820,220 1260,1080" opacity="0.04" />
+          <polygon fill="#ffffff" points="820,1080 1320,150 1800,1080" opacity="0.03" />
         </svg>
 
         {/* Iniciar — top right */}
@@ -406,7 +430,7 @@ export function DisplayClient({
         {/* 3-column row */}
         <div className="relative z-10 flex flex-1 overflow-hidden">
           {/* Left: QR + PIN */}
-          <aside className="flex w-72 flex-shrink-0 flex-col justify-center gap-8 bg-[#11152b] px-8 py-10">
+          <aside className="flex w-72 flex-shrink-0 flex-col justify-center gap-8 bg-black/40 px-8 py-10 backdrop-blur-sm">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/40">
                 Entrar
@@ -428,10 +452,16 @@ export function DisplayClient({
                 <span className="font-semibold text-white/55">
                   {baseUrl.replace(/^https?:\/\//, "")}
                 </span>
-                <br />
-                ou pelo <span className="font-semibold text-white/55">aplicativo do Quizzy</span>
               </p>
             </div>
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt="Logo do quiz"
+                className="mt-2 h-14 w-auto self-start rounded-xl bg-white/10 p-2"
+                src={branding.logoUrl}
+              />
+            ) : null}
           </aside>
 
           {/* Center */}
@@ -453,17 +483,20 @@ export function DisplayClient({
                   </p>
                 </div>
                 <div className="rounded-2xl bg-white px-10 py-5 shadow-2xl">
-                  <h1 className="text-4xl font-black text-[#1a1f3c]">{quizTitle}</h1>
+                  <h1 className="text-4xl font-black" style={{ color: branding.secondaryColor }}>{quizTitle}</h1>
                 </div>
               </>
             )}
           </div>
 
           {/* Right: participants */}
-          <aside className="w-72 flex-shrink-0 overflow-y-auto bg-[#11152b] px-8 py-10">
+          <aside className="w-72 flex-shrink-0 overflow-y-auto bg-black/40 px-8 py-10 backdrop-blur-sm">
             <div className="flex items-center gap-3">
               <p className="text-sm font-bold text-white">Participantes:</p>
-              <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-sm font-black text-white">
+              <span
+                className="rounded-full px-2.5 py-0.5 text-sm font-black"
+                style={{ backgroundColor: branding.accentColor, color: branding.secondaryColor }}
+              >
                 {connectedCount}
               </span>
             </div>
@@ -516,29 +549,43 @@ export function DisplayClient({
       : currentQuestion!;
 
     return (
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col" style={{ fontFamily: branding.fontFamily }}>
         <div className="flex items-center justify-center bg-white px-6 py-5 shadow-lg">
-          <h1 className="max-w-4xl text-center text-2xl font-bold text-[#1a1a2e]">
+          <h1 className="max-w-4xl text-center text-2xl font-bold" style={{ color: branding.secondaryColor }}>
             {question.prompt}
           </h1>
         </div>
 
-        <div className="relative flex flex-1 items-center justify-center px-20 py-8">
-          <div className="absolute left-8 top-1/2 -translate-y-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-[#333] text-3xl font-black text-white shadow-lg">
+        <div
+          className="relative flex flex-1 items-center justify-center px-20 py-8"
+          style={{
+            background: `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+          }}
+        >
+          <div
+            className="absolute left-8 top-1/2 -translate-y-1/2 flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black text-white shadow-lg"
+            style={{ backgroundColor: branding.secondaryColor }}
+          >
             {remainingSeconds ?? currentQuestion?.timeLimitSeconds ?? "—"}
           </div>
 
           <div className="text-center">
             {currentQuestion && (
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/50">
+              <span
+                className="rounded-full px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.22em]"
+                style={{ backgroundColor: branding.accentColor, color: branding.secondaryColor }}
+              >
                 Pergunta {currentQuestion.orderIndex + 1} de{" "}
                 {currentQuestion.totalQuestions}
-              </p>
+              </span>
             )}
           </div>
 
           <div className="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col items-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#333] text-3xl font-black text-white shadow-lg">
+            <div
+              className="flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black text-white shadow-lg"
+              style={{ backgroundColor: branding.secondaryColor }}
+            >
               {submittedCount}
             </div>
             <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/40">
@@ -569,7 +616,10 @@ export function DisplayClient({
           })}
         </div>
 
-        <div className="flex items-center justify-between bg-[#0a1520] px-8 py-3">
+        <div
+          className="flex items-center justify-between px-8 py-3"
+          style={{ backgroundColor: branding.secondaryColor }}
+        >
           <span className="text-xs font-semibold text-white/40">
             PIN: <span className="text-white/70">{pinFormatted}</span>
           </span>

@@ -4,6 +4,7 @@ import { env } from "@/env";
 import {
   getLiveSessionByPin,
   getSessionParticipants,
+  normalizeLiveBranding,
 } from "@/lib/live";
 import { DisplayClient } from "./display-client";
 
@@ -37,11 +38,15 @@ export default async function LiveDisplayPage({
 
   const quizTitle = liveSession.versionTitle || liveSession.quizTitle;
   const pinFormatted = `${pin.slice(0, 3)} ${pin.slice(3)}`;
+  const branding = normalizeLiveBranding(
+    (liveSession.versionBranding ?? liveSession.quizBranding) as Parameters<typeof normalizeLiveBranding>[0],
+  );
 
   return (
-    <main className="flex min-h-screen flex-col bg-[#1a1f3c] text-white">
+    <main className="flex min-h-screen flex-col text-white" style={{ backgroundColor: branding.secondaryColor }}>
       <DisplayClient
         baseUrl={env.NEXTAUTH_URL}
+        branding={branding}
         initialParticipants={initialParticipants}
         pin={pin}
         pinFormatted={pinFormatted}
