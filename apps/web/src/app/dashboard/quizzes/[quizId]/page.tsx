@@ -120,29 +120,6 @@ export default async function QuizDetailPage({
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_#f8fafc,_#eef5ff)] px-6 py-8 text-[#132238]">
       <div className="mx-auto w-full max-w-5xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <Link
-              className="text-sm font-semibold text-[#0f766e]"
-              href="/dashboard"
-            >
-              Voltar ao dashboard
-            </Link>
-            <h1 className="mt-3 text-4xl font-semibold">{quiz.title}</h1>
-            <p className="mt-2 text-sm text-[#61708c]">
-              Status atual: {quiz.status}
-            </p>
-          </div>
-          <div className="group">
-            <DeleteQuizButton
-              alwaysVisible
-              deleteAction={deleteQuiz}
-              quizId={quiz.id}
-              quizTitle={quiz.title}
-            />
-          </div>
-        </div>
-
         <QuizEditor
           branding={{
             primaryColor: branding.primaryColor ?? "#0f766e",
@@ -157,6 +134,7 @@ export default async function QuizDetailPage({
           liveSessionAction={createLiveSession}
           quizId={quiz.id}
           saveAction={saveQuiz}
+          deleteQuizAction={deleteQuiz}
           sessionSummary={{
             activeLiveCount: liveSessions.length,
             latestLivePin: liveSessions[0]?.pin ?? null,
