@@ -116,6 +116,7 @@ export default async function QuizDetailPage({
     fontFamily: string;
     backgroundImageUrl: string | null;
     logoUrl: string | null;
+    showQuestionOnMobile: boolean;
   }>;
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_#f8fafc,_#eef5ff)] px-6 py-8 text-[#132238]">
@@ -128,6 +129,7 @@ export default async function QuizDetailPage({
             fontFamily: branding.fontFamily ?? "DM Sans",
             backgroundImageUrl: branding.backgroundImageUrl ?? null,
             logoUrl: branding.logoUrl ?? null,
+            showQuestionOnMobile: branding.showQuestionOnMobile ?? false,
           }}
           description={quiz.description ?? ""}
           initialQuestions={initialQuestions}

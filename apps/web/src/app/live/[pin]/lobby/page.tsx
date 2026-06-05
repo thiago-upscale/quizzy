@@ -6,7 +6,7 @@ import {
   getLiveSessionByPin,
   getParticipantByToken,
   getSessionParticipants,
-  normalizeLiveBranding,
+  resolveLiveBranding,
 } from "@/lib/live";
 import { LobbyClient } from "./lobby-client";
 
@@ -43,14 +43,10 @@ export default async function LiveLobbyPage({
   }
 
   const sessionParticipants = await getSessionParticipants(liveSession.id);
-  const branding = normalizeLiveBranding(
-    (liveSession.versionBranding ?? liveSession.quizBranding) as Partial<{
-      primaryColor: string;
-      secondaryColor: string;
-      accentColor: string;
-      fontFamily: string;
-    }>,
-  );
+  const branding = resolveLiveBranding({
+    quizBranding: liveSession.quizBranding,
+    versionBranding: liveSession.versionBranding,
+  });
 
   return (
     <LobbyClient

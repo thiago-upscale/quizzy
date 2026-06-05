@@ -17,6 +17,7 @@ export type LiveBranding = {
   fontFamily: string;
   backgroundImageUrl: string | null;
   logoUrl: string | null;
+  showQuestionOnMobile: boolean;
 };
 
 export type RuntimeLiveQuestion = {
@@ -69,6 +70,7 @@ export const defaultLiveBranding: LiveBranding = {
   fontFamily: "DM Sans",
   backgroundImageUrl: null,
   logoUrl: null,
+  showQuestionOnMobile: false,
 };
 
 export function getLiveParticipantCookieName(pin: string) {
@@ -92,7 +94,29 @@ export function normalizeLiveBranding(
       typeof branding?.logoUrl === "string"
         ? branding.logoUrl
         : defaultLiveBranding.logoUrl,
+    showQuestionOnMobile:
+      typeof branding?.showQuestionOnMobile === "boolean"
+        ? branding.showQuestionOnMobile
+        : defaultLiveBranding.showQuestionOnMobile,
   };
+}
+
+function toBrandingPartial(value: unknown): Partial<LiveBranding> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Partial<LiveBranding>;
+}
+
+export function resolveLiveBranding(params: {
+  quizBranding: unknown;
+  versionBranding: unknown;
+}) {
+  return normalizeLiveBranding({
+    ...toBrandingPartial(params.versionBranding),
+    ...toBrandingPartial(params.quizBranding),
+  });
 }
 
 export function normalizeParticipantEmail(email: string) {

@@ -34,6 +34,7 @@ type LiveBranding = {
   logoUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  showQuestionOnMobile: boolean;
 };
 
 type SessionState = {
@@ -115,6 +116,29 @@ function formatRankDelta(delta: number) {
 
   return delta > 0 ? `+${delta}` : String(delta);
 }
+
+const ANSWER_TILE_STYLES = [
+  {
+    bg: "#e21b3c",
+    fg: "#ffffff",
+    icon: "▲",
+  },
+  {
+    bg: "#1368ce",
+    fg: "#ffffff",
+    icon: "◆",
+  },
+  {
+    bg: "#d89e00",
+    fg: "#ffffff",
+    icon: "●",
+  },
+  {
+    bg: "#26890c",
+    fg: "#ffffff",
+    icon: "■",
+  },
+];
 
 export function LobbyClient({
   branding,
@@ -554,9 +578,15 @@ export function LobbyClient({
       ? finalLeaderboard
       : leaderboard;
 
+  const participantTotalCount = participants.length;
+  const visibleQuestionTime =
+    questionRemainingSeconds ?? currentQuestion?.timeLimitSeconds ?? null;
+  const shouldUseMobileAnswerMode =
+    sessionState.status === "playing" && currentQuestion !== null;
+
   return (
     <main
-      className="min-h-screen px-6 py-10 text-white"
+      className="min-h-screen px-4 py-4 text-white sm:px-6 sm:py-6"
       style={{
         backgroundImage: branding.backgroundImageUrl
           ? `linear-gradient(180deg, rgba(16,35,63,0.84) 0%, rgba(15,118,110,0.84) 100%), url(${branding.backgroundImageUrl})`
@@ -566,73 +596,186 @@ export function LobbyClient({
         fontFamily: branding.fontFamily,
       }}
     >
-      <div className="mx-auto flex min-h-[80vh] w-full max-w-6xl flex-col gap-6">
-        <header className="rounded-[2rem] bg-white/10 p-8 shadow-[0_24px_90px_rgba(15,23,42,0.25)] backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-4">
+        {shouldUseMobileAnswerMode && currentQuestion ? (
+          <section className="flex min-h-[100dvh] flex-col md:hidden">
+            {branding.showQuestionOnMobile ? (
+              <div className="rounded-[1.4rem] bg-white px-5 py-5 text-center text-[#1e3a8a] shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
+                <p className="text-[1.95rem] font-black leading-[1.15] tracking-[-0.03em]">
+                  {currentQuestion.prompt}
+                </p>
+              </div>
+            ) : null}
+
+            <div className="relative mt-3 flex flex-1 flex-col overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(15,23,42,0.12),rgba(0,0,0,0.22))] px-4 py-5">
+              <div className="flex items-center justify-between">
+                <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
+                  <span className="text-2xl font-black">{visibleQuestionTime}</span>
+                </div>
+                <span
+                  className="rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-[#10233f]"
+                  style={{ backgroundColor: branding.accentColor }}
+                >
+                  Pergunta {currentQuestion.orderIndex + 1} de {currentQuestion.totalQuestions}
+                </span>
+                <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
+                  <span className="text-2xl font-black">
+                    {submissionStats.submittedCount}
+                  </span>
+                  <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                    respostas
+                  </span>
+                </div>
+              </div>
+
+              {currentQuestion.imageUrl && branding.showQuestionOnMobile ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt="Imagem da pergunta"
+                  className="mt-5 max-h-48 w-full rounded-[1.4rem] object-cover"
+                  src={currentQuestion.imageUrl}
+                />
+              ) : null}
+
+              <div className="mt-auto grid grid-cols-2 overflow-hidden rounded-[1.6rem] shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
+                {currentQuestion.options.map((option, optionIndex) => {
+                  const isChosen = answerState.answerIndex === optionIndex;
+                  const tileStyle =
+                    ANSWER_TILE_STYLES[optionIndex % ANSWER_TILE_STYLES.length] ??
+                    ANSWER_TILE_STYLES[0]!;
+
+                  return (
+                    <button
+                      key={`mobile-${currentQuestion.id}-${optionIndex}`}
+                      className="min-h-[148px] border border-black/5 px-5 py-5 text-left transition active:scale-[0.99] disabled:opacity-100"
+                      disabled={
+                        answerState.submitted || questionRemainingSeconds === 0
+                      }
+                      onClick={() => submitAnswer(optionIndex)}
+                      style={{
+                        backgroundColor: tileStyle.bg,
+                        boxShadow: isChosen
+                          ? "inset 0 0 0 4px rgba(255,255,255,0.96)"
+                          : undefined,
+                        color: tileStyle.fg,
+                      }}
+                      type="button"
+                    >
+                      <div className="flex h-full flex-col justify-between gap-5">
+                        <span className="text-2xl font-black">{tileStyle.icon}</span>
+                        <span className="text-[1.05rem] font-bold leading-snug">
+                          {option}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 flex items-center justify-between rounded-full bg-[#1e3a8a] px-4 py-3 text-sm text-white/80">
+                <span className="font-semibold tracking-[0.08em]">PIN: {pin}</span>
+                <span className="font-semibold">
+                  {answerState.submitted
+                    ? answerState.isCorrect
+                      ? `+${answerState.pointsEarned} pontos`
+                      : "Resposta enviada"
+                    : `${submissionStats.submittedCount}/${submissionStats.totalParticipants} respostas`}
+                </span>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <header
+          className={`rounded-[2rem] bg-white/10 p-5 shadow-[0_24px_90px_rgba(15,23,42,0.25)] backdrop-blur ${
+            shouldUseMobileAnswerMode ? "hidden md:block" : ""
+          }`}
+        >
+          <div className="flex flex-col gap-4">
+            <div className="rounded-[1.7rem] bg-white/6 p-5">
               {branding.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   alt="Logo do quiz"
-                  className="h-12 w-auto rounded-xl bg-white/10 p-2"
+                  className="h-11 w-auto rounded-xl bg-white/10 p-2"
                   src={branding.logoUrl}
                 />
               ) : null}
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-white/70">
-                Lobby live
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+                {sessionState.status === "playing"
+                  ? "Quiz ao vivo"
+                  : "Lobby live"}
               </p>
-              <h1 className="mt-4 text-4xl font-semibold">{quizTitle}</h1>
-              <p className="mt-3 text-sm leading-7 text-white/75">
+              <h1 className="mt-4 text-4xl font-bold leading-[1.04] tracking-[-0.03em]">
+                {quizTitle}
+              </h1>
+              <p className="mt-3 text-base leading-8 text-white/74">
                 Ola, {participant.nickname}. Seu lugar na sala ja esta
                 garantido.
               </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
-                PIN {pin}
-              </span>
               <span
-                className="rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#10233f]"
+                className="mt-5 inline-flex w-fit rounded-full px-5 py-2.5 text-xs font-bold uppercase tracking-[0.24em] text-[#10233f]"
                 style={{ backgroundColor: branding.accentColor }}
               >
                 {roomLabel}
               </span>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
+                  PIN {pin}
+                </span>
+                <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
+                  {connectedCount} online
+                </span>
+              </div>
             </div>
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-          <article className="rounded-[1.75rem] bg-white/10 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur">
+        <section className={`space-y-4 ${shouldUseMobileAnswerMode ? "hidden md:block" : ""}`}>
+          <article className="rounded-[1.8rem] bg-white/10 p-5 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-              Sala pronta
+              {sessionState.status === "playing"
+                ? "Sua rodada"
+                : "Sala pronta"}
             </p>
-            <p className="mt-3 text-5xl font-semibold">{participants.length}</p>
-            <p className="mt-1 text-sm font-medium text-white/75">
-              {connectedCount} conectados agora
+            <p className="mt-3 text-5xl font-black tracking-[-0.04em]">
+              {sessionState.status === "playing" && currentQuestion
+                ? `${currentQuestion.orderIndex + 1}`
+                : participantTotalCount}
+            </p>
+            <p className="mt-1 text-base font-medium text-white/78">
+              {sessionState.status === "playing" && currentQuestion
+                ? `de ${currentQuestion.totalQuestions} perguntas`
+                : `${connectedCount} conectados agora`}
             </p>
             <p className="mt-1 text-sm font-medium text-white/65">
               Host {sessionState.hostPresenceStatus} •{" "}
               {socketConnected ? "voce conectado" : "reconectando"}
             </p>
-            <p className="mt-3 text-sm leading-7 text-white/75">
-              participantes ja passaram por esta sala. Quando o host iniciar,
-              todos avancam ao mesmo tempo.
+            <p className="mt-4 text-base leading-8 text-white/72">
+              {sessionState.status === "playing"
+                ? "Responda rapido para acumular pontos e manter sua sequencia."
+                : "Quando o host iniciar, todos avancam ao mesmo tempo."}
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-white/10 px-4 py-3">
+              <div className="rounded-[1.4rem] bg-white/10 px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                   Sua pontuacao
                 </p>
-                <p className="mt-2 text-2xl font-semibold">
+                <p className="mt-2 text-3xl font-black tracking-[-0.03em]">
                   {displayedScore} pontos
                 </p>
               </div>
-              <div className="rounded-2xl bg-white/10 px-4 py-3">
+              <div className="rounded-[1.4rem] bg-white/10 px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                  Sequencia
+                  {sessionState.status === "playing" ? "Tempo" : "Sequencia"}
                 </p>
-                {activeStreak >= 2 ? (
+                {sessionState.status === "playing" && visibleQuestionTime !== null ? (
+                  <p className="mt-2 text-3xl font-black tracking-[-0.03em]">
+                    {visibleQuestionTime}s
+                  </p>
+                ) : activeStreak >= 2 ? (
                   <span
                     className="mt-2 inline-flex rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
                     style={{
@@ -674,77 +817,98 @@ export function LobbyClient({
             ) : null}
 
             {sessionState.status === "playing" && currentQuestion ? (
-              <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+              <div className="mt-8 rounded-[1.7rem] bg-white p-4 text-slate-950 shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                       Pergunta {currentQuestion.orderIndex + 1} de{" "}
                       {currentQuestion.totalQuestions}
                     </p>
-                    <h2 className="mt-3 text-2xl font-semibold">
+                    <h2 className="mt-3 text-[1.7rem] font-bold leading-[1.18] tracking-[-0.03em] text-slate-950">
                       {currentQuestion.prompt}
                     </h2>
                   </div>
-                  <span
-                    className="rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
-                    style={{ backgroundColor: branding.accentColor }}
-                  >
-                    {questionRemainingSeconds ??
-                      currentQuestion.timeLimitSeconds}
-                    s
-                  </span>
+                  <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white">
+                    {visibleQuestionTime}s
+                  </div>
                 </div>
 
                 {currentQuestion.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     alt="Imagem da pergunta"
-                    className="mt-6 max-h-64 w-full rounded-2xl object-cover"
+                    className="mt-5 max-h-64 w-full rounded-[1.4rem] object-cover"
                     src={currentQuestion.imageUrl}
                   />
                 ) : null}
 
-                <div className="mt-6 grid gap-3">
+                <div
+                  className={`mt-5 grid gap-3 ${
+                    currentQuestion.options.length <= 4
+                      ? "grid-cols-2"
+                      : "grid-cols-1"
+                  }`}
+                >
                   {currentQuestion.options.map((option, optionIndex) => {
                     const isChosen = answerState.answerIndex === optionIndex;
+                    const tileStyle =
+                      ANSWER_TILE_STYLES[optionIndex % ANSWER_TILE_STYLES.length] ??
+                      ANSWER_TILE_STYLES[0]!;
 
                     return (
                       <button
                         key={`${currentQuestion.id}-${optionIndex}`}
-                        className={
-                          isChosen
-                            ? "min-h-14 scale-[1.03] rounded-2xl bg-white px-4 py-4 text-left text-sm font-semibold text-[#10233f] transition"
-                            : "min-h-14 rounded-2xl bg-white/10 px-4 py-4 text-left text-sm font-medium text-white transition hover:bg-white/20"
-                        }
+                        className="min-h-[112px] rounded-[1.5rem] px-4 py-4 text-left transition active:scale-[0.99] disabled:opacity-100"
                         disabled={
                           answerState.submitted ||
                           questionRemainingSeconds === 0
                         }
                         onClick={() => submitAnswer(optionIndex)}
+                        style={{
+                          backgroundColor: tileStyle.bg,
+                          boxShadow: isChosen
+                            ? "inset 0 0 0 3px rgba(255,255,255,0.92), 0 18px 30px rgba(15,23,42,0.16)"
+                            : "0 14px 24px rgba(15,23,42,0.12)",
+                          color: tileStyle.fg,
+                        }}
                         type="button"
                       >
-                        {option}
+                        <div className="flex h-full flex-col justify-between gap-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xl font-black">
+                              {tileStyle.icon}
+                            </span>
+                            {isChosen ? (
+                              <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/90">
+                                selecionada
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="text-lg font-bold leading-snug">
+                            {option}
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white/10 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[1.35rem] bg-slate-100 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Respostas enviadas
                     </p>
-                    <p className="mt-2 text-2xl font-semibold">
+                    <p className="mt-2 text-2xl font-black text-slate-950">
                       {submissionStats.submittedCount}/
                       {submissionStats.totalParticipants}
                     </p>
                   </div>
 
-                  <div className="rounded-2xl bg-white/10 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                  <div className="rounded-[1.35rem] bg-slate-100 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Seu status
                     </p>
-                    <p className="mt-2 text-sm font-semibold">
+                    <p className="mt-2 text-sm font-semibold text-slate-800">
                       {answerState.submitted
                         ? answerState.isCorrect
                           ? `Resposta confirmada: +${answerState.pointsEarned} pontos`
@@ -777,13 +941,13 @@ export function LobbyClient({
             ) : null}
 
             {sessionState.status === "question_result" && currentResult ? (
-              <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
+              <div className="mt-8 rounded-[1.7rem] bg-white p-5 text-slate-950 shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Resultado da rodada
                     </p>
-                    <h2 className="mt-3 text-2xl font-semibold">
+                    <h2 className="mt-3 text-2xl font-bold leading-tight text-slate-950">
                       {currentResult.prompt}
                     </h2>
                   </div>
@@ -800,12 +964,12 @@ export function LobbyClient({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     alt="Imagem da pergunta"
-                    className="mt-6 max-h-64 w-full rounded-2xl object-cover"
+                    className="mt-5 max-h-64 w-full rounded-[1.4rem] object-cover"
                     src={currentResult.imageUrl}
                   />
                 ) : null}
 
-                <div className="mt-6 grid gap-3">
+                <div className="mt-5 grid gap-3">
                   {currentResult.options.map((option, optionIndex) => {
                     const isCorrectOption =
                       optionIndex === currentResult.correctOptionIndex;
@@ -817,16 +981,16 @@ export function LobbyClient({
                         key={`${currentResult.questionId}-${optionIndex}`}
                         className={
                           isCorrectOption
-                            ? "scale-[1.03] rounded-2xl bg-[#16a34a] px-4 py-4 text-sm font-semibold text-white shadow-lg transition-transform"
+                            ? "scale-[1.03] rounded-[1.35rem] bg-[#16a34a] px-4 py-4 text-sm font-semibold text-white shadow-lg transition-transform"
                             : isChosenOption
-                              ? "rounded-2xl border border-[#fecaca] bg-[#7f1d1d] px-4 py-4 text-sm font-semibold text-white"
-                              : "rounded-2xl bg-white/10 px-4 py-4 text-sm font-medium text-white/78"
+                              ? "rounded-[1.35rem] border border-[#fecaca] bg-[#7f1d1d] px-4 py-4 text-sm font-semibold text-white"
+                              : "rounded-[1.35rem] bg-slate-100 px-4 py-4 text-sm font-medium text-slate-700"
                         }
                       >
                         <div className="flex items-center justify-between gap-4">
                           <span>{option}</span>
                           {isCorrectOption ? (
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0f766e]">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#dcfce7]">
                               Correta
                             </span>
                           ) : null}
@@ -841,12 +1005,12 @@ export function LobbyClient({
                   })}
                 </div>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white/10 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[1.35rem] bg-slate-100 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Seu resultado
                     </p>
-                    <p className="mt-2 text-sm font-semibold">
+                    <p className="mt-2 text-sm font-semibold text-slate-800">
                       {personalStanding?.answeredCurrentQuestion
                         ? personalStanding.lastIsCorrect
                           ? `Voce acertou e ganhou ${personalStanding.lastPointsEarned} pontos.`
@@ -859,11 +1023,11 @@ export function LobbyClient({
                       </p>
                     ) : null}
                   </div>
-                  <div className="rounded-2xl bg-white/10 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                  <div className="rounded-[1.35rem] bg-slate-100 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Sua colocacao
                     </p>
-                    <p className="mt-2 text-sm font-semibold">
+                    <p className="mt-2 text-sm font-semibold text-slate-800">
                       {personalStanding
                         ? `${personalStanding.rank}o lugar com ${displayedScore} pontos`
                         : "Atualizando classificacao"}
@@ -874,33 +1038,33 @@ export function LobbyClient({
             ) : null}
 
             {sessionState.status === "finished" ? (
-              <div className="mt-8 rounded-[2rem] bg-white/10 p-8 text-center">
+              <div className="mt-8 rounded-[1.8rem] bg-white p-6 text-center text-slate-950 shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
                 <p className="text-4xl">🏆</p>
-                <h2 className="mt-4 text-3xl font-bold">
+                <h2 className="mt-4 text-3xl font-bold leading-tight">
                   Agradecemos a participação!
                 </h2>
-                <p className="mt-2 text-sm text-white/60">{quizTitle}</p>
+                <p className="mt-2 text-sm text-slate-500">{quizTitle}</p>
 
                 {personalStanding ? (
                   <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl bg-white/10 px-4 py-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
+                    <div className="rounded-[1.35rem] bg-slate-100 px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Posição final
                       </p>
                       <p className="mt-2 text-3xl font-black">
                         {personalStanding.rank}º
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-white/10 px-4 py-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
+                    <div className="rounded-[1.35rem] bg-slate-100 px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Pontuação
                       </p>
                       <p className="mt-2 text-3xl font-black">
                         {personalStanding.score}
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-white/10 px-4 py-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
+                    <div className="rounded-[1.35rem] bg-slate-100 px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Tempo total
                       </p>
                       <p className="mt-2 text-3xl font-black">
@@ -913,14 +1077,14 @@ export function LobbyClient({
             ) : null}
 
             {sessionState.status === "playing" && !currentQuestion ? (
-              <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+              <div className="mt-8 rounded-[1.7rem] bg-white p-5 text-slate-950 shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Primeira pergunta
                 </p>
-                <h2 className="mt-3 text-2xl font-semibold">
+                <h2 className="mt-3 text-2xl font-bold">
                   Preparando o enunciado
                 </h2>
-                <p className="mt-3 text-sm leading-7 text-white/75">
+                <p className="mt-3 text-sm leading-7 text-slate-600">
                   O host ja iniciou a sessao. A pergunta vai aparecer aqui em
                   instantes.
                 </p>
@@ -928,7 +1092,7 @@ export function LobbyClient({
             ) : null}
           </article>
 
-          <article className="rounded-[1.75rem] bg-white/10 p-6 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur">
+          <article className="rounded-[1.8rem] bg-white/10 p-5 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
@@ -945,7 +1109,7 @@ export function LobbyClient({
 
             <div className="mt-6 space-y-3">
               {leaderboardToRender.length === 0 ? (
-                <div className="rounded-2xl bg-white/10 px-4 py-4">
+                <div className="rounded-[1.35rem] bg-white/10 px-4 py-4">
                   <p className="text-sm leading-7 text-white/75">
                     O ranking aparece assim que a rodada comecar e as primeiras
                     respostas forem chegando.
@@ -955,7 +1119,7 @@ export function LobbyClient({
                 leaderboardToRender.slice(0, 5).map((entry) => (
                   <div
                     key={entry.id}
-                    className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3"
+                    className="flex items-center gap-3 rounded-[1.35rem] bg-white/10 px-4 py-3"
                     style={
                       prefersReducedMotion
                         ? undefined
@@ -1015,7 +1179,7 @@ export function LobbyClient({
                 {participants.map((currentParticipant) => (
                   <div
                     key={currentParticipant.id}
-                    className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3"
+                    className="flex items-center gap-3 rounded-[1.35rem] bg-white/10 px-4 py-3"
                   >
                     <div
                       className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-[#10233f]"

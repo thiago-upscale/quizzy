@@ -39,6 +39,7 @@ export async function createQuiz() {
         backgroundImageUrl: null,
         logoUrl: null,
         fontFamily: "Manrope",
+        showQuestionOnMobile: false,
       },
     })
     .returning({ id: quizzes.id });
@@ -80,6 +81,7 @@ type BrandingPayload = {
   fontFamily: string;
   backgroundImageUrl: string | null;
   logoUrl: string | null;
+  showQuestionOnMobile: boolean;
 };
 
 export type SaveQuizState = {
@@ -99,6 +101,7 @@ const defaultBranding: BrandingPayload = {
   fontFamily: "Manrope",
   backgroundImageUrl: null,
   logoUrl: null,
+  showQuestionOnMobile: false,
 };
 
 function sanitizeHex(color: string, fallback: string) {
@@ -149,6 +152,10 @@ function normalizeBranding(
         : defaultBranding.fontFamily,
     backgroundImageUrl: sanitizeAssetUrl(branding.backgroundImageUrl),
     logoUrl: sanitizeAssetUrl(branding.logoUrl),
+    showQuestionOnMobile:
+      typeof branding.showQuestionOnMobile === "boolean"
+        ? branding.showQuestionOnMobile
+        : defaultBranding.showQuestionOnMobile,
   };
 }
 
@@ -190,7 +197,7 @@ export async function saveQuiz(
   const questionsPayload = String(formData.get("questionsPayload") ?? "[]");
   const brandingPayload = String(formData.get("brandingPayload") ?? "{}");
 
-  if (!quizId || !title) {
+  if (!quizId) {
     return { message: "Quiz invalido.", status: "error" };
   }
 
@@ -199,6 +206,7 @@ export async function saveQuiz(
       id: quizzes.id,
       organizationId: quizzes.organizationId,
       createdBy: quizzes.createdBy,
+      title: quizzes.title,
     })
     .from(quizzes)
     .where(
@@ -212,6 +220,8 @@ export async function saveQuiz(
   if (!existingQuiz) {
     return { message: "Quiz nao encontrado.", status: "error" };
   }
+
+  const safeTitle = title || existingQuiz.title || "Novo quiz";
 
   const [existingQuestionRows, referencedAnswerRows] = await Promise.all([
     db
@@ -284,7 +294,7 @@ export async function saveQuiz(
     await tx
       .update(quizzes)
       .set({
-        title,
+        title: safeTitle,
         description,
         branding,
         status: nextStatus,
@@ -345,7 +355,7 @@ export async function saveQuiz(
       await tx.insert(quizVersions).values({
         quizId,
         versionNumber: (lastVersion?.versionNumber ?? 0) + 1,
-        title,
+        title: safeTitle,
         description,
         branding,
         questionsSnapshot: normalizedQuestions,

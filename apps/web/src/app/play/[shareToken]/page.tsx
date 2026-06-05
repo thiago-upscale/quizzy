@@ -10,7 +10,7 @@ import {
   getIndividualSessionByShareToken,
   isIndividualSessionExpired,
 } from "@/lib/individual";
-import { normalizeLiveBranding } from "@/lib/live";
+import { resolveLiveBranding } from "@/lib/live";
 import {
   joinIndividualSession,
   startNextIndividualAttempt,
@@ -55,16 +55,10 @@ export default async function IndividualPlayPage({
     );
   }
 
-  const branding = normalizeLiveBranding(
-    (session.versionBranding ?? session.quizBranding) as Partial<{
-      accentColor: string;
-      backgroundImageUrl: string | null;
-      fontFamily: string;
-      logoUrl: string | null;
-      primaryColor: string;
-      secondaryColor: string;
-    }>,
-  );
+  const branding = resolveLiveBranding({
+    quizBranding: session.quizBranding,
+    versionBranding: session.versionBranding,
+  });
   const expired = isIndividualSessionExpired(session);
   const cookieStore = await cookies();
   const participantToken = cookieStore.get(

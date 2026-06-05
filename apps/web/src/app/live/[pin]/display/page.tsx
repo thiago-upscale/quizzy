@@ -4,7 +4,7 @@ import { env } from "@/env";
 import {
   getLiveSessionByPin,
   getSessionParticipants,
-  normalizeLiveBranding,
+  resolveLiveBranding,
 } from "@/lib/live";
 import { DisplayClient } from "./display-client";
 
@@ -24,7 +24,7 @@ export default async function LiveDisplayPage({
 
   const sessionUrl = `${env.NEXTAUTH_URL}/live/${pin}`;
   const qrCodeDataUrl = await QRCode.toDataURL(sessionUrl, {
-    color: { dark: "#ffffff", light: "#00000000" },
+    color: { dark: "#0f172a", light: "#ffffff" },
     margin: 1,
     width: 260,
   });
@@ -38,9 +38,10 @@ export default async function LiveDisplayPage({
 
   const quizTitle = liveSession.versionTitle || liveSession.quizTitle;
   const pinFormatted = `${pin.slice(0, 3)} ${pin.slice(3)}`;
-  const branding = normalizeLiveBranding(
-    (liveSession.versionBranding ?? liveSession.quizBranding) as Parameters<typeof normalizeLiveBranding>[0],
-  );
+  const branding = resolveLiveBranding({
+    quizBranding: liveSession.quizBranding,
+    versionBranding: liveSession.versionBranding,
+  });
 
   const mainStyle = branding.backgroundImageUrl
     ? {

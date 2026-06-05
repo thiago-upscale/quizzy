@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import {
@@ -45,6 +45,7 @@ type BrandingState = {
   fontFamily: string;
   backgroundImageUrl: string | null;
   logoUrl: string | null;
+  showQuestionOnMobile: boolean;
 };
 
 type QuizEditorProps = {
@@ -220,6 +221,19 @@ function AssetUploadField({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [assetBroken, setAssetBroken] = useState(false);
+
+  useEffect(() => {
+    if (!currentUrl) {
+      setAssetBroken(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(currentUrl, { method: "HEAD" })
+      .then((res) => { if (!cancelled) setAssetBroken(!res.ok); })
+      .catch(() => { if (!cancelled) setAssetBroken(true); });
+    return () => { cancelled = true; };
+  }, [currentUrl]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -293,7 +307,12 @@ function AssetUploadField({
         ) : null}
       </div>
 
-      {currentUrl ? (
+      {currentUrl && assetBroken ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+          <p className="font-bold">Arquivo inacessível</p>
+          <p className="mt-0.5 text-amber-700">O arquivo salvo não foi encontrado no servidor. Re-envie a imagem para restaurar.</p>
+        </div>
+      ) : currentUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           alt={label}
@@ -471,7 +490,7 @@ export function QuizEditor({
           </Link>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-[#132238] max-w-[200px] sm:max-w-md truncate">
-              {title}
+              {titleState || "Novo quiz"}
             </h1>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
               status === "published" 
@@ -947,9 +966,9 @@ export function QuizEditor({
 
           {/* --- ABA BRANDING --- */}
           {activeTab === "branding" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] xl:items-start">
               {/* Controles do Branding */}
-              <div className="lg:col-span-7 space-y-6">
+              <div className="min-w-0 space-y-6">
                 <FieldPanel className="space-y-6">
                   <SectionHeading
                     eyebrow="Aplicar marca"
@@ -1112,13 +1131,51 @@ export function QuizEditor({
                   }
                   quizId={quizId}
                 />
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-[#22304a]">
+                        Mostrar enunciado no celular
+                      </p>
+                      <p className="text-xs leading-6 text-[#61708c]">
+                        Quando desligado, o participante ve no mobile apenas
+                        cronometro, progresso e respostas no mesmo esquema do display.
+                      </p>
+                    </div>
+                    <button
+                      aria-pressed={branding.showQuestionOnMobile}
+                      className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full border transition ${
+                        branding.showQuestionOnMobile
+                          ? "border-[#0f766e] bg-[#0f766e]"
+                          : "border-slate-300 bg-slate-200"
+                      }`}
+                      onClick={() =>
+                        setBranding((currentBranding) => ({
+                          ...currentBranding,
+                          showQuestionOnMobile:
+                            !currentBranding.showQuestionOnMobile,
+                        }))
+                      }
+                      type="button"
+                    >
+                      <span
+                        className={`inline-block h-6 w-6 rounded-full bg-white shadow transition ${
+                          branding.showQuestionOnMobile
+                            ? "translate-x-7"
+                            : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
               </FieldPanel>
             </div>
 
             {/* Preview (Sticky) */}
-            <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4 w-full">
+            <div className="min-w-0 space-y-4 xl:sticky xl:top-6">
               <div
-                className="overflow-hidden rounded-[1.75rem] border border-white/50 shadow-xl w-full"
+                className="w-full max-w-full overflow-hidden rounded-[1.75rem] border border-white/50 shadow-xl"
                   style={{
                     backgroundImage: branding.backgroundImageUrl
                       ? `linear-gradient(145deg, rgba(16,35,63,0.72), rgba(15,118,110,0.72)), url(${branding.backgroundImageUrl})`
@@ -1143,12 +1200,12 @@ export function QuizEditor({
                         />
                       ) : null}
                     </div>
-                    <h2 className="mt-3 text-2xl font-bold truncate">
-                      {title || "Novo quiz"}
+                    <h2 className="mt-3 text-2xl font-bold break-words">
+                      {titleState || "Novo quiz"}
                     </h2>
                   </div>
                   <div className="space-y-4 px-6 py-5">
-                    <div className="grid gap-2 grid-cols-3 text-center">
+                    <div className="grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
                       <div className="rounded-xl bg-white/10 p-2">
                         <p className="text-[9px] font-semibold uppercase tracking-wider text-white/60">
                           Fonte
@@ -1194,14 +1251,14 @@ export function QuizEditor({
                           src={previewQuestion.imageUrl}
                         />
                       ) : null}
-                      <h3 className="text-lg font-bold leading-snug truncate">
+                      <h3 className="text-lg font-bold leading-snug break-words">
                         {previewQuestion.question || "Digite o enunciado da pergunta"}
                       </h3>
                       <div className="mt-3 grid gap-2">
                         {previewQuestion.options.map((option, optionIndex) => (
                           <div
                             key={`${previewQuestion.id}-${optionIndex}`}
-                            className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold"
+                            className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold break-words"
                           >
                             {option || `Opção ${optionIndex + 1}`}
                           </div>

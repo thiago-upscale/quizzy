@@ -7,7 +7,7 @@ import {
   getLiveSessionByPin,
   getParticipantByToken,
   isJoinableLiveStatus,
-  normalizeLiveBranding,
+  resolveLiveBranding,
 } from "@/lib/live";
 import { ParticipantEntryForm } from "./participant-entry-form";
 
@@ -43,14 +43,10 @@ export default async function LiveEntryPage({
     );
   }
 
-  const branding = normalizeLiveBranding(
-    (liveSession.versionBranding ?? liveSession.quizBranding) as Partial<{
-      primaryColor: string;
-      secondaryColor: string;
-      accentColor: string;
-      fontFamily: string;
-    }>,
-  );
+  const branding = resolveLiveBranding({
+    quizBranding: liveSession.quizBranding,
+    versionBranding: liveSession.versionBranding,
+  });
   const cookieStore = await cookies();
   const participantToken = cookieStore.get(
     getLiveParticipantCookieName(pin),
@@ -84,7 +80,7 @@ export default async function LiveEntryPage({
 
   return (
     <main
-      className="min-h-screen px-6 py-10 text-white"
+      className="min-h-screen px-4 py-4 text-white sm:px-6 sm:py-8"
       style={{
         backgroundImage: branding.backgroundImageUrl
           ? `linear-gradient(180deg, rgba(16,35,63,0.84) 0%, rgba(15,118,110,0.84) 100%), url(${branding.backgroundImageUrl})`
@@ -94,62 +90,62 @@ export default async function LiveEntryPage({
         fontFamily: branding.fontFamily,
       }}
     >
-      <div className="mx-auto flex min-h-[80vh] w-full max-w-5xl items-center justify-center">
-        <section className="grid w-full gap-6 rounded-[2rem] border border-white/10 bg-white/10 p-8 shadow-[0_24px_90px_rgba(15,23,42,0.25)] backdrop-blur lg:grid-cols-[1fr_0.92fr]">
-          <div className="flex flex-col justify-between">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-md items-center justify-center">
+        <section className="w-full rounded-[2rem] border border-white/10 bg-white/10 p-5 shadow-[0_24px_90px_rgba(15,23,42,0.25)] backdrop-blur sm:p-6">
+          <div className="rounded-[1.8rem] bg-white/8 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
             <div>
               {branding.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   alt="Logo do quiz"
-                  className="h-14 w-auto rounded-xl bg-white/10 p-2"
+                  className="h-12 w-auto rounded-xl bg-white/10 p-2"
                   src={branding.logoUrl}
                 />
               ) : null}
-              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/70">
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
                 Quiz ao vivo
               </p>
-              <h1 className="mt-4 text-4xl font-semibold leading-tight">
+              <h1 className="mt-4 text-4xl font-bold leading-[1.05] tracking-[-0.03em]">
                 {liveSession.versionTitle || liveSession.quizTitle}
               </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/75">
+              <p className="mt-4 max-w-2xl text-base leading-8 text-white/72">
                 {liveSession.versionDescription ||
                   liveSession.quizDescription ||
                   "Entre na sala, confirme sua identificacao e aguarde o host iniciar a primeira pergunta."}
               </p>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[1.5rem] bg-white/10 px-4 py-4">
+            <div className="mt-6 grid gap-3">
+              <div className="rounded-[1.35rem] bg-white/10 px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
                   PIN
                 </p>
-                <p className="mt-2 text-lg font-semibold">{pin}</p>
+                <p className="mt-2 text-3xl font-black tracking-[0.12em]">{pin}</p>
               </div>
-              <div className="rounded-[1.5rem] bg-white/10 px-4 py-4">
+              <div className="rounded-[1.35rem] bg-white/10 px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
                   Estado
                 </p>
-                <p className="mt-2 text-sm font-semibold">{sessionStatusLabel}</p>
+                <p className="mt-2 text-lg font-bold">{sessionStatusLabel}</p>
               </div>
-              <div className="rounded-[1.5rem] bg-white/10 px-4 py-4">
+              <div className="rounded-[1.35rem] bg-white/10 px-4 py-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
                   Fluxo
                 </p>
-                <p className="mt-2 text-sm font-semibold">
+                <p className="mt-2 text-lg font-bold">
                   {canResume ? "Retomada" : "Identificacao"}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-[1.85rem] bg-white p-6 text-[var(--quizzy-text)] shadow-[0_18px_50px_rgba(16,35,63,0.14)]">
+          <div className="mt-5 rounded-[1.85rem] bg-white p-6 text-[var(--quizzy-text)] shadow-[0_18px_50px_rgba(16,35,63,0.14)]">
             {canResume ? (
               <>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--quizzy-teal)]">
+                <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[var(--quizzy-teal)]">
                   Retomada segura
                 </p>
-                <h2 className="mt-4 text-3xl font-semibold">
+                <h2 className="mt-4 text-3xl font-bold leading-tight">
                   Voce voltou para a sessao.
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-[var(--quizzy-muted)]">
@@ -184,13 +180,13 @@ export default async function LiveEntryPage({
               </>
             ) : isJoinable ? (
               <>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--quizzy-teal)]">
+                <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[var(--quizzy-teal)]">
                   Identificacao
                 </p>
-                <h2 className="mt-4 text-3xl font-semibold">
+                <h2 className="mt-4 text-3xl font-bold leading-tight">
                   Entrar na sala
                 </h2>
-                <p className="mt-3 text-sm leading-7 text-[var(--quizzy-muted)]">
+                <p className="mt-3 text-base leading-8 text-[var(--quizzy-muted)]">
                   O QR Code ou o PIN ja trouxe voce para a sessao certa. Agora
                   falta so confirmar como quer aparecer para o host.
                 </p>
@@ -198,10 +194,10 @@ export default async function LiveEntryPage({
               </>
             ) : (
               <>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--quizzy-warning)]">
+                <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[var(--quizzy-warning)]">
                   Entrada indisponivel
                 </p>
-                <h2 className="mt-4 text-3xl font-semibold">
+                <h2 className="mt-4 text-3xl font-bold leading-tight">
                   Sessao encerrada ou pausada
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-[var(--quizzy-muted)]">
