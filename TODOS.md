@@ -1,6 +1,6 @@
 # TODOS — Quizzy Design Debt
 
-Items surfaced from `/plan-design-review` on 2026-05-29. Each item has a priority (P1 = blocks beta, P2 = should land same branch/sprint, P3 = follow-up).
+Items surfaced from `/plan-design-review` on 2026-05-29 and 2026-06-05. Each item has a priority (P1 = blocks beta, P2 = should land same branch/sprint, P3 = follow-up).
 
 ---
 
@@ -26,6 +26,21 @@ Items surfaced from `/plan-design-review` on 2026-05-29. Each item has a priorit
 - Configurar Tailwind para usar esses tokens via `theme.extend.colors`
 **Verify:** `pnpm build` passa, nenhuma tela com visual quebrado. Inspetor mostra Geist Sans como font-family no body.
 **Effort:** human ~30min / CC ~5min
+
+---
+
+## P1 — Dashboard Operational View (surfaced 2026-06-05)
+
+### T6 — Sessions pagination: "ver todas" link when >6 sessions hidden
+**Files:** `apps/web/src/app/dashboard/page.tsx`
+**Why:** O painel mostra `slice(0, 6)` sessões mas o badge diz "6 abertas" quando há 13. Durante beta com sessões reais, 7 sessões ficam invisíveis — host pode perder sessões interrompidas sem saber.
+**What:**
+- Remover `slice(0, 6)` da variável `sessionsNeedingAttention`
+- Mostrar todas as sessões que precisam de atenção (limite razoável: 20)
+- Adicionar link "Ver todas as sessões →" no rodapé do painel quando total > 10
+- Atualizar badge count para refletir o total real, não o slice
+**Verify:** Dashboard com 13 sessões ativas mostra todas (ou pelo menos 10 + link "ver mais")
+**Effort:** human ~15min / CC ~3min
 
 ---
 
@@ -61,6 +76,30 @@ Items surfaced from `/plan-design-review` on 2026-05-29. Each item has a priorit
 - Specs de estado vazio, loading, erro por tela
 **Verify:** Qualquer contribuidor pode ler e implementar sem perguntas adicionais
 **Effort:** human ~2h / CC ~20min
+
+### T8 — Sessoes finalizadas: secao "Ver resultados"
+**Files:** `apps/web/src/app/dashboard/page.tsx`
+**Why:** Sessoes encerradas nao aparecem no painel operacional (filtrado por status ativos). Host que finalizou uma sessao nao tem caminho obvio para o relatorio a partir do dashboard. Custo: adicionar uma secao compacta de sessoes recentes finalizadas com link "Ver resultados".
+**What:**
+- Buscar as ultimas 5 sessoes com status `finished` da organizacao
+- Exibir abaixo do painel operacional (acima da biblioteca), como lista compacta com quiz title + data de encerramento + link "Ver resultados →"
+- Link aponta para `/dashboard/sessions/${id}`
+**Verify:** Apos encerrar uma sessao live, ela aparece na secao "Sessoes finalizadas recentes" com link de resultados
+**Effort:** human ~45min / CC ~8min
+
+---
+
+## P2 — Dashboard Polish (surfaced 2026-06-05)
+
+### T7 — Mobile touch target: delete button overlaps quiz card link
+**Files:** `apps/web/src/app/dashboard/page.tsx`, `apps/web/src/app/dashboard/delete-quiz-button.tsx`
+**Why:** Delete button sits at `absolute right-4 top-4` sobre o link do card. Em 375px, tap no card pode acionar o delete. Não há undo para delete de quiz.
+**What:**
+- Mover o botão de delete para o rodapé do card (fora do `<Link>` wrap)
+- Ou: adicionar `pointer-events-none` na área sobreposta e usar z-index para separar targets
+- Garantir touch target mínimo de 44px para o delete button
+**Verify:** Em viewport 375px, clicar na área central do card navega para o quiz. Somente tocar no ícone de lixeira aciona o delete.
+**Effort:** human ~30min / CC ~5min
 
 ---
 

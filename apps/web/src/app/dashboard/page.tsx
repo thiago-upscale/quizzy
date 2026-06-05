@@ -16,7 +16,7 @@ import {
   StatusAlert,
   SurfaceCard,
 } from "@/components/phase-one-ui";
-import { createQuiz, deleteQuiz } from "./actions";
+import { createLiveSession, createQuiz, deleteQuiz } from "./actions";
 import { SignOutButton } from "./sign-out-button";
 import { DeleteQuizButton } from "./delete-quiz-button";
 
@@ -29,6 +29,17 @@ const activeSessionStatuses = [
   "question_result",
   "interrupted",
 ] as const;
+
+const statusLabels: Record<string, string> = {
+  playing: "AO VIVO",
+  question_result: "RESULTADO",
+  countdown: "CONTAGEM",
+  interrupted: "INTERROMPIDA",
+  waiting: "AGUARDANDO",
+  finished: "ENCERRADA",
+  published: "PUBLICADO",
+  draft: "RASCUNHO",
+};
 
 function formatDate(value: Date | null) {
   if (!value) {
@@ -64,6 +75,10 @@ function getSessionStatusTone(status: string) {
   }
 
   return "bg-[var(--quizzy-surface)] text-[var(--quizzy-muted)]";
+}
+
+function getStatusLabel(status: string) {
+  return statusLabels[status] ?? status.toUpperCase();
 }
 
 type SessionEventSummary = {
@@ -108,7 +123,7 @@ async function getRealtimeHealth(): Promise<RealtimeHealth> {
 
     return {
       checkedAt,
-      label: "Respondendo normalmente",
+      label: "Respondendo normalmente. Falhas de sincronizacao de inicio e avanco da sessao tambem ficam registradas no historico operacional.",
       status: "healthy",
     };
   } catch (error) {
@@ -229,6 +244,7 @@ export default async function DashboardPage() {
     (total, sessionItem) => total + sessionItem.participantCount,
     0,
   );
+  // Show all sessions needing attention (up to 20) — no silent slice
   const sessionsNeedingAttention = activeSessions
     .filter(
       (sessionItem) =>
@@ -237,27 +253,32 @@ export default async function DashboardPage() {
         sessionItem.status === "question_result" ||
         sessionItem.status === "countdown",
     )
-    .slice(0, 6);
+    .slice(0, 20);
+  const recentQuizItems = quizList.slice(0, 8);
+  const draftQuizzes = quizList.filter((quiz) => quiz.status !== "published");
 
   return (
     <main className="min-h-screen bg-[var(--quizzy-surface)] px-6 py-8 text-[var(--quizzy-text)]">
       <div className="mx-auto w-full max-w-6xl">
+
+        {/* Header */}
         <header className="rounded-[2rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-8 shadow-[0_8px_30px_rgba(16,35,63,0.04)]">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--quizzy-teal)]">
-                Dashboard
+              <p
+                className="text-3xl font-bold tracking-tight text-[var(--quizzy-navy)]"
+                style={{ fontFamily: "var(--quizzy-logo-font, sans-serif)" }}
+              >
+                Quizzy
               </p>
-              <h1 className="mt-3 max-w-4xl text-4xl font-semibold">
-                Operacao do Quizzy, dos quizzes ao que esta rodando agora.
+              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--quizzy-teal)]">
+                Workspace de quizzes
+              </p>
+              <h1 className="mt-3 max-w-4xl text-2xl font-semibold tracking-[-0.02em]">
+                Sua biblioteca e operacao em um so lugar.
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--quizzy-muted)]">
-                Logado como {session.user.name?.toUpperCase()} em {session.user.email}. Use
-                esta visao para abrir novas sessoes, acompanhar sinais do
-                realtime e detectar o que pede atencao agora.
-              </p>
             </div>
-            <div className="flex flex-col items-end gap-3">
+            <div className="flex flex-col gap-3 lg:items-end">
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   className="rounded-full border border-[var(--quizzy-border)] px-5 py-2 text-sm font-semibold text-[var(--quizzy-text)] transition hover:bg-[var(--quizzy-surface)]"
@@ -274,41 +295,165 @@ export default async function DashboardPage() {
                   </button>
                 </form>
               </div>
-              <SignOutButton />
+              <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--quizzy-muted)]">
+                <span>
+                  {session.user.name || "Conta"} • {session.user.email}
+                </span>
+                <SignOutButton />
+              </div>
             </div>
           </div>
         </header>
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Operational metrics — first thing hosts see */}
+        <section aria-label="Metricas operacionais" className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
-            helper={`${quizList.length} quizzes no total na organizacao.`}
-            label="Quizzes publicados"
-            value={publishedQuizzes.length}
-          />
-          <MetricCard
-            accent="teal"
-            helper={`${activeParticipants} participantes registrados nas sessoes abertas.`}
-            label="Sessoes live ativas"
+            helper="Sessoes live em andamento ou aguardando host."
+            label="Ao vivo agora"
             value={activeLiveSessions.length}
           />
           <MetricCard
-            helper="Links ainda ativos para tentativas assincronas."
-            label="Sessoes individuais abertas"
+            accent="teal"
+            helper="Pessoas conectadas nas sessoes live abertas."
+            label="Participantes ativos"
+            value={activeParticipants}
+          />
+          <MetricCard
+            helper="Links assincronos ainda disponiveis."
+            label="Individuais abertas"
             value={openIndividualSessions.length}
           />
           <MetricCard
             accent={interruptedSessions.length > 0 ? "amber" : "navy"}
-            helper="Sessoes interrompidas aguardando retomada do host."
-            label="Atencao operacional"
+            helper="Sessoes pausadas aguardando retomada."
+            label="Interrompidas"
             value={interruptedSessions.length}
           />
         </section>
 
+        {/* Live sessions + recent events */}
+        <section aria-label="Operacao ao vivo" className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <SurfaceCard>
+            <SectionHeading
+              eyebrow="Operacao ao vivo"
+              helper="Abra apenas as sessoes que realmente pedem acao do host."
+              title="Sessoes que precisam de acompanhamento"
+              trailing={
+                <span className="rounded-full bg-[#f8fbff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
+                  {sessionsNeedingAttention.length} abertas
+                </span>
+              }
+            />
+
+            <div className="mt-6 space-y-3">
+              {sessionsNeedingAttention.length === 0 ? (
+                <EmptyStateCard
+                  description="Quando uma sessao estiver em andamento, interrompida ou aguardando decisao do host, ela aparece aqui."
+                  title="Nenhuma sessao pedindo atencao agora"
+                />
+              ) : (
+                sessionsNeedingAttention.map((sessionItem) => {
+                  const latestEvent = latestEventBySession.get(sessionItem.id);
+                  const sessionLabel = sessionItem.mode === "live"
+                    ? `Sessao ${sessionItem.quizTitle} — PIN ${sessionItem.pin ?? "sem PIN"}`
+                    : `Sessao individual ${sessionItem.quizTitle}`;
+
+                  return (
+                    <Link
+                      key={sessionItem.id}
+                      aria-label={`${sessionLabel}, ${getStatusLabel(sessionItem.status).toLowerCase()}, ${sessionItem.participantCount} participantes`}
+                      className="block rounded-[1.4rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-4 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
+                      href={`/dashboard/sessions/${sessionItem.id}`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-base font-semibold text-[var(--quizzy-text)]">
+                            {sessionItem.quizTitle}
+                          </p>
+                          <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
+                            {sessionItem.mode === "live"
+                              ? `PIN ${sessionItem.pin ?? "sem PIN"}`
+                              : "Sessao individual"}{" "}
+                            • {sessionItem.participantCount} participantes
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${getSessionStatusTone(
+                              sessionItem.status,
+                            )}`}
+                          >
+                            {getStatusLabel(sessionItem.status)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 text-sm text-[var(--quizzy-muted)]">
+                        {latestEvent
+                          ? `${formatEventType(latestEvent.eventType)} • ${formatDate(latestEvent.createdAt)}`
+                          : "Sem eventos ainda"}
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <SectionHeading
+              eyebrow="Historico recente"
+              helper="Feed curto para contexto rapido antes de abrir uma sessao."
+              title="Ultimos sinais"
+            />
+
+            <div className="mt-6 space-y-3">
+              {recentEvents.length === 0 ? (
+                <EmptyStateCard
+                  description="Quando a organizacao acumular sessoes, os sinais recentes aparecem aqui."
+                  title="Sem atividade recente"
+                />
+              ) : (
+                recentEvents.slice(0, 6).map((event) => (
+                  <Link
+                    key={event.id}
+                    aria-label={`Evento ${formatEventType(event.eventType)} da sessao ${event.quizTitle}`}
+                    className="block rounded-[1.4rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-4 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
+                    href={`/dashboard/sessions/${event.sessionId}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--quizzy-text)]">
+                          {formatEventType(event.eventType)}
+                        </p>
+                        <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
+                          {event.quizTitle}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${getSessionStatusTone(
+                          event.sessionStatus,
+                        )}`}
+                      >
+                        {getStatusLabel(event.sessionStatus)}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-xs leading-6 text-[var(--quizzy-muted)]">
+                      {event.sessionMode} • {formatDate(event.createdAt)}
+                    </p>
+                  </Link>
+                ))
+              )}
+            </div>
+          </SurfaceCard>
+        </section>
+
+        {/* Platform health */}
         <SurfaceCard className="mt-4">
           <SectionHeading
-            eyebrow="Observabilidade minima"
-            helper="A leitura do realtime precisa ficar obvia para o host antes de virar problema de operacao."
-            title="Saude do realtime para o beta"
+            eyebrow="Monitoramento resumido"
+            helper="A operacao continua visivel, mas sem roubar o foco da biblioteca."
+            title="Saude da plataforma"
             trailing={
               <div className="flex flex-wrap items-center gap-3">
                 <span
@@ -330,156 +475,29 @@ export default async function DashboardPage() {
           />
           <div className="mt-5">
             <StatusAlert tone={realtimeHealth.status === "healthy" ? "success" : "warning"}>
-              {realtimeHealth.label}. Falhas de sincronizacao de inicio e avanco
-              da sessao tambem ficam registradas no historico operacional.
+              {realtimeHealth.label}
             </StatusAlert>
           </div>
         </SurfaceCard>
 
-        <section className="mt-8 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-          <SurfaceCard>
-            <SectionHeading
-              eyebrow="Sessoes que pedem atencao"
-              helper="Priorize o que esta em andamento, interrompido ou precisando de decisao do host."
-              title="Operacao viva agora"
-              trailing={
-                <span className="rounded-full bg-[#f8fbff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  {sessionsNeedingAttention.length} exibidas
-                </span>
-              }
-            />
-
-            <div className="mt-6 space-y-4">
-              {sessionsNeedingAttention.length === 0 ? (
-                <EmptyStateCard
-                  description="Nenhuma sessao ativa exigindo acompanhamento imediato. Quando algo pedir acao do host, este bloco passa a priorizar a leitura."
-                  title="Sem alerta operacional agora"
-                />
-              ) : (
-                sessionsNeedingAttention.map((sessionItem) => {
-                  const latestEvent = latestEventBySession.get(sessionItem.id);
-
-                  return (
-                    <Link
-                      key={sessionItem.id}
-                      className="block rounded-2xl border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-5 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
-                      href={`/dashboard/sessions/${sessionItem.id}`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-lg font-semibold text-[var(--quizzy-text)]">
-                            {sessionItem.quizTitle}
-                          </p>
-                          <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
-                            {sessionItem.mode === "live"
-                              ? `PIN ${sessionItem.pin ?? "sem PIN"}`
-                              : "Sessao individual"}{" "}
-                            • {sessionItem.participantCount} participantes
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-[color:color-mix(in_srgb,var(--quizzy-navy)_10%,white)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-navy)]">
-                            {sessionItem.mode}
-                          </span>
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${getSessionStatusTone(
-                              sessionItem.status,
-                            )}`}
-                          >
-                            {sessionItem.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid gap-3 text-sm text-[var(--quizzy-muted)] sm:grid-cols-3">
-                        <div>
-                          <p className="font-semibold text-[var(--quizzy-text)]">Criada</p>
-                          <p className="mt-1">
-                            {formatDate(sessionItem.createdAt)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-[var(--quizzy-text)]">Expira</p>
-                          <p className="mt-1">
-                            {formatDate(
-                              sessionItem.expiresAt ?? sessionItem.endsAt,
-                            )}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-[var(--quizzy-text)]">
-                            Ultimo evento
-                          </p>
-                          <p className="mt-1">
-                            {latestEvent
-                              ? `${formatEventType(latestEvent.eventType)} • ${formatDate(latestEvent.createdAt)}`
-                              : "Sem eventos ainda"}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-          </SurfaceCard>
-
-          <SurfaceCard>
-            <SectionHeading
-              eyebrow="Atividade recente"
-              helper="Use o historico recente para verificar sinais de entrada, avanco e incidentes antes de abrir a sessao."
-              title="Ultimos sinais da plataforma"
-            />
-
-            <div className="mt-6 space-y-4">
-              {recentEvents.length === 0 ? (
-                <EmptyStateCard
-                  description="Assim que a organizacao acumular sessoes, esta area passa a mostrar os ultimos eventos relevantes da plataforma."
-                  title="Ainda nao temos eventos recentes nesta organizacao"
-                />
-              ) : (
-                recentEvents.map((event) => (
-                  <Link
-                    key={event.id}
-                    className="block rounded-2xl border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-4 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
-                    href={`/dashboard/sessions/${event.sessionId}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--quizzy-text)]">
-                          {formatEventType(event.eventType)}
-                        </p>
-                        <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
-                          {event.quizTitle}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${getSessionStatusTone(
-                          event.sessionStatus,
-                        )}`}
-                      >
-                        {event.sessionStatus}
-                      </span>
-                    </div>
-                    <p className="mt-3 text-xs leading-6 text-[var(--quizzy-muted)]">
-                      {event.sessionMode} • {formatDate(event.createdAt)}
-                    </p>
-                  </Link>
-                ))
-              )}
-            </div>
-          </SurfaceCard>
-        </section>
-
-        <section className="mt-8">
+        {/* Quiz library — below the operational fold */}
+        <section aria-label="Biblioteca de quizzes" className="mt-8">
           <SectionHeading
             eyebrow="Biblioteca de quizzes"
-            helper="Biblioteca pronta para abrir um rascunho, publicar de novo ou iniciar uma nova sessao a partir de um quiz existente."
-            title="Rascunhos e publicacoes"
+            helper="Acesse rascunhos, publicacoes recentes e comece uma nova sessao a partir do quiz certo."
+            title="Gerencie seus quizzes"
             trailing={
-              <p className="text-sm text-[var(--quizzy-muted)]">
-                {quizList.length} itens atualizados recentemente.
-              </p>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--quizzy-muted)]">
+                <span
+                  className="rounded-full bg-[var(--quizzy-surface-strong)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-muted)]"
+                >
+                  {draftQuizzes.length} rascunhos
+                </span>
+                <span className="rounded-full bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-success)]">
+                  {publishedQuizzes.length} publicados
+                </span>
+                <span>{quizList.length} itens atualizados recentemente.</span>
+              </div>
             }
           />
         </section>
@@ -501,40 +519,67 @@ export default async function DashboardPage() {
               title="Crie seu primeiro quiz"
             />
           ) : (
-            quizList.map((quiz) => (
+            recentQuizItems.map((quiz) => (
               <div
                 key={quiz.id}
-                className="group relative grid gap-4 rounded-[1.75rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-6 shadow-[0_8px_30px_rgba(16,35,63,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(16,35,63,0.08)] sm:grid-cols-[1fr_auto]"
+                className="group relative grid gap-4 rounded-[1.5rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-5 shadow-[0_8px_30px_rgba(16,35,63,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(16,35,63,0.08)] sm:grid-cols-[1fr_auto]"
               >
                 <Link
+                  aria-label={`Abrir quiz ${quiz.title}`}
                   className="contents"
                   href={`/dashboard/quizzes/${quiz.id}`}
                 >
                   <div>
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-xl font-semibold text-[var(--quizzy-text)]">{quiz.title}</h2>
-                      <span className="rounded-full bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-success)]">
-                        {quiz.status}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-xl font-semibold text-[var(--quizzy-text)]">
+                        {quiz.title}
+                      </h2>
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                        quiz.status === "published"
+                          ? "bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] text-[var(--quizzy-success)]"
+                          : "bg-[var(--quizzy-surface)] text-[var(--quizzy-muted)]"
+                      }`}>
+                        {getStatusLabel(quiz.status)}
                       </span>
                     </div>
-                    <p className="mt-3 text-sm leading-7 text-[var(--quizzy-muted)]">
+                    <p className="mt-2 text-sm leading-7 text-[var(--quizzy-muted)]">
                       {quiz.description || "Sem descricao ainda."}
                     </p>
                   </div>
-                  <div className="text-sm text-[var(--quizzy-muted)]">
-                    Atualizado em{" "}
-                    {new Intl.DateTimeFormat("pt-BR", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    }).format(quiz.updatedAt)}
+                  <div className="flex items-end justify-between gap-4 sm:block">
+                    <div className="text-sm text-[var(--quizzy-muted)]">
+                      Atualizado em{" "}
+                      {new Intl.DateTimeFormat("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      }).format(quiz.updatedAt)}
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-[var(--quizzy-teal)] sm:mt-6">
+                      Abrir quiz →
+                    </p>
                   </div>
                 </Link>
-                <div className="absolute right-4 top-4">
-                  <DeleteQuizButton
-                    deleteAction={deleteQuiz}
-                    quizId={quiz.id}
-                    quizTitle={quiz.title}
-                  />
+
+                {/* Actions outside Link to prevent tap target overlap */}
+                <div className="col-span-full flex flex-wrap items-center gap-3 border-t border-[var(--quizzy-border)] pt-4 sm:col-span-1">
+                  {quiz.status === "published" && (
+                    <form action={createLiveSession}>
+                      <input name="quizId" type="hidden" value={quiz.id} />
+                      <button
+                        className="rounded-full bg-[var(--quizzy-teal)] px-4 py-2 text-xs font-semibold text-white transition hover:brightness-90"
+                        type="submit"
+                      >
+                        Iniciar sessao live
+                      </button>
+                    </form>
+                  )}
+                  <div className="ml-auto">
+                    <DeleteQuizButton
+                      deleteAction={deleteQuiz}
+                      quizId={quiz.id}
+                      quizTitle={quiz.title}
+                    />
+                  </div>
                 </div>
               </div>
             ))
