@@ -117,6 +117,15 @@ export function DisplayClient({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [, startFormAction] = useActionState(startLiveSession, { message: "", status: "idle" });
 
+  const backgroundStyle = {
+    backgroundImage: branding.backgroundImageUrl
+      ? `linear-gradient(180deg, rgba(16,35,63,0.82) 0%, rgba(0,0,0,0.65) 100%), url(${branding.backgroundImageUrl})`
+      : `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+    backgroundPosition: "center",
+    backgroundSize: "cover",
+    fontFamily: branding.fontFamily,
+  };
+
   useEffect(() => {
     const socket = io(realtimeUrl, { transports: ["websocket"] });
 
@@ -225,10 +234,7 @@ export function DisplayClient({
       return (
         <div
           className="flex flex-1 flex-col items-center justify-center gap-10 px-12 py-10"
-          style={{
-            background: `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
-            fontFamily: branding.fontFamily,
-          }}
+          style={backgroundStyle}
         >
           <div className="w-full max-w-2xl">
             <div className="mb-6 flex items-center justify-between">
@@ -282,10 +288,7 @@ export function DisplayClient({
     return (
       <div
         className="relative flex flex-1 flex-col items-center justify-end overflow-hidden pb-0"
-        style={{
-          background: `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
-          fontFamily: branding.fontFamily,
-        }}
+        style={backgroundStyle}
       >
         {/* Confetti */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -393,14 +396,7 @@ export function DisplayClient({
     return (
       <div
         className="relative flex flex-1 flex-col overflow-hidden"
-        style={{
-          backgroundImage: branding.backgroundImageUrl
-            ? `linear-gradient(180deg, rgba(16,35,63,0.82) 0%, rgba(0,0,0,0.65) 100%), url(${branding.backgroundImageUrl})`
-            : `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
-          backgroundPosition: "center",
-          backgroundSize: "cover",
-          fontFamily: branding.fontFamily,
-        }}
+        style={backgroundStyle}
       >
         {/* Geometric overlay shapes (subtle when using branding gradient) */}
         <svg
@@ -558,9 +554,7 @@ export function DisplayClient({
 
         <div
           className="relative flex flex-1 items-center justify-center px-20 py-8"
-          style={{
-            background: `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
-          }}
+          style={backgroundStyle}
         >
           <div
             className="absolute left-8 top-1/2 -translate-y-1/2 flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black text-white shadow-lg"

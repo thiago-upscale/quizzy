@@ -42,8 +42,16 @@ export default async function LiveDisplayPage({
     (liveSession.versionBranding ?? liveSession.quizBranding) as Parameters<typeof normalizeLiveBranding>[0],
   );
 
+  const mainStyle = branding.backgroundImageUrl
+    ? {
+        backgroundImage: `linear-gradient(180deg, rgba(16,35,63,0.82) 0%, rgba(0,0,0,0.65) 100%), url(${branding.backgroundImageUrl})`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+      }
+    : { backgroundColor: branding.secondaryColor };
+
   return (
-    <main className="flex min-h-screen flex-col text-white" style={{ backgroundColor: branding.secondaryColor }}>
+    <main className="flex min-h-screen flex-col text-white" style={mainStyle}>
       <DisplayClient
         baseUrl={env.NEXTAUTH_URL}
         branding={branding}
