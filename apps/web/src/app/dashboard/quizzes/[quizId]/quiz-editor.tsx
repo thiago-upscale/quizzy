@@ -376,6 +376,8 @@ export function QuizEditor({
     initialSaveState,
   );
 
+  const [titleState, setTitleState] = useState(title);
+  const [descriptionState, setDescriptionState] = useState(description);
   const [activeTab, setActiveTab] = useState<"questions" | "branding" | "operation">("questions");
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(
     initialQuestions[0]?.id ?? null
@@ -573,6 +575,8 @@ export function QuizEditor({
       {(activeTab === "questions" || activeTab === "branding") ? (
         <form action={saveFormAction} className="space-y-6 pb-24">
           <input name="quizId" type="hidden" value={quizId} />
+          <input name="title" type="hidden" value={titleState} />
+          <input name="description" type="hidden" value={descriptionState} />
           <input
             name="questionsPayload"
             type="hidden"
@@ -604,9 +608,9 @@ export function QuizEditor({
                     </label>
                     <input
                       className="w-full rounded-xl border border-[#cad5e3] px-4 py-3 text-sm outline-none transition focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20"
-                      defaultValue={title}
+                      value={titleState}
+                      onChange={(e) => setTitleState(e.target.value)}
                       id="title"
-                      name="title"
                       required
                     />
                   </div>
@@ -619,9 +623,9 @@ export function QuizEditor({
                     </label>
                     <textarea
                       className="min-h-24 w-full rounded-xl border border-[#cad5e3] px-4 py-3 text-sm outline-none transition focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/20"
-                      defaultValue={description}
+                      value={descriptionState}
+                      onChange={(e) => setDescriptionState(e.target.value)}
                       id="description"
-                      name="description"
                     />
                   </div>
                 </div>
@@ -943,14 +947,15 @@ export function QuizEditor({
 
           {/* --- ABA BRANDING --- */}
           {activeTab === "branding" && (
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Controles do Branding */}
-              <FieldPanel className="space-y-6">
-                <SectionHeading
-                  eyebrow="Aplicar marca"
-                  helper="Escolha cores, fonte e imagens com foco na leitura final do participante."
-                  title="Identidade visual do quiz"
-                />
+              <div className="lg:col-span-7 space-y-6">
+                <FieldPanel className="space-y-6">
+                  <SectionHeading
+                    eyebrow="Aplicar marca"
+                    helper="Escolha cores, fonte e imagens com foco na leitura final do participante."
+                    title="Identidade visual do quiz"
+                  />
 
                 {(
                   [
@@ -1108,11 +1113,12 @@ export function QuizEditor({
                   quizId={quizId}
                 />
               </FieldPanel>
+            </div>
 
-              {/* Preview (Sticky) */}
-              <div className="lg:sticky lg:top-6 space-y-4">
-                <div
-                  className="overflow-hidden rounded-[1.75rem] border border-white/50 shadow-xl"
+            {/* Preview (Sticky) */}
+            <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4 w-full">
+              <div
+                className="overflow-hidden rounded-[1.75rem] border border-white/50 shadow-xl w-full"
                   style={{
                     backgroundImage: branding.backgroundImageUrl
                       ? `linear-gradient(145deg, rgba(16,35,63,0.72), rgba(15,118,110,0.72)), url(${branding.backgroundImageUrl})`
