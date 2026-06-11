@@ -37,10 +37,14 @@ export default async function JoinPage({
             </p>
 
             <form className="mt-8" method="get">
+              <label className="sr-only" htmlFor="pin-input">
+                PIN de 6 dígitos
+              </label>
               <input
                 autoComplete="one-time-code"
                 autoFocus
-                className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-5 text-center text-5xl font-bold tracking-[0.22em] text-white placeholder-white/20 outline-none transition focus:border-[#f59e0b] focus:bg-white/15"
+                className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-5 text-center text-5xl font-bold tracking-[0.22em] text-white placeholder-white/20 outline-none transition focus:border-[#f59e0b] focus:bg-white/15 focus:ring-2 focus:ring-[#f59e0b]/50"
+                id="pin-input"
                 inputMode="numeric"
                 maxLength={6}
                 name="pin"

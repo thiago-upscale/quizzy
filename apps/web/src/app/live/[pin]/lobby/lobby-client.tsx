@@ -205,6 +205,8 @@ export function LobbyClient({
   const [answerState, setAnswerState] =
     useState<AnswerState>(initialAnswerState);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [justReconnected, setJustReconnected] = useState(false);
+  const wasDisconnectedRef = useRef(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [playerCurrentStreak, setPlayerCurrentStreak] = useState(
     participant.currentStreak,
@@ -237,10 +239,10 @@ export function LobbyClient({
     }
 
     if (sessionState.status === "countdown") {
-      return "Comecando";
+      return "Começando";
     }
 
-    return "Aguardando inicio";
+    return "Aguardando início";
   }, [sessionState.status]);
 
   const personalStanding = useMemo(() => {
@@ -369,6 +371,11 @@ export function LobbyClient({
 
     socket.on("connect", () => {
       setSocketConnected(true);
+      if (wasDisconnectedRef.current) {
+        wasDisconnectedRef.current = false;
+        setJustReconnected(true);
+        window.setTimeout(() => setJustReconnected(false), 4000);
+      }
       socket.emit("session:join", {
         avatar: participant.avatar,
         currentStreak: participant.currentStreak,
@@ -383,6 +390,7 @@ export function LobbyClient({
     });
 
     socket.on("disconnect", () => {
+      wasDisconnectedRef.current = true;
       setSocketConnected(false);
     });
 
@@ -583,6 +591,9 @@ export function LobbyClient({
     questionRemainingSeconds ?? currentQuestion?.timeLimitSeconds ?? null;
   const shouldUseMobileAnswerMode =
     sessionState.status === "playing" && currentQuestion !== null;
+  const shouldUseCompactMobileLobby =
+    !shouldUseMobileAnswerMode &&
+    (sessionState.status === "waiting" || sessionState.status === "countdown");
 
   return (
     <main
@@ -600,30 +611,44 @@ export function LobbyClient({
         {shouldUseMobileAnswerMode && currentQuestion ? (
           <section className="flex min-h-[100dvh] flex-col md:hidden">
             {branding.showQuestionOnMobile ? (
-              <div className="rounded-[1.4rem] bg-white px-5 py-5 text-center text-[#1e3a8a] shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
-                <p className="text-[1.95rem] font-black leading-[1.15] tracking-[-0.03em]">
+              <div className="rounded-[1.25rem] bg-white px-4 py-4 text-center text-[#1e3a8a] shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
+                <p className="text-[1.45rem] font-black leading-[1.15] tracking-[-0.03em]">
                   {currentQuestion.prompt}
                 </p>
               </div>
             ) : null}
 
-            <div className="relative mt-3 flex flex-1 flex-col overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(15,23,42,0.12),rgba(0,0,0,0.22))] px-4 py-5">
-              <div className="flex items-center justify-between">
-                <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
-                  <span className="text-2xl font-black">{visibleQuestionTime}</span>
-                </div>
-                <span
-                  className="rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-[#10233f]"
-                  style={{ backgroundColor: branding.accentColor }}
+            <div className="relative mt-3 flex flex-1 flex-col overflow-hidden rounded-[1.5rem] bg-[linear-gradient(180deg,rgba(15,23,42,0.12),rgba(0,0,0,0.22))] px-3 py-4">
+              <div className="flex items-center gap-3">
+                <div
+                  aria-atomic="true"
+                  aria-label={`${visibleQuestionTime} segundos restantes`}
+                  aria-live="polite"
+                  className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]"
                 >
-                  Pergunta {currentQuestion.orderIndex + 1} de {currentQuestion.totalQuestions}
-                </span>
-                <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
-                  <span className="text-2xl font-black">
+                  <span aria-hidden="true" className="text-xl font-black">{visibleQuestionTime}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span
+                    className="inline-flex rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-[#10233f]"
+                    style={{ backgroundColor: branding.accentColor }}
+                  >
+                    Pergunta {currentQuestion.orderIndex + 1} de {currentQuestion.totalQuestions}
+                  </span>
+                  <p className="mt-2 text-sm font-semibold text-white/80">
+                    {answerState.submitted
+                      ? answerState.isCorrect
+                        ? `+${answerState.pointsEarned} pontos`
+                        : "Resposta enviada"
+                      : `${submissionStats.submittedCount}/${submissionStats.totalParticipants} respostas`}
+                  </p>
+                </div>
+                <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
+                  <span className="text-xl font-black">
                     {submissionStats.submittedCount}
                   </span>
                   <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                    respostas
+                    envios
                   </span>
                 </div>
               </div>
@@ -632,12 +657,12 @@ export function LobbyClient({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   alt="Imagem da pergunta"
-                  className="mt-5 max-h-48 w-full rounded-[1.4rem] object-cover"
+                  className="mt-4 max-h-40 w-full rounded-[1.2rem] object-cover"
                   src={currentQuestion.imageUrl}
                 />
               ) : null}
 
-              <div className="mt-auto grid grid-cols-2 overflow-hidden rounded-[1.6rem] shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
+              <div className="mt-4 grid flex-1 grid-cols-2 overflow-hidden rounded-[1.4rem] shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
                 {currentQuestion.options.map((option, optionIndex) => {
                   const isChosen = answerState.answerIndex === optionIndex;
                   const tileStyle =
@@ -647,7 +672,8 @@ export function LobbyClient({
                   return (
                     <button
                       key={`mobile-${currentQuestion.id}-${optionIndex}`}
-                      className="min-h-[148px] border border-black/5 px-5 py-5 text-left transition active:scale-[0.99] disabled:opacity-100"
+                      aria-pressed={isChosen}
+                      className="min-h-[132px] border border-black/5 px-4 py-4 text-left transition active:scale-[0.99] disabled:opacity-100"
                       disabled={
                         answerState.submitted || questionRemainingSeconds === 0
                       }
@@ -661,9 +687,9 @@ export function LobbyClient({
                       }}
                       type="button"
                     >
-                      <div className="flex h-full flex-col justify-between gap-5">
-                        <span className="text-2xl font-black">{tileStyle.icon}</span>
-                        <span className="text-[1.05rem] font-bold leading-snug">
+                      <div className="flex h-full flex-col justify-between gap-4">
+                        <span className="text-xl font-black">{tileStyle.icon}</span>
+                        <span className="text-[1rem] font-bold leading-snug">
                           {option}
                         </span>
                       </div>
@@ -672,14 +698,10 @@ export function LobbyClient({
                 })}
               </div>
 
-              <div className="mt-3 flex items-center justify-between rounded-full bg-[#1e3a8a] px-4 py-3 text-sm text-white/80">
-                <span className="font-semibold tracking-[0.08em]">PIN: {pin}</span>
+              <div className="mt-3 flex items-center justify-between rounded-full bg-[#1e3a8a] px-4 py-2.5 text-sm text-white/80">
+                <span className="font-semibold tracking-[0.08em]">PIN {pin}</span>
                 <span className="font-semibold">
-                  {answerState.submitted
-                    ? answerState.isCorrect
-                      ? `+${answerState.pointsEarned} pontos`
-                      : "Resposta enviada"
-                    : `${submissionStats.submittedCount}/${submissionStats.totalParticipants} respostas`}
+                  {answerState.submitted ? "Aguardando resultado" : "Responda agora"}
                 </span>
               </div>
             </div>
@@ -692,7 +714,11 @@ export function LobbyClient({
           }`}
         >
           <div className="flex flex-col gap-4">
-            <div className="rounded-[1.7rem] bg-white/6 p-5">
+            <div
+              className={`rounded-[1.7rem] bg-white/6 ${
+                shouldUseCompactMobileLobby ? "p-4 md:p-5" : "p-5"
+              }`}
+            >
               {branding.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -706,12 +732,21 @@ export function LobbyClient({
                   ? "Quiz ao vivo"
                   : "Lobby live"}
               </p>
-              <h1 className="mt-4 text-4xl font-bold leading-[1.04] tracking-[-0.03em]">
+              <h1
+                className={`mt-4 font-bold leading-[1.04] tracking-[-0.03em] ${
+                  shouldUseCompactMobileLobby ? "text-3xl md:text-4xl" : "text-4xl"
+                }`}
+              >
                 {quizTitle}
               </h1>
-              <p className="mt-3 text-base leading-8 text-white/74">
-                Ola, {participant.nickname}. Seu lugar na sala ja esta
-                garantido.
+              <p
+                className={`mt-3 text-white/74 ${
+                  shouldUseCompactMobileLobby
+                    ? "text-sm leading-6 md:text-base md:leading-8"
+                    : "text-base leading-8"
+                }`}
+              >
+                Olá, {participant.nickname}. Seu lugar na sala já está garantido.
               </p>
               <span
                 className="mt-5 inline-flex w-fit rounded-full px-5 py-2.5 text-xs font-bold uppercase tracking-[0.24em] text-[#10233f]"
@@ -727,12 +762,57 @@ export function LobbyClient({
                   {connectedCount} online
                 </span>
               </div>
+              {shouldUseCompactMobileLobby ? (
+                <div className="mt-4 space-y-3 md:hidden">
+                  {sessionState.status === "countdown" ? (
+                    <div className="rounded-[1.35rem] bg-white/10 px-4 py-4 text-center">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                        Começando agora
+                      </p>
+                      <p className="mt-2 text-5xl font-black text-white">
+                        {sessionState.countdownSeconds ?? 3}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-[1.2rem] bg-white/10 px-4 py-3">
+                      <p className="text-sm font-semibold text-white/85">
+                        Aguardando o host iniciar. Você será levado para a
+                        pergunta automaticamente.
+                      </p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-[1.2rem] bg-white/10 px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                        Conexão
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-white/85">
+                        {socketConnected ? "Você conectado" : "Reconectando"}
+                      </p>
+                    </div>
+                    <div className="rounded-[1.2rem] bg-white/10 px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                        Host
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-white/85">
+                        {sessionState.hostPresenceStatus === "online"
+                          ? "Online"
+                          : "Aguardando"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </header>
 
         <section className={`space-y-4 ${shouldUseMobileAnswerMode ? "hidden md:block" : ""}`}>
-          <article className="rounded-[1.8rem] bg-white/10 p-5 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur">
+          <article
+            className={`rounded-[1.8rem] bg-white/10 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur ${
+              shouldUseCompactMobileLobby ? "hidden md:block p-5" : "p-5"
+            }`}
+          >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
               {sessionState.status === "playing"
                 ? "Sua rodada"
@@ -750,18 +830,18 @@ export function LobbyClient({
             </p>
             <p className="mt-1 text-sm font-medium text-white/65">
               Host {sessionState.hostPresenceStatus} •{" "}
-              {socketConnected ? "voce conectado" : "reconectando"}
+              {socketConnected ? "você conectado" : "reconectando"}
             </p>
             <p className="mt-4 text-base leading-8 text-white/72">
               {sessionState.status === "playing"
-                ? "Responda rapido para acumular pontos e manter sua sequencia."
+                ? "Responda rápido para acumular pontos e manter sua sequência."
                 : "Quando o host iniciar, todos avancam ao mesmo tempo."}
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <div className="rounded-[1.4rem] bg-white/10 px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                  Sua pontuacao
+                  Sua pontuação
                 </p>
                 <p className="mt-2 text-3xl font-black tracking-[-0.03em]">
                   {displayedScore} pontos
@@ -769,28 +849,33 @@ export function LobbyClient({
               </div>
               <div className="rounded-[1.4rem] bg-white/10 px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                  {sessionState.status === "playing" ? "Tempo" : "Sequencia"}
+                  {sessionState.status === "playing" ? "Tempo" : "Sequência"}
                 </p>
                 {sessionState.status === "playing" && visibleQuestionTime !== null ? (
                   <p className="mt-2 text-3xl font-black tracking-[-0.03em]">
                     {visibleQuestionTime}s
                   </p>
                 ) : activeStreak >= 2 ? (
-                  <span
-                    className="mt-2 inline-flex rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
-                    style={{
-                      animation:
-                        activeStreak >= 5 && !prefersReducedMotion
-                          ? "quizzy-pulse-soft 1.2s ease-in-out infinite"
-                          : undefined,
-                      backgroundColor: branding.accentColor,
-                    }}
-                  >
-                    Sequencia x{activeStreak} • {formatStreakMultiplier(activeStreak)}x
-                  </span>
+                  <div className="mt-2">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold text-[#10233f]"
+                      style={{
+                        animation:
+                          activeStreak >= 5 && !prefersReducedMotion
+                            ? "quizzy-pulse-soft 1.2s ease-in-out infinite"
+                            : undefined,
+                        backgroundColor: branding.accentColor,
+                      }}
+                    >
+                      🔥 Sequência ×{activeStreak}
+                    </span>
+                    <p className="mt-2 text-xs text-white/65">
+                      Multiplicador {formatStreakMultiplier(activeStreak)}× ativo
+                    </p>
+                  </div>
                 ) : (
                   <p className="mt-2 text-sm font-semibold text-white/75">
-                    Sem bonus acumulado ainda
+                    Sem bônus acumulado ainda
                   </p>
                 )}
               </div>
@@ -799,8 +884,14 @@ export function LobbyClient({
             {!socketConnected ? (
               <div className="mt-6">
                 <StatusAlert tone="warning">
-                  Reconectando... sua sessao continua preservada enquanto o
-                  canal realtime tenta retomar a conexao.
+                  Reconectando... sua sessão continua preservada enquanto o
+                  canal realtime tenta retomar a conexão.
+                </StatusAlert>
+              </div>
+            ) : justReconnected ? (
+              <div className="mt-6">
+                <StatusAlert tone="success">
+                  Você foi reconectado. Tudo certo para continuar.
                 </StatusAlert>
               </div>
             ) : null}
@@ -808,7 +899,7 @@ export function LobbyClient({
             {sessionState.status === "countdown" ? (
               <div className="mt-8 rounded-[1.5rem] bg-white/10 p-6 text-center">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                  Comecando agora
+                  Começando agora
                 </p>
                 <p className="mt-3 text-6xl font-semibold">
                   {sessionState.countdownSeconds ?? 3}
@@ -828,8 +919,13 @@ export function LobbyClient({
                       {currentQuestion.prompt}
                     </h2>
                   </div>
-                  <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white">
-                    {visibleQuestionTime}s
+                  <div
+                    aria-atomic="true"
+                    aria-label={`${visibleQuestionTime} segundos restantes`}
+                    aria-live="polite"
+                    className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white"
+                  >
+                    <span aria-hidden="true">{visibleQuestionTime}s</span>
                   </div>
                 </div>
 
@@ -858,6 +954,7 @@ export function LobbyClient({
                     return (
                       <button
                         key={`${currentQuestion.id}-${optionIndex}`}
+                        aria-pressed={isChosen}
                         className="min-h-[112px] rounded-[1.5rem] px-4 py-4 text-left transition active:scale-[0.99] disabled:opacity-100"
                         disabled={
                           answerState.submitted ||
@@ -917,7 +1014,7 @@ export function LobbyClient({
                     </p>
                     {answerState.submitted && answerState.currentStreak >= 2 ? (
                       <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
-                        Sequencia x{answerState.currentStreak}
+                        Sequência x{answerState.currentStreak}
                       </p>
                     ) : null}
                   </div>
@@ -931,7 +1028,7 @@ export function LobbyClient({
                   Pausa operacional
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold">
-                  O host esta se reconectando
+                  O host está se reconectando
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-[#9a3412]">
                   Sua participacao foi preservada. Assim que o host retomar o
@@ -1013,13 +1110,13 @@ export function LobbyClient({
                     <p className="mt-2 text-sm font-semibold text-slate-800">
                       {personalStanding?.answeredCurrentQuestion
                         ? personalStanding.lastIsCorrect
-                          ? `Voce acertou e ganhou ${personalStanding.lastPointsEarned} pontos.`
-                          : "Voce respondeu, mas nao acertou nesta rodada."
-                        : "Voce nao respondeu a tempo nesta rodada."}
+                          ? `Você acertou e ganhou ${personalStanding.lastPointsEarned} pontos.`
+                          : "Você respondeu, mas não acertou nesta rodada."
+                        : "Você não respondeu a tempo nesta rodada."}
                     </p>
                     {activeStreak >= 2 ? (
                       <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
-                        Sequencia ativa x{activeStreak}
+                        Sequência ativa x{activeStreak}
                       </p>
                     ) : null}
                   </div>
@@ -1085,14 +1182,18 @@ export function LobbyClient({
                   Preparando o enunciado
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-slate-600">
-                  O host ja iniciou a sessao. A pergunta vai aparecer aqui em
+                  O host já iniciou a sessão. A pergunta vai aparecer aqui em
                   instantes.
                 </p>
               </div>
             ) : null}
           </article>
 
-          <article className="rounded-[1.8rem] bg-white/10 p-5 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur">
+          <article
+            className={`rounded-[1.8rem] bg-white/10 p-5 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur ${
+              shouldUseCompactMobileLobby ? "hidden md:block" : ""
+            }`}
+          >
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
@@ -1111,21 +1212,21 @@ export function LobbyClient({
               {leaderboardToRender.length === 0 ? (
                 <div className="rounded-[1.35rem] bg-white/10 px-4 py-4">
                   <p className="text-sm leading-7 text-white/75">
-                    O ranking aparece assim que a rodada comecar e as primeiras
+                    O ranking aparece assim que a rodada começar e as primeiras
                     respostas forem chegando.
                   </p>
                 </div>
               ) : (
-                leaderboardToRender.slice(0, 5).map((entry) => (
+                leaderboardToRender.slice(0, 5).map((entry, idx) => (
                   <div
-                    key={entry.id}
+                    key={`${entry.id}-v${leaderboardVersion}`}
                     className="flex items-center gap-3 rounded-[1.35rem] bg-white/10 px-4 py-3"
                     style={
                       prefersReducedMotion
                         ? undefined
                         : {
                             animation: "quizzy-rise 360ms ease both",
-                            animationDelay: `${(4 - leaderboardToRender.slice(0, 5).indexOf(entry)) * 70}ms`,
+                            animationDelay: `${(4 - idx) * 70}ms`,
                           }
                     }
                   >
@@ -1171,7 +1272,7 @@ export function LobbyClient({
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                     Participantes
                   </p>
-                  <h3 className="mt-2 text-xl font-semibold">Quem ja entrou</h3>
+                  <h3 className="mt-2 text-xl font-semibold">Quem já entrou</h3>
                 </div>
               </div>
 

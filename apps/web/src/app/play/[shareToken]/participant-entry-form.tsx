@@ -35,22 +35,22 @@ export function IndividualParticipantEntryForm({
       <label className="block space-y-2">
         <span className="text-sm font-medium text-white/80">Apelido</span>
         <input
-          className="w-full rounded-2xl border border-white/15 bg-white/92 px-5 py-4 text-base text-[#10233f] outline-none"
+          className="w-full rounded-2xl border border-white/15 bg-white/92 px-5 py-4 text-base text-[#10233f] outline-none focus:ring-2 focus:ring-[#f59e0b]/60 focus:border-[#f59e0b]"
           maxLength={20}
           name="nickname"
-          placeholder="Como voce quer aparecer"
+          placeholder="Como você quer aparecer"
           required
         />
       </label>
 
       <label className="block space-y-2">
         <span className="text-sm font-medium text-white/80">
-          {requireEmail ? "Email obrigatorio" : "Email opcional"}
+          {requireEmail ? "Email obrigatório" : "Email opcional"}
         </span>
         <input
-          className="w-full rounded-2xl border border-white/15 bg-white/92 px-5 py-4 text-base text-[#10233f] outline-none"
+          className="w-full rounded-2xl border border-white/15 bg-white/92 px-5 py-4 text-base text-[#10233f] outline-none focus:ring-2 focus:ring-[#f59e0b]/60 focus:border-[#f59e0b]"
           name="email"
-          placeholder="voce@empresa.com"
+          placeholder="você@empresa.com"
           required={requireEmail}
           type="email"
         />

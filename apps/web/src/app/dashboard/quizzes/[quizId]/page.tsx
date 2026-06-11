@@ -72,7 +72,7 @@ export default async function QuizDetailPage({
       options:
         question.type === "true_false"
           ? ["Verdadeiro", "Falso"]
-          : (content.options ?? ["Opcao A", "Opcao B", "Opcao C", "Opcao D"]),
+          : (content.options ?? ["Opção A", "Opção B", "Opção C", "Opção D"]),
       correctIndex: correctAnswer.index ?? 0,
       timeLimitSeconds: question.timeLimitSeconds,
     } as const;
@@ -133,6 +133,9 @@ export default async function QuizDetailPage({
           }}
           description={quiz.description ?? ""}
           initialQuestions={initialQuestions}
+          liveSessionDefaults={{
+            requireParticipantEmail: false,
+          }}
           liveSessionAction={createLiveSession}
           quizId={quiz.id}
           saveAction={saveQuiz}
