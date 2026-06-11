@@ -5,7 +5,6 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import { env } from "@/env";
 import {
-  MetricCard,
   SectionHeading,
   StatusAlert,
   SurfaceCard,
@@ -34,7 +33,7 @@ export default async function AccountPage() {
     .limit(1);
 
   if (!user) {
-    throw new Error("Usuario nao encontrado.");
+    throw new Error("Usuário não encontrado.");
   }
 
   return (
@@ -47,57 +46,26 @@ export default async function AccountPage() {
           >
             Voltar ao dashboard
           </Link>
-          <div className="mt-4 grid gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-                Conta
-              </p>
-              <h1 className="mt-3 text-4xl font-semibold">
-                Perfil e seguranca do criador
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
-                Ajuste identidade, acesso e recuperacao em uma area pensada para
-                deixar a operacao pronta para o beta.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <MetricCard
-                helper="Nome e empresa atualizados no espaco de criador."
-                label="Perfil"
-                value="Pronto"
-              />
-              <MetricCard
-                accent={user.passwordHash ? "teal" : "amber"}
-                helper={
-                  user.passwordHash
-                    ? "Senha local ativa e pronta para ser trocada."
-                    : "Conta ainda depende da ativacao do fluxo social."
-                }
-                label="Seguranca"
-                value={user.passwordHash ? "Ativa" : "Parcial"}
-              />
-              <MetricCard
-                accent={hasGoogle ? "teal" : "amber"}
-                helper={
-                  hasGoogle
-                    ? "Credenciais presentes para liberar o provider no login."
-                    : "A integracao entra no ar quando as credenciais forem adicionadas."
-                }
-                label="Google"
-                value={hasGoogle ? "Configurado" : "Pendente"}
-              />
-            </div>
+          <div className="mt-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
+              Conta
+            </p>
+            <h1 className="mt-3 text-4xl font-semibold">
+              Perfil e segurança do criador
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
+              Ajuste identidade, acesso e recuperação — tudo em um lugar.
+            </p>
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-4">
           <SurfaceCard>
             <SectionHeading
               eyebrow="Perfil"
-              helper="Nome e empresa orientam seu espaco de criador e aparecem como referencia operacional nas areas autenticadas."
+              helper="Nome e empresa orientam seu espaço de criador e aparecem como referência operacional nas áreas autenticadas."
               title="Identidade principal"
             />
-
             <div className="mt-6">
               <ProfileForm
                 initialCompany={user.company ?? ""}
@@ -106,48 +74,45 @@ export default async function AccountPage() {
             </div>
           </SurfaceCard>
 
-          <div className="grid gap-4">
-            <SurfaceCard>
-              <SectionHeading
-                eyebrow="Seguranca"
-                helper={`Email atual: ${user.email}`}
-                title="Senha e recuperacao"
-              />
-
-              {user.passwordHash ? (
-                <div className="mt-6 space-y-6">
-                  <PasswordChangeForm />
-                  <div className="border-t border-[var(--quizzy-border)] pt-6">
-                    <PasswordResetRequestInline email={user.email} />
-                  </div>
+          <SurfaceCard>
+            <SectionHeading
+              eyebrow="Segurança"
+              helper={`Email atual: ${user.email}`}
+              title="Senha e recuperação"
+            />
+            {user.passwordHash ? (
+              <div className="mt-6 space-y-6">
+                <PasswordChangeForm />
+                <div className="border-t border-[var(--quizzy-border)] pt-6">
+                  <PasswordResetRequestInline email={user.email} />
                 </div>
-              ) : (
-                <div className="mt-6">
-                  <StatusAlert tone="warning">
-                    Esta conta ainda nao usa senha local. O acesso por senha
-                    pode ser introduzido depois da ativacao do Google, se isso
-                    fizer sentido para a operacao.
-                  </StatusAlert>
-                </div>
-              )}
-            </SurfaceCard>
-
-            <SurfaceCard>
-              <SectionHeading
-                eyebrow="Login social"
-                helper="A integracao com Google deve comunicar estado real de prontidao, sem parecer um controle morto."
-                title="Google"
-              />
+              </div>
+            ) : (
               <div className="mt-6">
-                <StatusAlert tone={hasGoogle ? "success" : "info"}>
-                  {hasGoogle
-                    ? "O provider Google esta configurado e pronto para aparecer no login."
-                    : "O provider Google ja esta preparado no produto e entra no ar assim que as credenciais forem adicionadas."}
+                <StatusAlert tone="warning">
+                  Esta conta ainda não usa senha local. O acesso por senha
+                  pode ser introduzido depois da ativação do Google, se isso
+                  fizer sentido para a operação.
                 </StatusAlert>
               </div>
-            </SurfaceCard>
-          </div>
-        </section>
+            )}
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <SectionHeading
+              eyebrow="Login social"
+              helper="Estado real de prontidão do provider Google."
+              title="Google"
+            />
+            <div className="mt-6">
+              <StatusAlert tone={hasGoogle ? "success" : "info"}>
+                {hasGoogle
+                  ? "O provider Google está configurado e pronto para aparecer no login."
+                  : "O provider Google já está preparado no produto e entra no ar assim que as credenciais forem adicionadas."}
+              </StatusAlert>
+            </div>
+          </SurfaceCard>
+        </div>
       </div>
     </main>
   );

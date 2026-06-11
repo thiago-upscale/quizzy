@@ -43,7 +43,7 @@ const statusLabels: Record<string, string> = {
 
 function formatDate(value: Date | null) {
   if (!value) {
-    return "Nao definido";
+    return "Não definido";
   }
 
   return new Intl.DateTimeFormat("pt-BR", {
@@ -123,7 +123,7 @@ async function getRealtimeHealth(): Promise<RealtimeHealth> {
 
     return {
       checkedAt,
-      label: "Respondendo normalmente. Falhas de sincronizacao de inicio e avanco da sessao tambem ficam registradas no historico operacional.",
+      label: "Respondendo normalmente. Falhas de sincronização de início e avanço da sessão também ficam registradas no histórico operacional.",
       status: "healthy",
     };
   } catch (error) {
@@ -138,7 +138,7 @@ async function getRealtimeHealth(): Promise<RealtimeHealth> {
 export default async function DashboardPage() {
   const session = await requireAuthSession();
 
-  const [quizList, activeSessionsRaw, recentEvents, realtimeHealth] =
+  const [quizList, activeSessionsRaw, recentEvents, realtimeHealth, recentFinishedSessions] =
     await Promise.all([
       db
         .select({
@@ -191,6 +191,25 @@ export default async function DashboardPage() {
         .orderBy(desc(sessionEvents.createdAt))
         .limit(12),
       getRealtimeHealth(),
+      db
+        .select({
+          id: quizSessions.id,
+          mode: quizSessions.mode,
+          pin: quizSessions.pin,
+          shareToken: quizSessions.shareToken,
+          finishedAt: quizSessions.finishedAt,
+          quizTitle: quizzes.title,
+          participantCount: count(participants.id),
+        })
+        .from(quizSessions)
+        .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+        .leftJoin(participants, eq(participants.sessionId, quizSessions.id))
+        .where(
+          eq(quizzes.organizationId, session.user.organizationId),
+        )
+        .groupBy(quizSessions.id, quizzes.id)
+        .orderBy(desc(quizSessions.finishedAt))
+        .limit(5),
     ]);
 
   const activeSessions = activeSessionsRaw.filter((sessionItem) =>
@@ -227,6 +246,10 @@ export default async function DashboardPage() {
       }
     }
   }
+
+  const finishedSessionsRecent = recentFinishedSessions.filter(
+    (s) => s.finishedAt !== null,
+  );
 
   const publishedQuizzes = quizList.filter(
     (quiz) => quiz.status === "published",
@@ -275,7 +298,7 @@ export default async function DashboardPage() {
                 Workspace de quizzes
               </p>
               <h1 className="mt-3 max-w-4xl text-2xl font-semibold tracking-[-0.02em]">
-                Sua biblioteca e operacao em um so lugar.
+                Sua biblioteca e operação em um só lugar.
               </h1>
             </div>
             <div className="flex flex-col gap-3 lg:items-end">
@@ -306,38 +329,38 @@ export default async function DashboardPage() {
         </header>
 
         {/* Operational metrics — first thing hosts see */}
-        <section aria-label="Metricas operacionais" className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section aria-label="Métricas operacionais" className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
-            helper="Sessoes live em andamento ou aguardando host."
+            helper="Sessões live em andamento ou aguardando host."
             label="Ao vivo agora"
             value={activeLiveSessions.length}
           />
           <MetricCard
             accent="teal"
-            helper="Pessoas conectadas nas sessoes live abertas."
+            helper="Pessoas conectadas nas sessões live abertas."
             label="Participantes ativos"
             value={activeParticipants}
           />
           <MetricCard
-            helper="Links assincronos ainda disponiveis."
+            helper="Links assíncronos ainda disponíveis."
             label="Individuais abertas"
             value={openIndividualSessions.length}
           />
           <MetricCard
             accent={interruptedSessions.length > 0 ? "amber" : "navy"}
-            helper="Sessoes pausadas aguardando retomada."
+            helper="Sessões pausadas aguardando retomada."
             label="Interrompidas"
             value={interruptedSessions.length}
           />
         </section>
 
         {/* Live sessions + recent events */}
-        <section aria-label="Operacao ao vivo" className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <section aria-label="Operação ao vivo" className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
           <SurfaceCard>
             <SectionHeading
-              eyebrow="Operacao ao vivo"
-              helper="Abra apenas as sessoes que realmente pedem acao do host."
-              title="Sessoes que precisam de acompanhamento"
+              eyebrow="Operação ao vivo"
+              helper="Abra apenas as sessões que realmente pedem ação do host."
+              title="Sessões que precisam de acompanhamento"
               trailing={
                 <span className="rounded-full bg-[#f8fbff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
                   {sessionsNeedingAttention.length} abertas
@@ -348,15 +371,15 @@ export default async function DashboardPage() {
             <div className="mt-6 space-y-3">
               {sessionsNeedingAttention.length === 0 ? (
                 <EmptyStateCard
-                  description="Quando uma sessao estiver em andamento, interrompida ou aguardando decisao do host, ela aparece aqui."
-                  title="Nenhuma sessao pedindo atencao agora"
+                  description="Quando uma sessão estiver em andamento, interrompida ou aguardando decisao do host, ela aparece aqui."
+                  title="Nenhuma sessão pedindo atenção agora"
                 />
               ) : (
                 sessionsNeedingAttention.map((sessionItem) => {
                   const latestEvent = latestEventBySession.get(sessionItem.id);
                   const sessionLabel = sessionItem.mode === "live"
-                    ? `Sessao ${sessionItem.quizTitle} — PIN ${sessionItem.pin ?? "sem PIN"}`
-                    : `Sessao individual ${sessionItem.quizTitle}`;
+                    ? `Sessão ${sessionItem.quizTitle} — PIN ${sessionItem.pin ?? "sem PIN"}`
+                    : `Sessão individual ${sessionItem.quizTitle}`;
 
                   return (
                     <Link
@@ -373,7 +396,7 @@ export default async function DashboardPage() {
                           <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
                             {sessionItem.mode === "live"
                               ? `PIN ${sessionItem.pin ?? "sem PIN"}`
-                              : "Sessao individual"}{" "}
+                              : "Sessão individual"}{" "}
                             • {sessionItem.participantCount} participantes
                           </p>
                         </div>
@@ -402,22 +425,22 @@ export default async function DashboardPage() {
 
           <SurfaceCard>
             <SectionHeading
-              eyebrow="Historico recente"
-              helper="Feed curto para contexto rapido antes de abrir uma sessao."
-              title="Ultimos sinais"
+              eyebrow="Histórico recente"
+              helper="Feed curto para contexto rápido antes de abrir uma sessão."
+              title="Últimos sinais"
             />
 
             <div className="mt-6 space-y-3">
               {recentEvents.length === 0 ? (
                 <EmptyStateCard
-                  description="Quando a organizacao acumular sessoes, os sinais recentes aparecem aqui."
+                  description="Quando a organização acumular sessões, os sinais recentes aparecem aqui."
                   title="Sem atividade recente"
                 />
               ) : (
                 recentEvents.slice(0, 6).map((event) => (
                   <Link
                     key={event.id}
-                    aria-label={`Evento ${formatEventType(event.eventType)} da sessao ${event.quizTitle}`}
+                    aria-label={`Evento ${formatEventType(event.eventType)} da sessão ${event.quizTitle}`}
                     className="block rounded-[1.4rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-4 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
                     href={`/dashboard/sessions/${event.sessionId}`}
                   >
@@ -452,8 +475,8 @@ export default async function DashboardPage() {
         <SurfaceCard className="mt-4">
           <SectionHeading
             eyebrow="Monitoramento resumido"
-            helper="A operacao continua visivel, mas sem roubar o foco da biblioteca."
-            title="Saude da plataforma"
+            helper="A operação continua visível, mas sem roubar o foco da biblioteca."
+            title="Saúde da plataforma"
             trailing={
               <div className="flex flex-wrap items-center gap-3">
                 <span
@@ -480,11 +503,50 @@ export default async function DashboardPage() {
           </div>
         </SurfaceCard>
 
+        {/* Recently finished sessions */}
+        {finishedSessionsRecent.length > 0 ? (
+          <SurfaceCard className="mt-4">
+            <SectionHeading
+              eyebrow="Sessões finalizadas recentes"
+              helper="As últimas sessões encerradas — acesse o relatório completo de cada uma."
+              title="Resultados recentes"
+            />
+            <div className="mt-6 space-y-3">
+              {finishedSessionsRecent.map((s) => (
+                <Link
+                  key={s.id}
+                  aria-label={`Ver resultados de ${s.quizTitle}`}
+                  className="flex items-center justify-between gap-4 rounded-[1.4rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] px-5 py-4 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
+                  href={`/dashboard/sessions/${s.id}`}
+                >
+                  <div>
+                    <p className="font-semibold text-[var(--quizzy-text)]">
+                      {s.quizTitle}
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
+                      {s.mode === "live"
+                        ? `Live • PIN ${s.pin ?? "—"}`
+                        : "Individual"}{" "}
+                      • {s.participantCount} participantes
+                      {s.finishedAt
+                        ? ` • ${formatDate(s.finishedAt)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-[var(--quizzy-teal)]">
+                    Ver resultados →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </SurfaceCard>
+        ) : null}
+
         {/* Quiz library — below the operational fold */}
         <section aria-label="Biblioteca de quizzes" className="mt-8">
           <SectionHeading
             eyebrow="Biblioteca de quizzes"
-            helper="Acesse rascunhos, publicacoes recentes e comece uma nova sessao a partir do quiz certo."
+            helper="Acesse rascunhos, publicações recentes e comece uma nova sessão a partir do quiz certo."
             title="Gerencie seus quizzes"
             trailing={
               <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--quizzy-muted)]">
@@ -515,7 +577,7 @@ export default async function DashboardPage() {
                   </button>
                 </form>
               }
-              description="Com a cara da sua empresa: adicione logo, cores e fontes para publicar o primeiro quiz e depois abrir uma sessao live ou individual."
+              description="Com a cara da sua empresa: adicione logo, cores e fontes para publicar o primeiro quiz e depois abrir uma sessão live ou individual."
               title="Crie seu primeiro quiz"
             />
           ) : (
@@ -543,7 +605,7 @@ export default async function DashboardPage() {
                       </span>
                     </div>
                     <p className="mt-2 text-sm leading-7 text-[var(--quizzy-muted)]">
-                      {quiz.description || "Sem descricao ainda."}
+                      {quiz.description || "Sem descrição ainda."}
                     </p>
                   </div>
                   <div className="flex items-end justify-between gap-4 sm:block">
@@ -569,7 +631,7 @@ export default async function DashboardPage() {
                         className="rounded-full bg-[var(--quizzy-teal)] px-4 py-2 text-xs font-semibold text-white transition hover:brightness-90"
                         type="submit"
                       >
-                        Iniciar sessao live
+                        Iniciar sessão live
                       </button>
                     </form>
                   )}

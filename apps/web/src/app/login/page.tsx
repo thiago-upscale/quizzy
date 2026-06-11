@@ -21,82 +21,67 @@ export default async function LoginPage({
   const hasGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#fef3c7,_transparent_34%),linear-gradient(135deg,_#fff8ef,_#edf7f4_60%,_#eef4ff)] px-6 py-12 text-[#10233f]">
-      <div className="mx-auto grid min-h-[calc(100vh-6rem)] w-full max-w-6xl gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="flex flex-col justify-between rounded-[2rem] border border-white/60 bg-white/55 p-8 shadow-[0_30px_120px_rgba(16,35,63,0.12)] backdrop-blur">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-              Quizzy
+    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,_#fef3c7,_transparent_34%),linear-gradient(135deg,_#fff8ef,_#edf7f4_60%,_#eef4ff)] px-6 py-12 text-[var(--quizzy-text)]">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <Link
+            className="text-2xl font-bold uppercase tracking-[0.14em] text-[var(--quizzy-navy)]"
+            href="/"
+            style={{ fontFamily: "var(--quizzy-logo-font)" }}
+          >
+            Quizzy
+          </Link>
+          <h1 className="mt-4 text-3xl font-semibold leading-tight">
+            O painel do criador começa aqui.
+          </h1>
+          <p className="mt-3 text-sm leading-7 text-[var(--quizzy-muted)]">
+            Entre para criar quizzes, publicar versões e preparar a experiência
+            ao vivo.
+          </p>
+        </div>
+
+        <div className="rounded-[2rem] bg-white p-8 shadow-[0_30px_100px_rgba(15,23,42,0.14)]">
+          {params.registered === "1" ? (
+            <p className="mb-6 rounded-xl bg-[#ecfdf3] px-4 py-3 text-sm text-[#0f766e]">
+              Conta criada com sucesso. Agora você já pode entrar.
             </p>
-            <h1 className="mt-6 max-w-xl text-5xl font-semibold leading-[1.02] sm:text-6xl">
-              O painel do criador comeca aqui.
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-[#52607a]">
-              Entre para criar quizzes, publicar versoes e preparar a
-              experiencia live que vamos levar para producao.
+          ) : null}
+
+          {params.reset === "1" ? (
+            <p className="mb-6 rounded-xl bg-[#eff6ff] px-4 py-3 text-sm text-[#1d4ed8]">
+              Senha redefinida. Entre com a nova credencial.
             </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              ["Editor", "Rascunhos e versoes publicadas."],
-              ["Branding", "Estrutura pronta para personalizacao."],
-              ["Realtime", "Sessao live conectada ao backend dedicado."],
-            ].map(([title, description]) => (
-              <div
-                key={title}
-                className="rounded-2xl border border-[#dce5f2] bg-white/80 p-4"
-              >
-                <h2 className="text-sm font-semibold">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-[#61708c]">
-                  {description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+          ) : null}
 
-        <section className="flex items-center">
-          <div className="w-full rounded-[2rem] bg-white p-8 shadow-[0_30px_100px_rgba(15,23,42,0.14)]">
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold">
-                Entrar na area do criador
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-[#61708c]">
-                Use email e senha para acessar seu dashboard.
-              </p>
-            </div>
+          <LoginForm />
 
-            {params.registered === "1" ? (
-              <p className="mb-4 rounded-xl bg-[#ecfdf3] px-4 py-3 text-sm text-[#0f766e]">
-                Conta criada com sucesso. Agora voce ja pode entrar.
-              </p>
-            ) : null}
+          {hasGoogle ? (
+            <Link
+              className="mt-4 block rounded-xl border border-[var(--quizzy-border)] px-4 py-3 text-center text-sm font-semibold text-[var(--quizzy-text)] transition hover:bg-[var(--quizzy-surface)]"
+              href="/api/auth/signin/google?callbackUrl=%2Fdashboard"
+            >
+              Entrar com Google
+            </Link>
+          ) : null}
 
-            {params.reset === "1" ? (
-              <p className="mb-4 rounded-xl bg-[#eff6ff] px-4 py-3 text-sm text-[#1d4ed8]">
-                Senha redefinida. Entre com a nova credencial.
-              </p>
-            ) : null}
-
-            <LoginForm />
-
-            {hasGoogle ? (
-              <Link
-                className="mt-4 block rounded-xl border border-[#c9d5e7] px-4 py-3 text-center text-sm font-semibold text-[#10233f] transition hover:bg-[#f8fafc]"
-                href="/api/auth/signin/google?callbackUrl=%2Fdashboard"
-              >
-                Entrar com Google
-              </Link>
-            ) : null}
-
-            <p className="mt-6 text-sm text-[#61708c]">
-              Ainda nao tem conta?{" "}
-              <Link className="font-semibold text-[#0f766e]" href="/register">
-                Criar conta
-              </Link>
-            </p>
-          </div>
-        </section>
+          <p className="mt-6 text-center text-sm text-[var(--quizzy-muted)]">
+            Ainda não tem conta?{" "}
+            <Link
+              className="font-semibold text-[var(--quizzy-teal)]"
+              href="/register"
+            >
+              Criar conta
+            </Link>
+          </p>
+          <p className="mt-2 text-center text-sm text-[var(--quizzy-muted)]">
+            <Link
+              className="font-semibold text-[var(--quizzy-muted)] underline underline-offset-2"
+              href="/forgot-password"
+            >
+              Esqueci minha senha
+            </Link>
+          </p>
+        </div>
       </div>
     </main>
   );

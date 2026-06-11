@@ -1,7 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { startLiveSession } from "@/app/dashboard/actions";
+import { useFormStatus } from "react-dom";
+import { Maximize2, Minimize2 } from "lucide-react";
+import {
+  advanceLiveSession,
+  skipLiveQuestion,
+  startLiveSession,
+} from "@/app/dashboard/actions";
 import type { LiveBranding } from "@/lib/live";
 import { io } from "socket.io-client";
 
@@ -76,6 +82,160 @@ function generateConfetti(count: number) {
 
 const CONFETTI = generateConfetti(60);
 
+type DensityMode = "normal" | "compact" | "dense";
+
+function getDisplayDensityMode(prompt: string, options: string[]): DensityMode {
+  const promptLength = prompt.trim().length;
+  const optionLengths = options.map((option) => option.trim().length);
+  const maxOptionLength = optionLengths.length > 0 ? Math.max(...optionLengths) : 0;
+  const averageOptionLength =
+    optionLengths.length > 0
+      ? optionLengths.reduce((sum, length) => sum + length, 0) / optionLengths.length
+      : 0;
+  const totalTextLength =
+    promptLength + optionLengths.reduce((sum, length) => sum + length, 0);
+
+  if (
+    promptLength > 185 ||
+    maxOptionLength > 125 ||
+    averageOptionLength > 95 ||
+    totalTextLength > 520
+  ) {
+    return "dense";
+  }
+
+  if (
+    promptLength > 110 ||
+    maxOptionLength > 82 ||
+    averageOptionLength > 68 ||
+    totalTextLength > 360
+  ) {
+    return "compact";
+  }
+
+  return "normal";
+}
+
+function getPromptDensityClasses(mode: DensityMode) {
+  if (mode === "dense") {
+    return {
+      container: "gap-4 px-20",
+      heading:
+        "max-w-4xl text-balance text-[2.15rem] font-black leading-[1.03] text-white drop-shadow-[0_10px_30px_rgba(15,23,42,0.55)] xl:text-[3.25rem]",
+      stage: "px-16 py-8",
+    };
+  }
+
+  if (mode === "compact") {
+    return {
+      container: "gap-5 px-24",
+      heading:
+        "max-w-5xl text-balance text-[2.65rem] font-black leading-[1.06] text-white drop-shadow-[0_10px_30px_rgba(15,23,42,0.55)] xl:text-[4.2rem]",
+      stage: "px-18 py-9",
+    };
+  }
+
+  return {
+    container: "gap-8 px-28",
+    heading:
+      "max-w-5xl text-balance text-4xl font-black leading-[1.12] text-white drop-shadow-[0_10px_30px_rgba(15,23,42,0.55)] xl:text-6xl",
+    stage: "px-20 py-10",
+  };
+}
+
+function getOptionDensityClasses(option: string, mode: DensityMode) {
+  const length = option.trim().length;
+
+  if (mode === "dense") {
+    if (length > 125) {
+      return {
+        card: "min-h-30 gap-3 px-5 py-4",
+        icon: "pt-1 text-lg font-black",
+        text: "max-w-[28rem] text-[1.08rem] font-bold leading-[1.12]",
+        mark: "text-lg font-black",
+      };
+    }
+
+    return {
+      card: "min-h-32 gap-4 px-6 py-4",
+      icon: "pt-1 text-xl font-black",
+      text: "max-w-[30rem] text-[1.2rem] font-bold leading-[1.14]",
+      mark: "text-xl font-black",
+    };
+  }
+
+  if (mode === "compact") {
+    if (length > 110) {
+      return {
+        card: "min-h-34 gap-4 px-6 py-5",
+        icon: "pt-1 text-[1.45rem] font-black",
+        text: "max-w-[31rem] text-[1.35rem] font-bold leading-[1.16]",
+        mark: "text-[1.45rem] font-black",
+      };
+    }
+
+    return {
+      card: "min-h-36 gap-4 px-7 py-5",
+      icon: "pt-1 text-2xl font-black",
+      text: "max-w-[32rem] text-[1.45rem] font-bold leading-[1.18]",
+      mark: "text-2xl font-black",
+    };
+  }
+
+  if (length > 165) {
+    return {
+      card: "min-h-36 gap-4 px-7 py-5",
+      icon: "pt-1 text-2xl font-black",
+      text: "max-w-[32rem] text-[1.45rem] font-bold leading-[1.18]",
+      mark: "text-2xl font-black",
+    };
+  }
+
+  if (length > 110) {
+    return {
+      card: "min-h-40 gap-4 px-7 py-6",
+      icon: "pt-1 text-[1.7rem] font-black",
+      text: "max-w-[33rem] text-[1.7rem] font-bold leading-[1.2]",
+      mark: "text-[1.7rem] font-black",
+    };
+  }
+
+  return {
+    card: "min-h-44 gap-5 px-8 py-7",
+    icon: "pt-1 text-3xl font-black",
+    text: "max-w-[34rem] text-[2rem] font-bold leading-[1.22]",
+    mark: "text-3xl font-black",
+  };
+}
+
+function HostControlButton({
+  disabled = false,
+  label,
+  pendingLabel,
+  variant,
+}: {
+  disabled?: boolean;
+  label: string;
+  pendingLabel: string;
+  variant: "primary" | "secondary";
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      className={
+        variant === "primary"
+          ? "min-w-28 rounded-xl bg-[#10233f] px-5 py-3 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.2)] transition hover:bg-[#1d3557] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55"
+          : "min-w-24 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-[#334155] shadow-sm transition hover:bg-slate-50 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55"
+      }
+      disabled={disabled || pending}
+      type="submit"
+    >
+      {pending ? pendingLabel : label}
+    </button>
+  );
+}
+
 export function DisplayClient({
   initialParticipants,
   pin,
@@ -86,6 +246,7 @@ export function DisplayClient({
   realtimeUrl,
   sessionId,
   branding,
+  canControlSession,
 }: {
   initialParticipants: Participant[];
   pin: string;
@@ -96,6 +257,7 @@ export function DisplayClient({
   realtimeUrl: string;
   sessionId: string;
   branding: LiveBranding;
+  canControlSession: boolean;
 }) {
   const [participants, setParticipants] =
     useState<Participant[]>(initialParticipants);
@@ -114,8 +276,25 @@ export function DisplayClient({
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
   const [showSummary, setShowSummary] = useState(false);
+  const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [, startFormAction] = useActionState(startLiveSession, { message: "", status: "idle" });
+  const advanceFormRef = useRef<HTMLFormElement | null>(null);
+  const [startState, startFormAction] = useActionState(startLiveSession, {
+    message: "",
+    status: "idle",
+  });
+  const [advanceState, advanceFormAction] = useActionState(
+    advanceLiveSession,
+    {
+      message: "",
+      status: "idle",
+    },
+  );
+  const [skipState, skipFormAction] = useActionState(skipLiveQuestion, {
+    message: "",
+    status: "idle",
+  });
 
   const backgroundStyle = {
     backgroundImage: branding.backgroundImageUrl
@@ -211,6 +390,72 @@ export function DisplayClient({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [currentQuestion, sessionState.status]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (
+      !canControlSession ||
+      !["playing", "question_result"].includes(sessionState.status)
+    ) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+
+      if (
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        target?.matches("input, textarea, select, button, [contenteditable]")
+      ) {
+        return;
+      }
+
+      if (showSkipConfirmation) {
+        if (event.key === "Escape") {
+          setShowSkipConfirmation(false);
+        }
+        return;
+      }
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        setShowSkipConfirmation(false);
+        advanceFormRef.current?.requestSubmit();
+      } else if (
+        event.key.toLowerCase() === "s" &&
+        sessionState.status === "playing"
+      ) {
+        event.preventDefault();
+        setShowSkipConfirmation(true);
+      } else if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        void toggleFullscreen();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canControlSession, sessionState.status, showSkipConfirmation]);
+
+  async function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    await document.documentElement.requestFullscreen();
+  }
 
   // ── FINISHED — podium + summary ─────────────────────────────────────────────
   if (sessionState.status === "finished") {
@@ -410,18 +655,24 @@ export function DisplayClient({
           <polygon fill="#ffffff" points="820,1080 1320,150 1800,1080" opacity="0.03" />
         </svg>
 
-        {/* Iniciar — top right */}
-        <div className="relative z-20 flex justify-end px-6 pt-5">
-          <form action={startFormAction}>
-            <input name="sessionId" type="hidden" value={sessionId} />
-            <button
-              className="rounded-lg bg-white px-7 py-2.5 text-sm font-black text-[#1a1f3c] shadow-lg transition hover:bg-gray-100 active:scale-95"
-              type="submit"
-            >
-              Iniciar
-            </button>
-          </form>
-        </div>
+        {canControlSession ? (
+          <div className="relative z-20 flex items-start justify-end gap-3 px-6 pt-5">
+            {startState.status === "error" ? (
+              <p className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm font-semibold text-[#b42318] shadow-lg">
+                {startState.message}
+              </p>
+            ) : null}
+            <form action={startFormAction}>
+              <input name="sessionId" type="hidden" value={sessionId} />
+              <HostControlButton
+                disabled={sessionState.status !== "waiting"}
+                label="Iniciar"
+                pendingLabel="Iniciando..."
+                variant="primary"
+              />
+            </form>
+          </div>
+        ) : null}
 
         {/* 3-column row */}
         <div className="relative z-10 flex flex-1 overflow-hidden">
@@ -543,46 +794,151 @@ export function DisplayClient({
     const question = currentResult
       ? { prompt: currentResult.prompt, options: currentResult.options }
       : currentQuestion!;
+    const densityMode = getDisplayDensityMode(question.prompt, question.options);
+    const promptDensity = getPromptDensityClasses(densityMode);
+    const isLastQuestion = currentQuestion
+      ? currentQuestion.orderIndex === currentQuestion.totalQuestions - 1
+      : false;
+    const advanceLabel =
+      sessionState.status === "playing"
+        ? "Ver resultado"
+        : isLastQuestion
+          ? "Encerrar quiz"
+          : "Próxima pergunta";
 
     return (
-      <div className="flex flex-1 flex-col" style={{ fontFamily: branding.fontFamily }}>
-        <div className="flex items-center justify-center bg-white px-6 py-5 shadow-lg">
-          <h1 className="max-w-4xl text-center text-2xl font-bold" style={{ color: branding.secondaryColor }}>
-            {question.prompt}
-          </h1>
+      <div
+        className="relative flex flex-1 flex-col"
+        style={{ fontFamily: branding.fontFamily }}
+      >
+        <div className="relative flex min-h-24 items-center justify-end bg-white px-6 py-5 shadow-lg">
+          {canControlSession ? (
+            <div className="z-30 flex items-center gap-2">
+              {sessionState.status === "playing" ? (
+                <button
+                  className="min-w-24 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-[#334155] shadow-sm transition hover:bg-slate-50 active:translate-y-px"
+                  onClick={() => setShowSkipConfirmation(true)}
+                  title="Pular pergunta (S)"
+                  type="button"
+                >
+                  Pular
+                </button>
+              ) : null}
+              <form action={advanceFormAction} ref={advanceFormRef}>
+                <input name="sessionId" type="hidden" value={sessionId} />
+                <HostControlButton
+                  label={advanceLabel}
+                  pendingLabel="Avançando..."
+                  variant="primary"
+                />
+              </form>
+              <button
+                aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-[#334155] shadow-sm transition hover:bg-slate-50 active:translate-y-px"
+                onClick={() => void toggleFullscreen()}
+                title={isFullscreen ? "Sair da tela cheia (F)" : "Tela cheia (F)"}
+                type="button"
+              >
+                {isFullscreen ? (
+                  <Minimize2 aria-hidden="true" className="h-5 w-5" />
+                ) : (
+                  <Maximize2 aria-hidden="true" className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+          ) : null}
         </div>
 
+        {canControlSession && showSkipConfirmation ? (
+          <div className="absolute right-6 top-28 z-50 w-[22rem] rounded-2xl border border-slate-200 bg-white p-5 text-[#132238] shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#c2410c]">
+              Pular pergunta
+            </p>
+            <h2 className="mt-2 text-lg font-bold">
+              Seguir sem mostrar o resultado?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              As respostas já enviadas permanecem registradas, mas esta
+              pergunta será marcada como pulada no relatório.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                onClick={() => setShowSkipConfirmation(false)}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <form
+                action={skipFormAction}
+                onSubmit={() => setShowSkipConfirmation(false)}
+              >
+                <input name="sessionId" type="hidden" value={sessionId} />
+                <HostControlButton
+                  label="Pular agora"
+                  pendingLabel="Pulando..."
+                  variant="primary"
+                />
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {canControlSession &&
+        (advanceState.status === "error" || skipState.status === "error") ? (
+          <div className="absolute right-6 top-28 z-40 max-w-sm rounded-xl bg-[#fff1f0] px-4 py-3 text-sm font-semibold text-[#b42318] shadow-xl">
+            {advanceState.status === "error"
+              ? advanceState.message
+              : skipState.message}
+          </div>
+        ) : null}
+
         <div
-          className="relative flex flex-1 items-center justify-center px-20 py-8"
+          className={`relative flex flex-1 items-center justify-center overflow-hidden ${promptDensity.stage}`}
           style={backgroundStyle}
         >
-          <div
-            className="absolute left-8 top-1/2 -translate-y-1/2 flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black text-white shadow-lg"
-            style={{ backgroundColor: branding.secondaryColor }}
-          >
-            {remainingSeconds ?? currentQuestion?.timeLimitSeconds ?? "—"}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.04),rgba(15,23,42,0.32))]" />
+
+          <div className="absolute left-8 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-3">
+            <div
+              className="flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black text-white shadow-lg"
+              style={{ backgroundColor: branding.secondaryColor }}
+            >
+              {remainingSeconds ?? currentQuestion?.timeLimitSeconds ?? "—"}
+            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+              tempo
+            </p>
           </div>
 
-          <div className="text-center">
-            {currentQuestion && (
+          <div
+            className={`relative z-10 flex w-full max-w-6xl flex-col items-center justify-center text-center ${promptDensity.container}`}
+          >
+            {currentQuestion ? (
               <span
-                className="rounded-full px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.22em]"
-                style={{ backgroundColor: branding.accentColor, color: branding.secondaryColor }}
+                className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-[0.3em] shadow-lg"
+                style={{
+                  backgroundColor: branding.accentColor,
+                  color: branding.secondaryColor,
+                }}
               >
                 Pergunta {currentQuestion.orderIndex + 1} de{" "}
                 {currentQuestion.totalQuestions}
               </span>
-            )}
+            ) : null}
+            <h1 className={promptDensity.heading}>
+              {question.prompt}
+            </h1>
           </div>
 
-          <div className="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col items-center">
+          <div className="absolute right-8 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-3">
             <div
               className="flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black text-white shadow-lg"
               style={{ backgroundColor: branding.secondaryColor }}
             >
               {submittedCount}
             </div>
-            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/40">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
               respostas
             </p>
           </div>
@@ -592,19 +948,24 @@ export function DisplayClient({
           {question.options.map((option, i) => {
             const style = OPTION_STYLES[i % OPTION_STYLES.length];
             const isCorrect = currentResult && i === currentResult.correctOptionIndex;
+            const optionDensity = getOptionDensityClasses(option, densityMode);
 
             return (
               <div
                 key={i}
-                className="relative flex items-center gap-4 px-8 py-6 text-xl font-bold text-white"
+                className={`relative flex items-start text-white ${optionDensity.card}`}
                 style={{
                   backgroundColor: currentResult && !isCorrect ? "#555" : (style?.bg ?? "#333"),
                   opacity: currentResult && !isCorrect ? 0.5 : 1,
                 }}
               >
-                <span className="text-2xl">{style?.icon}</span>
-                <span>{option}</span>
-                {isCorrect ? <span className="ml-auto text-2xl">✓</span> : null}
+                <span className={optionDensity.icon}>{style?.icon}</span>
+                <span className={optionDensity.text}>
+                  {option}
+                </span>
+                {isCorrect ? (
+                  <span className={`ml-auto self-center ${optionDensity.mark}`}>✓</span>
+                ) : null}
               </div>
             );
           })}
@@ -617,6 +978,11 @@ export function DisplayClient({
           <span className="text-xs font-semibold text-white/40">
             PIN: <span className="text-white/70">{pinFormatted}</span>
           </span>
+          {canControlSession ? (
+            <span className="text-xs font-semibold text-white/50">
+              Espaço: avançar · S: pular · F: tela cheia
+            </span>
+          ) : null}
           <span className="text-xs font-semibold text-white/40">
             {connectedCount} participante{connectedCount !== 1 ? "s" : ""}
           </span>

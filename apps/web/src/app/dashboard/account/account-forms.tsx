@@ -159,8 +159,8 @@ export function PasswordResetRequestInline({ email }: { email: string }) {
       <input name="email" type="hidden" value={email} />
       <FieldPanel>
         <p className="text-sm leading-7 text-[var(--quizzy-muted)]">
-          Gere um link interno para testar a recuperacao de senha com rapidez
-          antes do beta. O link fica disponivel logo abaixo.
+          Gere um link interno para testar a recuperação de senha com rapidez
+          antes do beta. O link fica disponível logo abaixo.
         </p>
       </FieldPanel>
       <FeedbackMessage state={state} />
@@ -169,7 +169,7 @@ export function PasswordResetRequestInline({ email }: { email: string }) {
         disabled={pending}
         type="submit"
       >
-        {pending ? "Gerando link..." : "Gerar link interno de recuperacao"}
+        {pending ? "Gerando link..." : "Gerar link interno de recuperação"}
       </button>
     </form>
   );

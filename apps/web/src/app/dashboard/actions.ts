@@ -383,6 +383,8 @@ function generatePin() {
 export async function createLiveSession(formData: FormData) {
   const session = await requireAuthSession();
   const quizId = String(formData.get("quizId") ?? "");
+  const requireParticipantEmail =
+    String(formData.get("requireParticipantEmail") ?? "") === "on";
 
   if (!quizId) {
     throw new Error("Quiz invalido.");
@@ -468,6 +470,7 @@ export async function createLiveSession(formData: FormData) {
       status: "waiting",
       startsAt: now,
       expiresAt,
+      requireParticipantEmail,
     })
     .returning({
       id: quizSessions.id,
@@ -485,6 +488,7 @@ export async function createLiveSession(formData: FormData) {
       quizId: quiz.id,
       quizVersionId: latestVersion.id,
       mode: "live",
+      requireParticipantEmail,
     },
   });
 
@@ -729,6 +733,24 @@ async function notifyRealtimeAdvanceSession(params: {
   }
 }
 
+async function notifyRealtimeSkipQuestion(params: {
+  pin: string;
+  sessionId: string;
+}) {
+  const response = await fetch(`${env.REALTIME_URL}/internal/session/skip`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    throw new Error("Nao foi possivel pular a pergunta no realtime.");
+  }
+}
+
 export async function advanceLiveSession(
   _previousState: StartLiveSessionState,
   formData: FormData,
@@ -819,6 +841,122 @@ export async function advanceLiveSession(
         : liveSession.status === "question_result"
           ? "Sessao avancou para a proxima etapa."
           : "Sessao atualizada com sucesso.",
+    status: "success",
+  };
+}
+
+export async function skipLiveQuestion(
+  _previousState: StartLiveSessionState,
+  formData: FormData,
+): Promise<StartLiveSessionState> {
+  const session = await requireAuthSession();
+  const sessionId = String(formData.get("sessionId") ?? "");
+
+  if (!sessionId) {
+    return { message: "Sessao invalida.", status: "error" };
+  }
+
+  const liveSession = await getLiveSessionById(sessionId);
+
+  if (!liveSession?.pin || liveSession.status !== "playing") {
+    return {
+      message: "So e possivel pular uma pergunta em andamento.",
+      status: "error",
+    };
+  }
+
+  const [authorizedSession] = await db
+    .select({ id: quizzes.id })
+    .from(quizzes)
+    .where(
+      and(
+        eq(quizzes.id, liveSession.quizId),
+        eq(quizzes.organizationId, session.user.organizationId),
+      ),
+    )
+    .limit(1);
+
+  if (!authorizedSession) {
+    return { message: "Voce nao tem acesso a essa sessao.", status: "error" };
+  }
+
+  const [latestQuestionEvent] = await db
+    .select({
+      payload: sessionEvents.payload,
+    })
+    .from(sessionEvents)
+    .where(
+      and(
+        eq(sessionEvents.sessionId, liveSession.id),
+        eq(sessionEvents.eventType, "session.question_started"),
+      ),
+    )
+    .orderBy(desc(sessionEvents.createdAt))
+    .limit(1);
+  const latestQuestionPayload = latestQuestionEvent?.payload as
+    | { questionIndex?: unknown }
+    | undefined;
+  const questionIndex =
+    typeof latestQuestionPayload?.questionIndex === "number"
+      ? latestQuestionPayload.questionIndex
+      : null;
+  const questionsSnapshot = Array.isArray(liveSession.questionsSnapshot)
+    ? liveSession.questionsSnapshot
+    : [];
+  const skippedQuestion =
+    questionIndex !== null ? questionsSnapshot[questionIndex] : null;
+  const skippedQuestionData =
+    skippedQuestion && typeof skippedQuestion === "object"
+      ? (skippedQuestion as {
+          content?: { question?: unknown };
+          id?: unknown;
+        })
+      : null;
+
+  try {
+    await notifyRealtimeSkipQuestion({
+      pin: liveSession.pin,
+      sessionId: liveSession.id,
+    });
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        pin: liveSession.pin,
+        sessionId: liveSession.id,
+      },
+      "session.skip_sync_failed",
+    );
+
+    return {
+      message: "Nao conseguimos pular essa pergunta agora.",
+      status: "error",
+    };
+  }
+
+  await db.insert(sessionEvents).values({
+    sessionId: liveSession.id,
+    eventType: "session.question_skipped",
+    payload: {
+      pin: liveSession.pin,
+      questionId:
+        typeof skippedQuestionData?.id === "string"
+          ? skippedQuestionData.id
+          : null,
+      questionIndex,
+      prompt:
+        typeof skippedQuestionData?.content?.question === "string"
+          ? skippedQuestionData.content.question
+          : null,
+    },
+  });
+
+  revalidatePath(`/dashboard/sessions/${liveSession.id}`);
+  revalidatePath(`/live/${liveSession.pin}`);
+  revalidatePath(`/live/${liveSession.pin}/lobby`);
+
+  return {
+    message: "Pergunta pulada.",
     status: "success",
   };
 }

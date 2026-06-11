@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 function formatDate(value: Date | null) {
   if (!value) {
-    return "Nao definido";
+    return "Não definido";
   }
 
   return new Intl.DateTimeFormat("pt-BR", {
@@ -128,15 +128,15 @@ export default async function SessionDetailPage({
           <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-                Sessao {quizSession.mode}
+                Sessão {quizSession.mode}
               </p>
               <h1 className="mt-3 text-4xl font-semibold">
                 {quizSession.quizTitle}
               </h1>
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                Versao publicada #{quizSession.versionNumber}. Esta tela
-                concentra a operacao do host, do countdown ao ranking final da
-                sessao live.
+                Versão publicada #{quizSession.versionNumber}. Esta tela
+                concentra a operação do host, do countdown ao ranking final da
+                sessão live.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -183,31 +183,31 @@ export default async function SessionDetailPage({
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
                 {quizSession.pin
                   ? "Use este PIN no lobby live do participante."
-                  : "Sessao individual criada sem PIN."}
+                  : "Sessão individual criada sem PIN."}
               </p>
             </article>
 
             <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
                 {quizSession.mode === "live"
-                  ? "Link publico"
+                  ? "Link público"
                   : "Link individual"}
               </p>
               <p className="mt-3 break-all text-sm font-semibold text-[#132238]">
                 {quizSession.mode === "live"
-                  ? (publicUrl ?? "Nao disponivel")
-                  : (sharePath ?? "Nao se aplica a sessoes live")}
+                  ? (publicUrl ?? "Não disponível")
+                  : (sharePath ?? "Não se aplica a sessões live")}
               </p>
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
                 {quizSession.mode === "live"
-                  ? "Esse e o link aberto pelo QR Code. O participante cai direto na sessao e informa so os dados de identificacao."
-                  : "Este e o link publico da tarefa assincrona, com retomada da tentativa pelo mesmo navegador."}
+                  ? "Esse e o link aberto pelo QR Code. O participante cai direto na sessão e informa só os dados de identificação."
+                  : "Este e o link público da tarefa assíncrona, com retomada da tentativa pelo mesmo navegador."}
               </p>
             </article>
 
             <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Inicio
+                Início
               </p>
               <p className="mt-3 text-lg font-semibold text-[#132238]">
                 {formatDate(quizSession.startsAt)}
@@ -225,7 +225,7 @@ export default async function SessionDetailPage({
                 {formatDate(quizSession.expiresAt ?? quizSession.endsAt)}
               </p>
               <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                Maximo de tentativas: {quizSession.maxAttempts}.
+                Máximo de tentativas: {quizSession.maxAttempts}.
               </p>
               {quizSession.mode === "individual" ? (
                 <p className="mt-2 text-sm leading-7 text-[#61708c]">
@@ -246,7 +246,7 @@ export default async function SessionDetailPage({
             <div className="mt-5 space-y-4">
               {recentEvents.length === 0 ? (
                 <p className="text-sm leading-7 text-[#61708c]">
-                  Ainda nao temos eventos registrados nesta sessao.
+                  Ainda não temos eventos registrados nesta sessão.
                 </p>
               ) : (
                 recentEvents.map((event) => (

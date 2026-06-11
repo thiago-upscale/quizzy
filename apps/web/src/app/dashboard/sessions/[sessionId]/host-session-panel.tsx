@@ -189,14 +189,14 @@ export function HostSessionPanel({
         currentResult &&
         currentResult.questionOrderIndex + 1 >= currentResult.totalQuestions
       ) {
-        return "Encerrar sessao";
+        return "Encerrar sessão";
       }
 
-      return "Abrir proxima pergunta";
+      return "Abrir próxima pergunta";
     }
 
     if (status === "finished") {
-      return "Sessao encerrada";
+      return "Sessão encerrada";
     }
 
     return "Abrir primeira pergunta";
@@ -206,7 +206,7 @@ export function HostSessionPanel({
     const warnings: string[] = [];
 
     if (!socketConnected) {
-      warnings.push("Painel do host sem conexao ativa com o realtime");
+      warnings.push("Painel do host sem conexão ativa com o realtime");
     }
 
     if (operationalState.hostPresenceStatus === "offline") {
@@ -214,7 +214,7 @@ export function HostSessionPanel({
     }
 
     if (status === "interrupted") {
-      warnings.push("Sessao pausada por ausencia do host");
+      warnings.push("Sessão pausada por ausencia do host");
     }
 
     if (operationalState.rejectedAnswersCount > 0) {
@@ -266,12 +266,12 @@ export function HostSessionPanel({
 
     socket.io.on("reconnect_attempt", (attempt) => {
       setSocketPhase("reconnecting");
-      setReconnectNote(`Nova tentativa de conexao (${attempt})`);
+      setReconnectNote(`Nova tentativa de conexão (${attempt})`);
     });
 
     socket.io.on("reconnect_failed", () => {
       setSocketPhase("disconnected");
-      setReconnectNote("Nao foi possivel retomar o realtime automaticamente.");
+      setReconnectNote("Não foi possivel retomar o realtime automaticamente.");
     });
 
     socket.io.on("error", () => {
@@ -368,7 +368,7 @@ export function HostSessionPanel({
         <div className="mt-6 grid gap-6 sm:grid-cols-[160px_1fr]">
           <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-3">
             <Image
-              alt="QR Code da sessao live"
+              alt="QR Code da sessão live"
               className="h-auto w-full rounded-xl"
               height={160}
               src={qrCodeDataUrl}
@@ -388,7 +388,7 @@ export function HostSessionPanel({
 
             <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Link publico
+                Link público
               </p>
               <p className="mt-2 break-all text-sm font-semibold text-[#132238]">
                 {publicUrl}
@@ -409,14 +409,14 @@ export function HostSessionPanel({
                   : socketPhase === "reconnecting"
                     ? "Reconectando"
                     : socketPhase === "disconnected"
-                      ? "Sem conexao"
+                      ? "Sem conexão"
                       : "Conectando"}
               </p>
             </div>
 
             <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Presenca do host
+                Presença do host
               </p>
               <p className="mt-2 text-sm font-semibold text-[#132238]">
                 {operationalState.hostPresenceStatus}
@@ -470,7 +470,7 @@ export function HostSessionPanel({
               >
                 {status === "waiting"
                   ? "Iniciar contagem regressiva"
-                  : "Sessao em andamento"}
+                  : "Sessão em andamento"}
               </button>
             </form>
 
@@ -504,10 +504,10 @@ export function HostSessionPanel({
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Operacao da rodada
+              Operação da rodada
             </p>
             <h2 className="mt-3 text-2xl font-semibold text-[#132238]">
-              Controle da sessao
+              Controle da sessão
             </h2>
           </div>
           <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
@@ -523,7 +523,7 @@ export function HostSessionPanel({
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Sessao
+                  Sessão
                 </p>
                 <p className="mt-2 text-sm font-semibold text-[#132238]">
                   {status}
@@ -531,7 +531,7 @@ export function HostSessionPanel({
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Ultimo evento
+                  Último evento
                 </p>
                 <p className="mt-2 text-sm font-semibold text-[#132238]">
                   {formatEventTime(operationalState.lastEventAt)}
@@ -539,7 +539,7 @@ export function HostSessionPanel({
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Recuperacao
+                  Recuperação
                 </p>
                 <p className="mt-2 text-sm font-semibold text-[#132238]">
                   {recoverySecondsRemaining !== null
@@ -600,7 +600,7 @@ export function HostSessionPanel({
               A sala ainda pode ser recuperada sem interromper a rodada
             </h3>
             <p className="mt-3 text-sm leading-7 text-[#1e3a8a]">
-              Se o host voltar em ate {recoverySecondsRemaining}s, a sessao
+              Se o host voltar em até {recoverySecondsRemaining}s, a sessão
               segue para um estado seguro automaticamente.
             </p>
           </div>
@@ -699,11 +699,11 @@ export function HostSessionPanel({
               Pausa operacional
             </p>
             <h3 className="mt-2 text-xl font-semibold text-[#7c2d12]">
-              Sessao interrompida
+              Sessão interrompida
             </h3>
             <p className="mt-3 text-sm leading-7 text-[#9a3412]">
               O realtime marcou a sala como interrompida por ausencia do host.
-              Assim que a conexao for retomada, a sessao volta para um estado
+              Assim que a conexão for retomada, a sessão volta para um estado
               seguro.
             </p>
           </div>
@@ -715,10 +715,10 @@ export function HostSessionPanel({
               Resultado final
             </p>
             <h3 className="mt-2 text-2xl font-semibold text-[#132238]">
-              Sessao concluida
+              Sessão concluida
             </h3>
             <p className="mt-3 text-sm leading-7 text-[#61708c]">
-              O ranking final ja esta congelado e pronto para consulta.
+              O ranking final já está congelado e pronto para consulta.
             </p>
           </div>
         ) : null}
@@ -777,7 +777,7 @@ export function HostSessionPanel({
         <div className="mt-8">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Presenca
+              Presença
             </p>
             <h3 className="mt-2 text-xl font-semibold text-[#132238]">
               Online e offline

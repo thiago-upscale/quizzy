@@ -1372,6 +1372,83 @@ const httpServer = createServer(async (request, response) => {
     }
   }
 
+  if (
+    request.method === "POST" &&
+    request.url === "/internal/session/skip" &&
+    request.headers["x-quizzy-internal-token"] === env.REALTIME_INTERNAL_TOKEN
+  ) {
+    try {
+      const body = await parseJsonBody<AdvanceSessionPayload>(request);
+      const pin = body?.pin?.trim();
+      const sessionId = body?.sessionId?.trim();
+
+      if (!pin || !sessionId) {
+        response.writeHead(400, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "invalid_payload" }));
+        return;
+      }
+
+      const room = await ensureRoomHydrated(io, {
+        pin,
+        room: getOrCreateRoom(pin),
+        sessionId,
+      });
+
+      if (
+        room.sessionId !== sessionId ||
+        room.questions.length === 0 ||
+        room.status !== "playing"
+      ) {
+        response.writeHead(409, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "question_not_active" }));
+        return;
+      }
+
+      clearQuestionTimer(room);
+      const skippedQuestionIndex = room.currentQuestionIndex ?? 0;
+      const nextQuestionIndex = skippedQuestionIndex + 1;
+
+      io.to(pin).emit("question:closed", {
+        questionId: room.questions[skippedQuestionIndex]?.id,
+        questionOrderIndex:
+          room.questions[skippedQuestionIndex]?.orderIndex ??
+          skippedQuestionIndex,
+        skipped: true,
+      });
+
+      if (nextQuestionIndex >= room.questions.length) {
+        finishSession(io, { pin, room });
+        void notifyWebOfStateChange({
+          pin,
+          questionIndex: room.questions.length,
+          sessionId,
+          status: "finished",
+        });
+      } else {
+        startQuestion(io, {
+          pin,
+          questionIndex: nextQuestionIndex,
+          room,
+        });
+        void notifyWebOfStateChange({
+          pin,
+          questionIndex: nextQuestionIndex,
+          sessionId,
+          status: "playing",
+        });
+      }
+
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true, status: room.status }));
+      return;
+    } catch (error) {
+      logger.error({ error }, "Failed to skip question");
+      response.writeHead(500, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: "internal_error" }));
+      return;
+    }
+  }
+
   response.writeHead(404, { "content-type": "application/json" });
   response.end(JSON.stringify({ error: "not_found" }));
 });

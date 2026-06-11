@@ -25,7 +25,7 @@ async function authenticate(
   });
 
   if (!result) {
-    return { error: "Nao foi possivel iniciar a sessao." };
+    return { error: "Não foi possivel iniciar a sessão." };
   }
 
   if (result.error) {
@@ -61,7 +61,7 @@ export function LoginForm() {
           className="w-full rounded-xl border border-[#c9d5e7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
           id="email"
           name="email"
-          placeholder="voce@empresa.com"
+          placeholder="você@empresa.com"
           required
           type="email"
         />

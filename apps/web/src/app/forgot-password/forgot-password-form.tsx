@@ -48,7 +48,7 @@ export function ForgotPasswordForm() {
         <input
           className="w-full rounded-xl border border-[#c9d5e7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
           name="email"
-          placeholder="voce@empresa.com"
+          placeholder="você@empresa.com"
           required
           type="email"
         />
@@ -61,7 +61,7 @@ export function ForgotPasswordForm() {
         disabled={pending}
         type="submit"
       >
-        {pending ? "Gerando link..." : "Gerar link de recuperacao"}
+        {pending ? "Gerando link..." : "Gerar link de recuperação"}
       </button>
     </form>
   );

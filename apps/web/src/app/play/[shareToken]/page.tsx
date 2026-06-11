@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 
 function formatDate(value: Date | null) {
   if (!value) {
-    return "Nao definido";
+    return "Não definido";
   }
 
   return new Intl.DateTimeFormat("pt-BR", {
@@ -45,7 +45,7 @@ export default async function IndividualPlayPage({
       <main className="min-h-screen bg-[#10233f] px-6 py-10 text-white">
         <div className="mx-auto flex min-h-[80vh] w-full max-w-3xl items-center justify-center">
           <section className="rounded-[2rem] bg-white/10 p-8 text-center backdrop-blur">
-            <h1 className="text-3xl font-semibold">Sessao nao encontrada</h1>
+            <h1 className="text-3xl font-semibold">Sessão não encontrada</h1>
             <p className="mt-3 text-sm leading-7 text-white/75">
               Confira o link ou fale com quem compartilhou a tarefa.
             </p>
@@ -102,13 +102,13 @@ export default async function IndividualPlayPage({
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
-                  Versao {session.versionNumber}
+                  Versão {session.versionNumber}
                 </span>
                 <span
                   className="rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#10233f]"
                   style={{ backgroundColor: branding.accentColor }}
                 >
-                  Ate {formatDate(session.endsAt ?? session.expiresAt)}
+                  Até {formatDate(session.endsAt ?? session.expiresAt)}
                 </span>
               </div>
             </div>
@@ -118,15 +118,22 @@ export default async function IndividualPlayPage({
                 <>
                   <h2 className="text-2xl font-semibold">Prazo encerrado</h2>
                   <p className="mt-3 text-sm leading-7 text-white/75">
-                    Esta sessao individual nao aceita novas entradas.
+                    Esta sessão individual não aceita novas entradas. Se o
+                    prazo foi estendido, peça um novo link a quem compartilhou.
                   </p>
+                  <Link
+                    className="mt-6 inline-flex rounded-full border border-white/25 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                    href="/"
+                  >
+                    Voltar ao início
+                  </Link>
                 </>
               ) : (
                 <>
-                  <h2 className="text-2xl font-semibold">Comecar agora</h2>
+                  <h2 className="text-2xl font-semibold">Começar agora</h2>
                   <p className="mt-3 text-sm leading-7 text-white/75">
-                    Seu apelido fica visivel no relatorio. O email continua
-                    opcional nesta versao do fluxo.
+                    Seu apelido fica visível no relatório. O email continua
+                    opcional nesta versão do fluxo.
                   </p>
                   <IndividualParticipantEntryForm
                     joinAction={joinIndividualSession}
@@ -165,9 +172,9 @@ export default async function IndividualPlayPage({
       <main className="min-h-screen bg-[#10233f] px-6 py-10 text-white">
         <div className="mx-auto flex min-h-[80vh] w-full max-w-3xl items-center justify-center">
           <section className="rounded-[2rem] bg-white/10 p-8 text-center backdrop-blur">
-            <h1 className="text-3xl font-semibold">Continuacao indisponivel</h1>
+            <h1 className="text-3xl font-semibold">Continuação indisponível</h1>
             <p className="mt-3 text-sm leading-7 text-white/75">
-              Sua tentativa nao foi encontrada. Entre novamente pelo mesmo link.
+              Sua tentativa não foi encontrada. Entre novamente pelo mesmo link.
             </p>
           </section>
         </div>
@@ -268,8 +275,8 @@ export default async function IndividualPlayPage({
                 {session.versionTitle || session.quizTitle}
               </h1>
               <p className="mt-3 text-sm leading-7 text-white/75">
-                Ola, {participant.nickname}. Sua tentativa fica salva a cada
-                resposta, entao voce pode retomar deste mesmo ponto.
+                Olá, {participant.nickname}. Sua tentativa fica salva a cada
+                resposta, então você pode retomar deste mesmo ponto.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -312,7 +319,7 @@ export default async function IndividualPlayPage({
                   Email
                 </p>
                 <p className="mt-2 text-sm font-semibold">
-                  {participant.email ?? "Nao informado"}
+                  {participant.email ?? "Não informado"}
                 </p>
               </div>
             </div>
@@ -364,8 +371,8 @@ export default async function IndividualPlayPage({
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">
                   {latestAttempt?.status === "finished"
-                    ? "Seu desempenho desta tentativa ja foi consolidado."
-                    : "Voce respondeu o que foi possivel antes do encerramento do prazo."}
+                    ? "Seu desempenho desta tentativa já foi consolidado."
+                    : "Você respondeu o que foi possivel antes do encerramento do prazo."}
                 </p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="rounded-2xl bg-white/10 px-4 py-4">

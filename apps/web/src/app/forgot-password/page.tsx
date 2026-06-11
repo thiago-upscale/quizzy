@@ -9,13 +9,13 @@ export default function ForgotPasswordPage() {
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-4xl items-center justify-center">
         <section className="w-full max-w-xl rounded-[2rem] bg-white p-8 shadow-[0_30px_100px_rgba(15,23,42,0.12)]">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-            Recuperacao de senha
+            Recuperação de senha
           </p>
           <h1 className="mt-4 text-4xl font-semibold">
             Gere um link interno para o beta
           </h1>
           <p className="mt-3 text-sm leading-7 text-[#61708c]">
-            Para esta fase, o link de recuperacao fica disponivel para uso
+            Para esta fase, o link de recuperação fica disponível para uso
             interno e testes.
           </p>
 

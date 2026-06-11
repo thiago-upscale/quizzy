@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
+import { getAuthSession } from "@/auth/session";
 import { env } from "@/env";
 import {
   getLiveSessionByPin,
@@ -16,7 +17,10 @@ export default async function LiveDisplayPage({
   params: Promise<{ pin: string }>;
 }) {
   const { pin } = await params;
-  const liveSession = await getLiveSessionByPin(pin);
+  const [liveSession, authSession] = await Promise.all([
+    getLiveSessionByPin(pin),
+    getAuthSession(),
+  ]);
 
   if (!liveSession) {
     redirect("/join");
@@ -42,6 +46,8 @@ export default async function LiveDisplayPage({
     quizBranding: liveSession.quizBranding,
     versionBranding: liveSession.versionBranding,
   });
+  const canControlSession =
+    authSession?.user?.organizationId === liveSession.quizOrganizationId;
 
   const mainStyle = branding.backgroundImageUrl
     ? {
@@ -56,6 +62,7 @@ export default async function LiveDisplayPage({
       <DisplayClient
         baseUrl={env.NEXTAUTH_URL}
         branding={branding}
+        canControlSession={canControlSession}
         initialParticipants={initialParticipants}
         pin={pin}
         pinFormatted={pinFormatted}

@@ -8,6 +8,7 @@ import {
   quizSessions,
   quizzes,
   quizVersions,
+  sessionEvents,
 } from "@/db/schema";
 
 type SnapshotQuestion = {
@@ -52,6 +53,7 @@ export type SessionReportQuestionBreakdown = {
   orderIndex: number;
   prompt: string;
   responsesCount: number;
+  skipped: boolean;
 };
 
 export type SessionReportDetailedRow = {
@@ -230,7 +232,13 @@ export async function getSessionReport(params: {
     return null;
   }
 
-  const [participantRows, attemptRows, answerRows, currentQuestionRows] =
+  const [
+    participantRows,
+    attemptRows,
+    answerRows,
+    currentQuestionRows,
+    skippedQuestionEventRows,
+  ] =
     await Promise.all([
       db
         .select({
@@ -278,6 +286,17 @@ export async function getSessionReport(params: {
         .from(questions)
         .where(eq(questions.quizId, session.quizId))
         .orderBy(asc(questions.orderIndex)),
+      db
+        .select({
+          payload: sessionEvents.payload,
+        })
+        .from(sessionEvents)
+        .where(
+          and(
+            eq(sessionEvents.sessionId, session.id),
+            eq(sessionEvents.eventType, "session.question_skipped"),
+          ),
+        ),
     ]);
 
   const questionDefinitions = getQuestionDefinitions({
@@ -288,6 +307,16 @@ export async function getSessionReport(params: {
   const answersByParticipant = new Map<string, ReportAnswer[]>();
   const answersByAttempt = new Map<string, ReportAnswer[]>();
   const answersByQuestionOrder = new Map<number, ReportAnswer[]>();
+  const skippedQuestionIndexes = new Set(
+    skippedQuestionEventRows
+      .map((event) => {
+        const payload = event.payload as { questionIndex?: unknown } | null;
+        return typeof payload?.questionIndex === "number"
+          ? payload.questionIndex
+          : null;
+      })
+      .filter((index): index is number => index !== null),
+  );
 
   for (const row of answerRows) {
     const answerValue = row.answer as { index?: number } | null;
@@ -436,6 +465,7 @@ export async function getSessionReport(params: {
       orderIndex: question.orderIndex,
       prompt: question.prompt,
       responsesCount: questionAnswers.length,
+      skipped: skippedQuestionIndexes.has(question.orderIndex),
     } satisfies SessionReportQuestionBreakdown;
   });
 
@@ -511,8 +541,10 @@ export async function getSessionReport(params: {
   const answersCount = answerRows.length;
   const totalCorrectAnswers = answerRows.filter((row) => row.isCorrect).length;
   const hardestQuestion =
-    questionBreakdown.length > 0
-      ? [...questionBreakdown].sort((left, right) => {
+    questionBreakdown.some((question) => !question.skipped)
+      ? questionBreakdown
+          .filter((question) => !question.skipped)
+          .sort((left, right) => {
           if (left.accuracyPercent !== right.accuracyPercent) {
             return left.accuracyPercent - right.accuracyPercent;
           }
@@ -522,7 +554,7 @@ export async function getSessionReport(params: {
           }
 
           return left.orderIndex - right.orderIndex;
-        })[0] ?? null
+          })[0] ?? null
       : null;
 
   return {
@@ -604,6 +636,10 @@ function createCsvContent(
 }
 
 export function createSummaryCsv(report: SessionReport) {
+  const skippedQuestions = report.questionBreakdown
+    .filter((question) => question.skipped)
+    .map((question) => `Q${question.orderIndex + 1}`)
+    .join(";");
   const rows = report.leaderboard.map((entry) => ({
     accuracy_percent: entry.accuracyPercent,
     answered_count: entry.answeredCount,
@@ -613,6 +649,10 @@ export function createSummaryCsv(report: SessionReport) {
     nickname: entry.nickname,
     position: entry.rank,
     score: entry.score,
+    skipped_questions: skippedQuestions,
+    skipped_questions_count: report.questionBreakdown.filter(
+      (question) => question.skipped,
+    ).length,
     total_time_display: formatDuration(entry.totalTimeMs),
     total_time_ms: entry.totalTimeMs,
   }));
@@ -661,6 +701,10 @@ export function createDetailedCsv(report: SessionReport) {
         question.answerIndex === null ? null : question.isCorrect;
       baseRow[`${prefix}_points`] = question.pointsEarned;
       baseRow[`${prefix}_prompt`] = question.prompt;
+      baseRow[`${prefix}_skipped`] =
+        report.questionBreakdown.find(
+          (breakdown) => breakdown.orderIndex === question.orderIndex,
+        )?.skipped ?? false;
       baseRow[`${prefix}_time_ms`] = question.timeSpentMs;
     }
 

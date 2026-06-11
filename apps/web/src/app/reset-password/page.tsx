@@ -20,7 +20,7 @@ export default async function ResetPasswordPage({
           </p>
           <h1 className="mt-4 text-4xl font-semibold">Redefina seu acesso</h1>
           <p className="mt-3 text-sm leading-7 text-[#61708c]">
-            Use o link interno de recuperacao para definir uma nova senha com
+            Use o link interno de recuperação para definir uma nova senha com
             seguranca.
           </p>
 
@@ -29,7 +29,7 @@ export default async function ResetPasswordPage({
               <ResetPasswordForm token={token} />
             ) : (
               <div className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm text-[#9f1239]">
-                Esse link de recuperacao esta incompleto.
+                Esse link de recuperação está incompleto.
               </div>
             )}
           </div>
@@ -40,7 +40,7 @@ export default async function ResetPasswordPage({
               className="font-semibold text-[#1d4ed8]"
               href="/forgot-password"
             >
-              Voltar para recuperacao
+              Voltar para recuperação
             </Link>
           </p>
         </section>

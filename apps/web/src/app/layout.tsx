@@ -13,8 +13,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Quizzy",
-  description: "Quizzes corporativos em tempo real com branding.",
+  title: {
+    default: "Quizzy — Quiz ao vivo com a marca da sua empresa",
+    template: "%s | Quizzy",
+  },
+  description:
+    "Crie quizzes ao vivo com a identidade da sua empresa: PIN no telão, plateia no celular, ranking em tempo real e relatório pronto no fim. Para treinamentos, convenções e ativações internas.",
+  openGraph: {
+    title: "Quizzy — Quiz ao vivo com a marca da sua empresa",
+    description:
+      "PIN no telão, plateia no celular, ranking em tempo real e relatório pronto no fim. Com a sua marca em cada tela.",
+    type: "website",
+    locale: "pt_BR",
+    siteName: "Quizzy",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Quizzy — Quiz ao vivo com a marca da sua empresa",
+    description:
+      "PIN no telão, plateia no celular, ranking em tempo real e relatório pronto no fim.",
+  },
 };
 
 export default function RootLayout({

@@ -148,6 +148,14 @@ export async function joinLiveSession(
   }
 
   const normalizedEmail = normalizeParticipantEmail(email);
+
+  if (liveSession.requireParticipantEmail && !normalizedEmail) {
+    return {
+      message: "Informe um email para entrar nesta sala.",
+      status: "error",
+    };
+  }
+
   const participantToken = crypto.randomUUID().replaceAll("-", "");
   clearFailedPinEntries(clientIdentifier);
 
