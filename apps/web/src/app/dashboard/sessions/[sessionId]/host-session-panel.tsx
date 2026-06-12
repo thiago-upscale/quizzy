@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { StartLiveSessionState } from "../../actions";
+import { getStatusLabel } from "../../dashboard-helpers";
 
 type Participant = {
   avatar: string;
@@ -214,7 +215,7 @@ export function HostSessionPanel({
     }
 
     if (status === "interrupted") {
-      warnings.push("Sessão pausada por ausencia do host");
+      warnings.push("Sessão pausada por ausência do host");
     }
 
     if (operationalState.rejectedAnswersCount > 0) {
@@ -271,7 +272,7 @@ export function HostSessionPanel({
 
     socket.io.on("reconnect_failed", () => {
       setSocketPhase("disconnected");
-      setReconnectNote("Não foi possivel retomar o realtime automaticamente.");
+      setReconnectNote("Não foi possível retomar o realtime automaticamente.");
     });
 
     socket.io.on("error", () => {
@@ -361,7 +362,7 @@ export function HostSessionPanel({
             </h2>
           </div>
           <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
-            {status}
+            {getStatusLabel(status)}
           </span>
         </div>
 
@@ -398,31 +399,25 @@ export function HostSessionPanel({
         </div>
 
         <div className="mt-6 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Canal do host
-              </p>
-              <p className="mt-2 text-sm font-semibold text-[#132238]">
-                {socketPhase === "connected"
-                  ? "Conectado ao realtime"
-                  : socketPhase === "reconnecting"
-                    ? "Reconectando"
-                    : socketPhase === "disconnected"
-                      ? "Sem conexão"
-                      : "Conectando"}
-              </p>
-            </div>
-
-            <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Presença do host
-              </p>
-              <p className="mt-2 text-sm font-semibold text-[#132238]">
-                {operationalState.hostPresenceStatus}
-              </p>
-            </div>
-          </div>
+          <p className="flex items-center gap-2 text-sm text-[#61708c]">
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                socketPhase === "connected"
+                  ? "bg-[var(--quizzy-success)]"
+                  : socketPhase === "connecting"
+                    ? "bg-[#61708c]"
+                    : "bg-[var(--quizzy-warning)]"
+              }`}
+            />
+            {socketPhase === "connected"
+              ? "Conectado ao tempo real"
+              : socketPhase === "reconnecting"
+                ? "Reconectando…"
+                : socketPhase === "disconnected"
+                  ? "Sem conexão com o tempo real"
+                  : "Conectando…"}
+          </p>
 
           {startState.status !== "idle" ? (
             <p
@@ -515,86 +510,32 @@ export function HostSessionPanel({
           </span>
         </div>
 
-        <div className="mt-6 grid gap-3 lg:grid-cols-2">
-          <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Painel operacional
-            </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Sessão
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[#132238]">
-                  {status}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Último evento
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[#132238]">
-                  {formatEventTime(operationalState.lastEventAt)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Recuperação
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[#132238]">
-                  {recoverySecondsRemaining !== null
-                    ? `${recoverySecondsRemaining}s restantes`
-                    : "Sem janela ativa"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Online
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[#132238]">
-                  {operationalState.connectedParticipantsCount}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                  Offline
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[#132238]">
-                  {operationalState.offlineParticipantsCount}
-                </p>
-              </div>
-            </div>
-          </div>
+        <p className="mt-6 text-sm text-[#61708c]">
+          Último evento: {formatEventTime(operationalState.lastEventAt)}
+          {recoverySecondsRemaining !== null
+            ? ` • Janela de recuperação: ${recoverySecondsRemaining}s`
+            : ""}
+        </p>
 
-          <div className="rounded-[1.5rem] border border-[#e2e8f0] bg-[#f8fbff] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Alertas
-            </p>
-            <div className="mt-3 space-y-2">
-              {operationalWarnings.length === 0 ? (
-                <p className="text-sm text-[#61708c]">
-                  Nenhum alerta operacional no momento.
-                </p>
-              ) : (
-                operationalWarnings.map((warning) => (
-                  <p
-                    key={warning}
-                    className="rounded-2xl bg-[#fff7ed] px-3 py-2 text-sm font-medium text-[#9a3412]"
-                  >
-                    {warning}
-                  </p>
-                ))
-              )}
-            </div>
+        {operationalWarnings.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            {operationalWarnings.map((warning) => (
+              <p
+                key={warning}
+                className="rounded-2xl bg-[#fff7ed] px-4 py-3 text-sm font-medium text-[#9a3412]"
+              >
+                {warning}
+              </p>
+            ))}
           </div>
-        </div>
+        ) : null}
 
         {recoverySecondsRemaining !== null &&
         operationalState.hostPresenceStatus === "offline" &&
         status !== "interrupted" ? (
           <div className="mt-6 rounded-[1.5rem] border border-[#bfdbfe] bg-[#eff6ff] p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
-              Janela de reconexao
+              Janela de reconexão
             </p>
             <h3 className="mt-2 text-xl font-semibold text-[#132238]">
               A sala ainda pode ser recuperada sem interromper a rodada
@@ -702,7 +643,7 @@ export function HostSessionPanel({
               Sessão interrompida
             </h3>
             <p className="mt-3 text-sm leading-7 text-[#9a3412]">
-              O realtime marcou a sala como interrompida por ausencia do host.
+              O realtime marcou a sala como interrompida por ausência do host.
               Assim que a conexão for retomada, a sessão volta para um estado
               seguro.
             </p>
@@ -715,7 +656,7 @@ export function HostSessionPanel({
               Resultado final
             </p>
             <h3 className="mt-2 text-2xl font-semibold text-[#132238]">
-              Sessão concluida
+              Sessão concluída
             </h3>
             <p className="mt-3 text-sm leading-7 text-[#61708c]">
               O ranking final já está congelado e pronto para consulta.
@@ -730,7 +671,7 @@ export function HostSessionPanel({
                 Ranking
               </p>
               <h3 className="mt-2 text-xl font-semibold text-[#132238]">
-                Lideranca da sala
+                Liderança da sala
               </h3>
             </div>
           </div>
@@ -780,7 +721,7 @@ export function HostSessionPanel({
               Presença
             </p>
             <h3 className="mt-2 text-xl font-semibold text-[#132238]">
-              Online e offline
+              Participantes
             </h3>
           </div>
 
@@ -804,11 +745,11 @@ export function HostSessionPanel({
                 <span
                   className={
                     participant.presenceStatus === "online"
-                      ? "rounded-full bg-[#ecfdf3] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#0f766e]"
-                      : "rounded-full bg-[#f4f4f5] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#52525b]"
+                      ? "rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#0f766e]"
+                      : "rounded-full bg-[#f4f4f5] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#52525b]"
                   }
                 >
-                  {participant.presenceStatus}
+                  {participant.presenceStatus === "online" ? "Online" : "Offline"}
                 </span>
               </div>
             ))}

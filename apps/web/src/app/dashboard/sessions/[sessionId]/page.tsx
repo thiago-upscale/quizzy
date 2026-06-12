@@ -14,21 +14,16 @@ import {
 } from "@/db/schema";
 import { getSessionReport } from "@/lib/session-report";
 import { advanceLiveSession, restartLiveSession, startLiveSession } from "../../actions";
+import {
+  formatDate,
+  formatEventType,
+  getSessionStatusTone,
+  getStatusLabel,
+} from "../../dashboard-helpers";
 import { HostSessionPanel } from "./host-session-panel";
 import { ReportSection } from "./report-section";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(value: Date | null) {
-  if (!value) {
-    return "Não definido";
-  }
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(value);
-}
 
 export default async function SessionDetailPage({
   params,
@@ -53,7 +48,6 @@ export default async function SessionDetailPage({
       createdAt: quizSessions.createdAt,
       quizId: quizzes.id,
       quizTitle: quizzes.title,
-      quizStatus: quizzes.status,
       versionNumber: quizVersions.versionNumber,
     })
     .from(quizSessions)
@@ -76,7 +70,6 @@ export default async function SessionDetailPage({
       id: sessionEvents.id,
       eventType: sessionEvents.eventType,
       createdAt: sessionEvents.createdAt,
-      payload: sessionEvents.payload,
     })
     .from(sessionEvents)
     .where(eq(sessionEvents.sessionId, sessionId))
@@ -102,6 +95,7 @@ export default async function SessionDetailPage({
         })
       : null;
 
+  const isLive = quizSession.mode === "live";
   const publicUrl = quizSession.pin
     ? `${env.NEXTAUTH_URL}/live/${quizSession.pin}/display`
     : null;
@@ -117,166 +111,131 @@ export default async function SessionDetailPage({
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <header className="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-          <Link
-            className="text-sm font-semibold text-[#0f766e]"
-            href={`/dashboard/quizzes/${quizSession.quizId}`}
-          >
-            Voltar ao quiz
-          </Link>
-          <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-                Sessão {quizSession.mode}
-              </p>
-              <h1 className="mt-3 text-4xl font-semibold">
-                {quizSession.quizTitle}
-              </h1>
-              <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                Versão publicada #{quizSession.versionNumber}. Esta tela
-                concentra a operação do host, do countdown ao ranking final da
-                sessão live.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
-                {quizSession.status}
-              </span>
-              <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
-                quiz {quizSession.quizStatus}
-              </span>
-            </div>
-          </div>
-        </header>
+      {/* Page header — one title, one status, light meta */}
+      <header>
+        <Link
+          className="text-sm font-semibold text-[var(--quizzy-teal)]"
+          href={`/dashboard/quizzes/${quizSession.quizId}`}
+        >
+          ← Voltar ao quiz
+        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold tracking-[-0.02em]">
+            {quizSession.quizTitle}
+          </h1>
+          {/* In live mode the panel shows the real-time status; avoid a second, stale badge */}
+          {!isLive ? (
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${getSessionStatusTone(quizSession.status)}`}
+            >
+              {getStatusLabel(quizSession.status)}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-2 text-sm text-[var(--quizzy-muted)]">
+          {isLive ? "Sessão ao vivo" : "Sessão individual"} • Versão publicada
+          #{quizSession.versionNumber} • Criada em{" "}
+          {formatDate(quizSession.createdAt)}
+        </p>
+      </header>
 
-        {quizSession.mode === "live" &&
-        quizSession.pin &&
-        publicUrl &&
-        qrCodeDataUrl ? (
-          <HostSessionPanel
-            advanceAction={advanceLiveSession}
-            initialParticipants={joinedParticipants.map((participant) => ({
-              ...participant,
-              presenceStatus: "offline" as const,
-            }))}
-            pin={quizSession.pin}
-            publicUrl={publicUrl}
-            qrCodeDataUrl={qrCodeDataUrl}
-            realtimeUrl={env.REALTIME_URL}
-            restartAction={restartLiveSession}
-            sessionId={quizSession.id}
-            sessionStatus={quizSession.status}
-            startAction={startLiveSession}
-          />
-        ) : null}
-
-        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Acesso principal
-              </p>
-              <p className="mt-3 text-4xl font-semibold text-[#132238]">
-                {quizSession.pin ?? "Individual"}
-              </p>
-              <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                {quizSession.pin
-                  ? "Use este PIN no lobby live do participante."
-                  : "Sessão individual criada sem PIN."}
-              </p>
-            </article>
-
-            <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                {quizSession.mode === "live"
-                  ? "Link público"
-                  : "Link individual"}
-              </p>
-              <p className="mt-3 break-all text-sm font-semibold text-[#132238]">
-                {quizSession.mode === "live"
-                  ? (publicUrl ?? "Não disponível")
-                  : (sharePath ?? "Não se aplica a sessões live")}
-              </p>
-              <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                {quizSession.mode === "live"
-                  ? "Esse e o link aberto pelo QR Code. O participante cai direto na sessão e informa só os dados de identificação."
-                  : "Este e o link público da tarefa assíncrona, com retomada da tentativa pelo mesmo navegador."}
-              </p>
-            </article>
-
-            <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Início
-              </p>
-              <p className="mt-3 text-lg font-semibold text-[#132238]">
-                {formatDate(quizSession.startsAt)}
-              </p>
-              <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                Criada em {formatDate(quizSession.createdAt)}.
-              </p>
-            </article>
-
-            <article className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                Encerramento
-              </p>
-              <p className="mt-3 text-lg font-semibold text-[#132238]">
-                {formatDate(quizSession.expiresAt ?? quizSession.endsAt)}
-              </p>
-              <p className="mt-3 text-sm leading-7 text-[#61708c]">
-                Máximo de tentativas: {quizSession.maxAttempts}.
-              </p>
-              {quizSession.mode === "individual" ? (
-                <p className="mt-2 text-sm leading-7 text-[#61708c]">
-                  Email{" "}
-                  {quizSession.requireParticipantEmail
-                    ? "obrigatorio"
-                    : "opcional"}{" "}
-                  para participar.
-                </p>
-              ) : null}
-            </article>
-          </div>
-
-          <aside className="rounded-[1.75rem] border border-[#dae4f0] bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-              Eventos recentes
-            </p>
-            <div className="mt-5 space-y-4">
-              {recentEvents.length === 0 ? (
-                <p className="text-sm leading-7 text-[#61708c]">
-                  Ainda não temos eventos registrados nesta sessão.
-                </p>
-              ) : (
-                recentEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="rounded-2xl border border-[#e2e8f0] bg-[#f8fbff] p-4"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-sm font-semibold text-[#132238]">
-                        {event.eventType}
-                      </p>
-                      <span className="text-xs font-medium text-[#61708c]">
-                        {formatDate(event.createdAt)}
-                      </span>
-                    </div>
-                    <pre className="mt-3 overflow-x-auto text-xs leading-6 text-[#44516a]">
-                      {JSON.stringify(event.payload, null, 2)}
-                    </pre>
-                  </div>
-                ))
-              )}
-            </div>
-          </aside>
-        </section>
-
-        <ReportSection
-          mode={quizSession.mode}
-          report={sessionReport}
+      {isLive && quizSession.pin && publicUrl && qrCodeDataUrl ? (
+        <HostSessionPanel
+          advanceAction={advanceLiveSession}
+          initialParticipants={joinedParticipants.map((participant) => ({
+            ...participant,
+            presenceStatus: "offline" as const,
+          }))}
+          pin={quizSession.pin}
+          publicUrl={publicUrl}
+          qrCodeDataUrl={qrCodeDataUrl}
+          realtimeUrl={env.REALTIME_URL}
+          restartAction={restartLiveSession}
           sessionId={quizSession.id}
           sessionStatus={quizSession.status}
+          startAction={startLiveSession}
         />
+      ) : null}
+
+      {/* Access and rules — only for individual sessions (live shows PIN/link in the host panel) */}
+      {!isLive ? (
+        <article className="rounded-[1.75rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-muted)]">
+            Acesso e regras
+          </p>
+          <dl className="mt-5 grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <dt className="font-semibold text-[var(--quizzy-text)]">
+                Link da tarefa
+              </dt>
+              <dd className="mt-1 break-all text-[var(--quizzy-muted)]">
+                {sharePath ?? "Não disponível"}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-[var(--quizzy-text)]">Início</dt>
+              <dd className="mt-1 text-[var(--quizzy-muted)]">
+                {formatDate(quizSession.startsAt)}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-[var(--quizzy-text)]">
+                Encerramento
+              </dt>
+              <dd className="mt-1 text-[var(--quizzy-muted)]">
+                {formatDate(quizSession.expiresAt ?? quizSession.endsAt)}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-[var(--quizzy-text)]">
+                Tentativas por participante
+              </dt>
+              <dd className="mt-1 text-[var(--quizzy-muted)]">
+                {quizSession.maxAttempts}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-[var(--quizzy-text)]">Email</dt>
+              <dd className="mt-1 text-[var(--quizzy-muted)]">
+                {quizSession.requireParticipantEmail
+                  ? "Obrigatório para participar"
+                  : "Opcional"}
+              </dd>
+            </div>
+          </dl>
+        </article>
+      ) : null}
+
+      <ReportSection
+        mode={quizSession.mode}
+        report={sessionReport}
+        sessionId={quizSession.id}
+        sessionStatus={quizSession.status}
+      />
+
+      {/* Session history — formatted, no raw payloads */}
+      {recentEvents.length > 0 ? (
+        <article className="rounded-[1.75rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-6 shadow-[0_18px_70px_rgba(15,23,42,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-muted)]">
+            Histórico da sessão
+          </p>
+          <ul className="mt-4 divide-y divide-[var(--quizzy-border)]">
+            {recentEvents.map((event) => (
+              <li
+                key={event.id}
+                className="flex items-center justify-between gap-4 py-3"
+              >
+                <p className="text-sm font-medium text-[var(--quizzy-text)]">
+                  {formatEventType(event.eventType)}
+                </p>
+                <span className="shrink-0 text-sm text-[var(--quizzy-muted)]">
+                  {formatDate(event.createdAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ) : null}
     </div>
   );
 }
