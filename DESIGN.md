@@ -119,14 +119,21 @@ draft            → RASCUNHO
 
 ## Dashboard Information Architecture
 
-**Section order (operational first):**
-1. Header (wordmark + title + CTA buttons + user info)
-2. Metric row (live sessions, participants, individual, interrupted)
-3. Platform health (realtime status)
-4. Active sessions + recent events (2-column)
-5. Quiz library (below the fold)
+**Shell (2026-06-11):** sidebar fixa no desktop (`dashboard/layout.tsx`), topbar com nav horizontal no mobile. Navegação persistente em todas as rotas `/dashboard/*`.
 
-**Rationale:** Hosts arrive asking "what's live?" not "what did I create?" Operational context is the primary job of the dashboard.
+**Sidebar nav (ordem fixa):**
+1. Quizzes → `/dashboard` (administração — página inicial)
+2. Operação ao vivo → `/dashboard/operacao` (métricas, sessões abertas, sinais, saúde)
+3. Resultados → `/dashboard/resultados` (sessões finalizadas + relatórios)
+4. Conta → `/dashboard/account`
+
+Rodapé da sidebar: nome + email do usuário + botão Sair. Não há botões de conta/sair no header das páginas.
+
+**Page header pattern:** eyebrow (teal, uppercase) + h1 + helper + no máximo UM CTA primário à direita (ex.: "Novo quiz"). Nunca dois grupos de botões competindo.
+
+**Rationale (decisão do usuário, 2026-06-11):** a administração de quizzes é o trabalho principal do dashboard; operação ao vivo tem página própria e um banner de alerta puxa o host para lá quando alguma sessão pede atenção.
+
+**Wordmark:** o logo é idêntico ao da home — `uppercase tracking-[0.14em]`, peso normal, `--quizzy-logo-font`, cor navy. Nunca `font-bold tracking-tight`.
 
 ---
 
