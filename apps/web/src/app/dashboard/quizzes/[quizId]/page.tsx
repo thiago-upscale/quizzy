@@ -119,8 +119,7 @@ export default async function QuizDetailPage({
     showQuestionOnMobile: boolean;
   }>;
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,_#f8fafc,_#eef5ff)] px-6 py-8 text-[#132238]">
-      <div className="mx-auto w-full max-w-5xl">
+    <div className="mx-auto w-full max-w-5xl">
         <QuizEditor
           branding={{
             primaryColor: branding.primaryColor ?? "#0f766e",
@@ -153,7 +152,6 @@ export default async function QuizDetailPage({
           status={quiz.status}
           title={quiz.title}
         />
-      </div>
-    </main>
+    </div>
   );
 }

@@ -37,8 +37,7 @@ export default async function AccountPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,_#f7fafc_0%,_#eef7ff_100%)] px-6 py-8 text-[#132238]">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <header className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
           <Link
             className="text-sm font-semibold text-[#0f766e]"
@@ -113,7 +112,6 @@ export default async function AccountPage() {
             </div>
           </SurfaceCard>
         </div>
-      </div>
-    </main>
+    </div>
   );
 }
