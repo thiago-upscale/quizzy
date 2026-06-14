@@ -194,14 +194,24 @@ export async function requestPasswordReset(
     };
   }
 
-  const previewUrl = await buildPasswordResetPreview(email);
+  try {
+    const previewUrl = await buildPasswordResetPreview(email);
 
-  return {
-    message:
-      "Se o email existir, geramos um link de recuperacao para uso interno no beta.",
-    previewUrl,
-    status: "success",
-  };
+    return {
+      message:
+        "Se o email existir, geramos um link de recuperacao para uso interno no beta.",
+      previewUrl,
+      status: "success",
+    };
+  } catch (err) {
+    logger.error({ email, err }, "password_reset.request_failed");
+
+    return {
+      message:
+        "Nao foi possivel processar o pedido agora. Tente novamente em instantes.",
+      status: "error",
+    };
+  }
 }
 
 export async function resetPasswordWithToken(
