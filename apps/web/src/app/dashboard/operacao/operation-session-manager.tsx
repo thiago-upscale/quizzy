@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  startTransition,
   useActionState,
   useDeferredValue,
   useEffect,
@@ -109,9 +110,6 @@ export function OperationSessionManager({
   });
 
   const filteredIds = filteredSessions.map((session) => session.id);
-  const selectedSessions = sessions.filter((session) =>
-    selectedIds.includes(session.id),
-  );
   const modalSessions =
     modalScope === "filtered"
       ? filteredSessions
@@ -126,14 +124,16 @@ export function OperationSessionManager({
       return;
     }
 
-    setSelectedIds([]);
-    setConfirmationText("");
-    setModalScope(null);
+    startTransition(() => {
+      setSelectedIds([]);
+      setConfirmationText("");
+      setModalScope(null);
+    });
     router.refresh();
   }, [deleteState.status, router]);
 
   useEffect(() => {
-    setPage(1);
+    startTransition(() => setPage(1));
   }, [deferredQuery, statusFilter, modeFilter]);
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { FieldPanel, StatusAlert } from "@/components/phase-one-ui";
 import { acceptedImageTypes } from "./editor-types";
 
@@ -27,7 +27,7 @@ export function AssetUploadField({
 
   useEffect(() => {
     if (!currentUrl) {
-      setAssetBroken(false);
+      startTransition(() => setAssetBroken(false));
       return;
     }
     let cancelled = false;

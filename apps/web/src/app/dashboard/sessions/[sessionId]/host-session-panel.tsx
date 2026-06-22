@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useFormStatus } from "react-dom";
 import { io, type Socket } from "socket.io-client";
 import { formatTime } from "@/lib/datetime";
@@ -267,14 +273,14 @@ export function HostSessionPanel({
 
   useEffect(() => {
     if (startState.status !== "success") return;
-    setStartSuccessVisible(true);
+    startTransition(() => setStartSuccessVisible(true));
     const timer = setTimeout(() => setStartSuccessVisible(false), 4000);
     return () => clearTimeout(timer);
   }, [startState]);
 
   useEffect(() => {
     if (advanceState.status !== "success") return;
-    setAdvanceSuccessVisible(true);
+    startTransition(() => setAdvanceSuccessVisible(true));
     const timer = setTimeout(() => setAdvanceSuccessVisible(false), 4000);
     return () => clearTimeout(timer);
   }, [advanceState]);
