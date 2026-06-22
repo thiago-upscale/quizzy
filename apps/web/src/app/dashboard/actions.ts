@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
 import {
@@ -21,6 +21,7 @@ import {
   getLiveSessionById,
 } from "@/lib/live";
 import { logger } from "@/lib/logger";
+import { activeSessionStatuses } from "./dashboard-helpers";
 
 export async function createQuiz() {
   const session = await requireAuthSession();
@@ -94,6 +95,12 @@ export type StartLiveSessionState = {
   status: "idle" | "success" | "error";
 };
 
+export type DeleteSessionsState = {
+  deletedCount?: number;
+  message?: string;
+  status: "idle" | "success" | "error";
+};
+
 const defaultBranding: BrandingPayload = {
   primaryColor: "#0f766e",
   secondaryColor: "#10233f",
@@ -103,6 +110,8 @@ const defaultBranding: BrandingPayload = {
   logoUrl: null,
   showQuestionOnMobile: false,
 };
+
+const destructiveConfirmationText = "APAGAR";
 
 function sanitizeHex(color: string, fallback: string) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback;
@@ -183,6 +192,89 @@ function normalizeQuestions(parsedQuestions: QuestionPayload[]) {
         question.content.question.length > 0 &&
         question.content.options.length >= 2,
     );
+}
+
+function parseSessionIds(rawValue: string) {
+  try {
+    const parsed = JSON.parse(rawValue) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return [...new Set(parsed.filter((value): value is string => typeof value === "string"))];
+  } catch {
+    return [];
+  }
+}
+
+async function notifyRealtimeSessionTermination(params: {
+  pin: string;
+  sessionId: string;
+}) {
+  const response = await fetch(`${env.REALTIME_URL}/internal/session/terminate`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    throw new Error("Nao foi possivel encerrar a sala realtime.");
+  }
+}
+
+async function terminateLiveSessionsBeforeDelete(
+  liveSessions: Array<{ id: string; pin: string | null; status: string }>,
+) {
+  for (const liveSession of liveSessions) {
+    if (
+      !liveSession.pin ||
+      !activeSessionStatuses.includes(
+        liveSession.status as (typeof activeSessionStatuses)[number],
+      )
+    ) {
+      continue;
+    }
+
+    await notifyRealtimeSessionTermination({
+      pin: liveSession.pin,
+      sessionId: liveSession.id,
+    });
+  }
+}
+
+async function deleteSessionsCascade(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  sessionIds: string[],
+) {
+  if (sessionIds.length === 0) {
+    return;
+  }
+
+  await tx.delete(answers).where(inArray(answers.sessionId, sessionIds));
+  await tx.delete(attempts).where(inArray(attempts.sessionId, sessionIds));
+
+  const participantRows = await tx
+    .select({ id: participants.id })
+    .from(participants)
+    .where(inArray(participants.sessionId, sessionIds));
+
+  const participantIds = participantRows.map((participant) => participant.id);
+
+  if (participantIds.length > 0) {
+    await tx
+      .delete(participants)
+      .where(inArray(participants.id, participantIds));
+  }
+
+  await tx
+    .delete(sessionEvents)
+    .where(inArray(sessionEvents.sessionId, sessionIds));
+
+  await tx.delete(quizSessions).where(inArray(quizSessions.id, sessionIds));
 }
 
 export async function saveQuiz(
@@ -1028,57 +1120,119 @@ export async function deleteQuiz(formData: FormData) {
     throw new Error("Quiz nao encontrado.");
   }
 
-  // Fetch all sessions for this quiz to cascade delete dependents
   const sessionRows = await db
-    .select({ id: quizSessions.id })
+    .select({
+      id: quizSessions.id,
+      mode: quizSessions.mode,
+      pin: quizSessions.pin,
+      status: quizSessions.status,
+    })
     .from(quizSessions)
     .where(eq(quizSessions.quizId, quizId));
 
-  const sessionIds = sessionRows.map((s) => s.id);
+  await terminateLiveSessionsBeforeDelete(
+    sessionRows.filter((sessionRow) => sessionRow.mode === "live"),
+  );
+
+  const sessionIds = sessionRows.map((sessionRow) => sessionRow.id);
 
   await db.transaction(async (tx) => {
-    if (sessionIds.length > 0) {
-      // Delete answers linked to these sessions
-      await tx.delete(answers).where(inArray(answers.sessionId, sessionIds));
-
-      // Fetch participants to delete their attempts
-      const participantRows = await tx
-        .select({ id: participants.id })
-        .from(participants)
-        .where(inArray(participants.sessionId, sessionIds));
-
-      const participantIds = participantRows.map((p) => p.id);
-
-      if (participantIds.length > 0) {
-        await tx
-          .delete(attempts)
-          .where(inArray(attempts.participantId, participantIds));
-        await tx
-          .delete(participants)
-          .where(inArray(participants.id, participantIds));
-      }
-
-      // Delete session events
-      await tx
-        .delete(sessionEvents)
-        .where(inArray(sessionEvents.sessionId, sessionIds));
-
-      // Delete sessions
-      await tx
-        .delete(quizSessions)
-        .where(inArray(quizSessions.id, sessionIds));
-    }
-
-    // Delete quiz versions
+    await deleteSessionsCascade(tx, sessionIds);
     await tx.delete(quizVersions).where(eq(quizVersions.quizId, quizId));
-
-    // Delete questions
     await tx.delete(questions).where(eq(questions.quizId, quizId));
-
-    // Delete the quiz itself
     await tx.delete(quizzes).where(eq(quizzes.id, quizId));
   });
 
   revalidatePath("/dashboard");
   redirect("/dashboard");
+}
+
+export async function deleteSessions(
+  _previousState: DeleteSessionsState,
+  formData: FormData,
+): Promise<DeleteSessionsState> {
+  const session = await requireAuthSession();
+  const scope = String(formData.get("scope") ?? "selected");
+  const confirmationText = String(formData.get("confirmationText") ?? "").trim();
+  const sessionIds = parseSessionIds(String(formData.get("sessionIds") ?? "[]"));
+
+  if (sessionIds.length === 0) {
+    return {
+      message: "Selecione pelo menos uma sessão para excluir.",
+      status: "error",
+    };
+  }
+
+  if (scope === "filtered" && confirmationText !== destructiveConfirmationText) {
+    return {
+      message: `Digite ${destructiveConfirmationText} para confirmar a exclusão em massa.`,
+      status: "error",
+    };
+  }
+
+  const sessionRows = await db
+    .select({
+      id: quizSessions.id,
+      mode: quizSessions.mode,
+      pin: quizSessions.pin,
+      quizTitle: quizzes.title,
+      status: quizSessions.status,
+      participantCount: count(participants.id),
+    })
+    .from(quizSessions)
+    .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+    .leftJoin(participants, eq(participants.sessionId, quizSessions.id))
+    .where(
+      and(
+        eq(quizzes.organizationId, session.user.organizationId),
+        inArray(quizSessions.id, sessionIds),
+      ),
+    )
+    .groupBy(quizSessions.id, quizzes.id);
+
+  if (sessionRows.length !== sessionIds.length) {
+    return {
+      message:
+        "Algumas sessões não foram encontradas ou não pertencem à sua organização.",
+      status: "error",
+    };
+  }
+
+  try {
+    await terminateLiveSessionsBeforeDelete(
+      sessionRows.filter((sessionRow) => sessionRow.mode === "live"),
+    );
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        scope,
+        sessionIds,
+      },
+      "session.bulk_delete_terminate_failed",
+    );
+
+    return {
+      message:
+        "Não conseguimos encerrar uma ou mais salas ao vivo antes da exclusão. Tente novamente.",
+      status: "error",
+    };
+  }
+
+  await db.transaction(async (tx) => {
+    await deleteSessionsCascade(tx, sessionIds);
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/operacao");
+  revalidatePath("/dashboard/resultados");
+
+  return {
+    deletedCount: sessionIds.length,
+    message:
+      sessionIds.length === 1
+        ? `1 sessão foi excluída com sucesso.`
+        : `${sessionIds.length} sessões foram excluídas com sucesso.`,
+    status: "success",
+  };
 }

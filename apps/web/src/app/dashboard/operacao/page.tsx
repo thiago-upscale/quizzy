@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { count, desc, eq, inArray } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
 import {
@@ -16,21 +16,16 @@ import {
   StatusAlert,
   SurfaceCard,
 } from "@/components/phase-one-ui";
+import { OperationSessionManager } from "./operation-session-manager";
 import {
   activeSessionStatuses,
   formatDate,
   formatEventType,
-  getSessionStatusTone,
   getStatusLabel,
+  getSessionStatusTone,
 } from "../dashboard-helpers";
 
 export const dynamic = "force-dynamic";
-
-type SessionEventSummary = {
-  createdAt: Date;
-  eventType: string;
-  sessionId: string;
-};
 
 type RealtimeHealth =
   | {
@@ -84,7 +79,7 @@ async function getRealtimeHealth(): Promise<RealtimeHealth> {
 export default async function OperacaoPage() {
   const session = await requireAuthSession();
 
-  const [activeSessionsRaw, recentEvents, realtimeHealth] = await Promise.all([
+  const [allSessionsRaw, recentEvents, realtimeHealth] = await Promise.all([
     db
       .select({
         id: quizSessions.id,
@@ -94,6 +89,10 @@ export default async function OperacaoPage() {
         mode: quizSessions.mode,
         status: quizSessions.status,
         createdAt: quizSessions.createdAt,
+        startsAt: quizSessions.startsAt,
+        endsAt: quizSessions.endsAt,
+        expiresAt: quizSessions.expiresAt,
+        finishedAt: quizSessions.finishedAt,
         quizTitle: quizzes.title,
         participantCount: count(participants.id),
       })
@@ -122,40 +121,11 @@ export default async function OperacaoPage() {
     getRealtimeHealth(),
   ]);
 
-  const activeSessions = activeSessionsRaw.filter((sessionItem) =>
+  const activeSessions = allSessionsRaw.filter((sessionItem) =>
     activeSessionStatuses.includes(
       sessionItem.status as (typeof activeSessionStatuses)[number],
     ),
   );
-  const activeSessionIds = activeSessions.map((sessionItem) => sessionItem.id);
-
-  const latestEventBySession = new Map<string, SessionEventSummary>();
-
-  for (const event of recentEvents) {
-    if (!latestEventBySession.has(event.sessionId)) {
-      latestEventBySession.set(event.sessionId, event);
-    }
-  }
-
-  if (activeSessionIds.length > 0) {
-    const activeSessionEvents = await db
-      .select({
-        id: sessionEvents.id,
-        sessionId: sessionEvents.sessionId,
-        eventType: sessionEvents.eventType,
-        createdAt: sessionEvents.createdAt,
-      })
-      .from(sessionEvents)
-      .where(inArray(sessionEvents.sessionId, activeSessionIds))
-      .orderBy(desc(sessionEvents.createdAt));
-
-    for (const event of activeSessionEvents) {
-      if (!latestEventBySession.has(event.sessionId)) {
-        latestEventBySession.set(event.sessionId, event);
-      }
-    }
-  }
-
   const activeLiveSessions = activeSessions.filter(
     (sessionItem) => sessionItem.mode === "live",
   );
@@ -169,16 +139,6 @@ export default async function OperacaoPage() {
     (total, sessionItem) => total + sessionItem.participantCount,
     0,
   );
-  // Show all sessions needing attention (up to 20) — no silent slice
-  const sessionsNeedingAttention = activeSessions
-    .filter(
-      (sessionItem) =>
-        sessionItem.status === "interrupted" ||
-        sessionItem.status === "playing" ||
-        sessionItem.status === "question_result" ||
-        sessionItem.status === "countdown",
-    )
-    .slice(0, 20);
 
   return (
     <div className="flex flex-col gap-6">
@@ -224,77 +184,38 @@ export default async function OperacaoPage() {
         />
       </section>
 
-      {/* Live sessions + recent events */}
+      {/* Session management + recent events */}
       <section
         aria-label="Sessões e sinais"
         className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]"
       >
         <SurfaceCard>
           <SectionHeading
-            eyebrow="Acompanhamento"
-            helper="Abra apenas as sessões que realmente pedem ação do host."
-            title="Sessões que precisam de acompanhamento"
+            eyebrow="Gestão de sessões"
+            helper="Filtre, selecione em massa e exclua com proteção forte quando necessário."
+            title="Todas as sessões da organização"
             trailing={
               <span className="rounded-full bg-[#f8fbff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                {sessionsNeedingAttention.length} abertas
+                {allSessionsRaw.length} no total
               </span>
             }
           />
-
-          <div className="mt-6 space-y-3">
-            {sessionsNeedingAttention.length === 0 ? (
-              <EmptyStateCard
-                description="Quando uma sessão estiver em andamento, interrompida ou aguardando decisão do host, ela aparece aqui."
-                title="Nenhuma sessão pedindo atenção agora"
-              />
-            ) : (
-              sessionsNeedingAttention.map((sessionItem) => {
-                const latestEvent = latestEventBySession.get(sessionItem.id);
-                const sessionLabel =
-                  sessionItem.mode === "live"
-                    ? `Sessão ${sessionItem.quizTitle} — PIN ${sessionItem.pin ?? "sem PIN"}`
-                    : `Sessão individual ${sessionItem.quizTitle}`;
-
-                return (
-                  <Link
-                    key={sessionItem.id}
-                    aria-label={`${sessionLabel}, ${getStatusLabel(sessionItem.status).toLowerCase()}, ${sessionItem.participantCount} participantes`}
-                    className="block rounded-[1.4rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)] p-4 transition hover:border-[color:color-mix(in_srgb,var(--quizzy-border)_80%,black)] hover:bg-[color:color-mix(in_srgb,var(--quizzy-surface)_40%,white)]"
-                    href={`/dashboard/sessions/${sessionItem.id}`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-[var(--quizzy-text)]">
-                          {sessionItem.quizTitle}
-                        </p>
-                        <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
-                          {sessionItem.mode === "live"
-                            ? `PIN ${sessionItem.pin ?? "sem PIN"}`
-                            : "Sessão individual"}{" "}
-                          • {sessionItem.participantCount} participantes
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${getSessionStatusTone(
-                            sessionItem.status,
-                          )}`}
-                        >
-                          {getStatusLabel(sessionItem.status)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 text-sm text-[var(--quizzy-muted)]">
-                      {latestEvent
-                        ? `${formatEventType(latestEvent.eventType)} • ${formatDate(latestEvent.createdAt)}`
-                        : "Sem eventos ainda"}
-                    </div>
-                  </Link>
-                );
-              })
-            )}
-          </div>
+          <OperationSessionManager
+            sessions={allSessionsRaw.map((sessionItem) => ({
+              createdAt: sessionItem.createdAt.toISOString(),
+              endsAt: sessionItem.endsAt?.toISOString() ?? null,
+              expiresAt: sessionItem.expiresAt?.toISOString() ?? null,
+              finishedAt: sessionItem.finishedAt?.toISOString() ?? null,
+              id: sessionItem.id,
+              mode: sessionItem.mode as "individual" | "live",
+              participantCount: sessionItem.participantCount,
+              pin: sessionItem.pin,
+              quizTitle: sessionItem.quizTitle,
+              shareToken: sessionItem.shareToken,
+              startsAt: sessionItem.startsAt?.toISOString() ?? null,
+              status: sessionItem.status,
+            }))}
+          />
         </SurfaceCard>
 
         <SurfaceCard>

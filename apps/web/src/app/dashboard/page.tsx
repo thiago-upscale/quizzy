@@ -4,6 +4,7 @@ import { requireAuthSession } from "@/auth/session";
 import { db } from "@/db/client";
 import { participants, quizSessions, quizzes } from "@/db/schema";
 import { EmptyStateCard } from "@/components/phase-one-ui";
+import { formatDateTime } from "@/lib/datetime";
 import { createLiveSession, createQuiz, deleteQuiz } from "./actions";
 import { DeleteQuizButton } from "./delete-quiz-button";
 import {
@@ -160,11 +161,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex items-end justify-between gap-4 sm:block">
                   <div className="text-sm text-[var(--quizzy-muted)]">
-                    Atualizado em{" "}
-                    {new Intl.DateTimeFormat("pt-BR", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    }).format(quiz.updatedAt)}
+                    Atualizado em {formatDateTime(quiz.updatedAt)}
                   </div>
                   <p className="mt-2 text-sm font-semibold text-[var(--quizzy-teal)] sm:mt-6">
                     Abrir quiz →

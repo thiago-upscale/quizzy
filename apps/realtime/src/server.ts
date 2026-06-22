@@ -139,6 +139,11 @@ type AdvanceSessionPayload = {
   sessionId?: string;
 };
 
+type TerminateSessionPayload = {
+  pin?: string;
+  sessionId?: string;
+};
+
 type PersistAnswerPayload = {
   answerIndex: number;
   currentStreak: number;
@@ -1197,6 +1202,45 @@ const httpServer = createServer(async (request, response) => {
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify({ ok: true, service: "quizzy-realtime" }));
     return;
+  }
+
+  if (
+    request.method === "POST" &&
+    request.url === "/internal/session/terminate" &&
+    request.headers["x-quizzy-internal-token"] === env.REALTIME_INTERNAL_TOKEN
+  ) {
+    try {
+      const body = await parseJsonBody<TerminateSessionPayload>(request);
+      const pin = body?.pin?.trim();
+      const sessionId = body?.sessionId?.trim();
+
+      if (!pin || !sessionId) {
+        response.writeHead(400, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "invalid_payload" }));
+        return;
+      }
+
+      const room = liveRooms.get(pin);
+
+      if (!room || room.sessionId !== sessionId) {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ ok: true, roomPresent: false }));
+        return;
+      }
+
+      finishSession(io, { pin, room });
+      liveRooms.delete(pin);
+      logger.info({ pin, sessionId }, "room.terminated");
+
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true, roomPresent: true }));
+      return;
+    } catch (error) {
+      logger.error({ error }, "Failed to terminate session");
+      response.writeHead(500, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: "internal_error" }));
+      return;
+    }
   }
 
   if (

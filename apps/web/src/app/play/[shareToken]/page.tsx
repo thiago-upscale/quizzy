@@ -4,6 +4,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { answers, attempts, participants, questions } from "@/db/schema";
+import { formatDateTime } from "@/lib/datetime";
 import {
   buildIndividualQuestionsForSession,
   getIndividualParticipantCookieName,
@@ -20,17 +21,6 @@ import { IndividualParticipantEntryForm } from "./participant-entry-form";
 import { IndividualQuestionForm } from "./question-form";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(value: Date | null) {
-  if (!value) {
-    return "Não definido";
-  }
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(value);
-}
 
 export default async function IndividualPlayPage({
   params,
@@ -108,7 +98,7 @@ export default async function IndividualPlayPage({
                   className="rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#10233f]"
                   style={{ backgroundColor: branding.accentColor }}
                 >
-                  Até {formatDate(session.endsAt ?? session.expiresAt)}
+                  Até {formatDateTime(session.endsAt ?? session.expiresAt)}
                 </span>
               </div>
             </div>
@@ -324,7 +314,7 @@ export default async function IndividualPlayPage({
               </div>
             </div>
             <p className="mt-6 text-sm leading-7 text-white/75">
-              Prazo final: {formatDate(session.endsAt ?? session.expiresAt)}.
+              Prazo final: {formatDateTime(session.endsAt ?? session.expiresAt)}.
             </p>
           </article>
 

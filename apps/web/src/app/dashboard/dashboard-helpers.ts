@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/lib/datetime";
+
 export const activeSessionStatuses = [
   "waiting",
   "countdown",
@@ -38,14 +40,7 @@ export function getSessionStatusTone(status: string) {
 }
 
 export function formatDate(value: Date | null) {
-  if (!value) {
-    return "Não definido";
-  }
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(value);
+  return formatDateTime(value);
 }
 
 export function formatEventType(eventType: string) {
