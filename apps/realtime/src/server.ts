@@ -1182,6 +1182,25 @@ function startQuestion(
   return true;
 }
 
+const ANSWER_RATE_LIMIT_MAX = 10;
+const ANSWER_RATE_LIMIT_WINDOW_MS = 10_000;
+const answerSubmitTimestamps = new Map<string, number[]>();
+
+function isAnswerRateLimited(participantToken: string): boolean {
+  const now = Date.now();
+  const cutoff = now - ANSWER_RATE_LIMIT_WINDOW_MS;
+  const timestamps = (answerSubmitTimestamps.get(participantToken) ?? []).filter(
+    (t) => t > cutoff,
+  );
+  timestamps.push(now);
+  answerSubmitTimestamps.set(participantToken, timestamps);
+  return timestamps.length > ANSWER_RATE_LIMIT_MAX;
+}
+
+function clearAnswerRateLimit(participantToken: string) {
+  answerSubmitTimestamps.delete(participantToken);
+}
+
 function rejectAnswer(
   io: Server,
   params: {
@@ -1191,6 +1210,7 @@ function rejectAnswer(
       | "invalid_payload"
       | "participant_not_in_session"
       | "question_closed"
+      | "rate_limited"
       | "session_interrupted";
     room: RoomState;
     socket: import("socket.io").Socket;
@@ -1755,6 +1775,18 @@ io.on("connection", (socket) => {
         return;
       }
 
+      if (isAnswerRateLimited(participantToken)) {
+        const room = getOrCreateRoom(pin);
+        rejectAnswer(io, {
+          pin,
+          reason: "rate_limited",
+          room,
+          socket,
+          meta: { participantToken },
+        });
+        return;
+      }
+
       const room = await ensureRoomHydrated(io, {
         pin,
         room: getOrCreateRoom(pin),
@@ -1942,6 +1974,10 @@ io.on("connection", (socket) => {
     const pin = socket.data.pin as string | undefined;
     const participantToken = socket.data.participantToken as string | undefined;
     const role = socket.data.role as string | undefined;
+
+    if (participantToken) {
+      clearAnswerRateLimit(participantToken);
+    }
 
     if (pin && participantToken && role === "participant") {
       const room = getOrCreateRoom(pin);
