@@ -1,34 +1,12 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { URL } from "node:url";
 import { Redis } from "ioredis";
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
+import { isValidHostToken } from "./auth.js";
 import { env } from "./env.js";
 import { logger } from "./logger.js";
-
-function isValidHostToken(
-  sessionId: string,
-  token: string | undefined,
-  secret: string,
-): boolean {
-  if (!token) return false;
-  const hourWindow = Math.floor(Date.now() / 3_600_000);
-  for (const w of [hourWindow, hourWindow - 1]) {
-    const expected = createHmac("sha256", secret)
-      .update(`host:${sessionId}:${w}`)
-      .digest("hex");
-    const expectedBuf = Buffer.from(expected);
-    const tokenBuf = Buffer.from(token);
-    if (
-      expectedBuf.length === tokenBuf.length &&
-      timingSafeEqual(expectedBuf, tokenBuf)
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
+import { computePoints } from "./scoring.js";
 
 type SessionStatus =
   | "waiting"
@@ -909,23 +887,6 @@ function emitRoomSnapshot(io: Server, pin: string, room: RoomState) {
       totalQuestions: room.questions.length,
     });
   }
-}
-
-function computePoints(params: {
-  currentStreak: number;
-  isCorrect: boolean;
-  pointsBase: number;
-  timeLimitSeconds: number;
-  timeSpentMs: number;
-}) {
-  if (!params.isCorrect) {
-    return 0;
-  }
-
-  const totalMs = Math.max(1, params.timeLimitSeconds * 1000);
-  const speedFactor = Math.max(0.5, 1 - (params.timeSpentMs / totalMs) * 0.5);
-  const streakMultiplier = Math.min(1.5, 1 + params.currentStreak * 0.1);
-  return Math.round(params.pointsBase * speedFactor * streakMultiplier);
 }
 
 function finishSession(io: Server, params: { pin: string; room: RoomState }) {

@@ -13,6 +13,7 @@
     "start:web": "pnpm --filter @quizzy/web start",
     "start:realtime": "pnpm --filter @quizzy/realtime start",
     "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
