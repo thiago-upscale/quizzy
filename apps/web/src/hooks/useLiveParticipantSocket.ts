@@ -77,8 +77,9 @@ export function useLiveParticipantSocket({
     rejectedAnswersCount: 0,
     status: initialSessionStatus as SessionStatePayload["status"],
   });
-  const [currentQuestion, setCurrentQuestion] =
-    useState<ActiveQuestion | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
+    null,
+  );
   const [currentResult, setCurrentResult] = useState<QuestionResult | null>(
     null,
   );

@@ -111,24 +111,24 @@ export default async function OperacaoPage() {
         .from(quizSessions)
         .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
         .where(eq(quizzes.organizationId, session.user.organizationId)),
-    db
-      .select({
-        id: sessionEvents.id,
-        sessionId: sessionEvents.sessionId,
-        eventType: sessionEvents.eventType,
-        createdAt: sessionEvents.createdAt,
-        sessionMode: quizSessions.mode,
-        sessionStatus: quizSessions.status,
-        quizTitle: quizzes.title,
-      })
-      .from(sessionEvents)
-      .innerJoin(quizSessions, eq(sessionEvents.sessionId, quizSessions.id))
-      .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-      .where(eq(quizzes.organizationId, session.user.organizationId))
-      .orderBy(desc(sessionEvents.createdAt))
-      .limit(12),
-    getRealtimeHealth(),
-  ]);
+      db
+        .select({
+          id: sessionEvents.id,
+          sessionId: sessionEvents.sessionId,
+          eventType: sessionEvents.eventType,
+          createdAt: sessionEvents.createdAt,
+          sessionMode: quizSessions.mode,
+          sessionStatus: quizSessions.status,
+          quizTitle: quizzes.title,
+        })
+        .from(sessionEvents)
+        .innerJoin(quizSessions, eq(sessionEvents.sessionId, quizSessions.id))
+        .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+        .where(eq(quizzes.organizationId, session.user.organizationId))
+        .orderBy(desc(sessionEvents.createdAt))
+        .limit(12),
+      getRealtimeHealth(),
+    ]);
 
   const totalSessions = totalSessionsRows[0]?.total ?? 0;
   const hasMoreSessions = allSessionsRaw.length < totalSessions;

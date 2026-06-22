@@ -11,9 +11,9 @@ const BASE = {
 
 describe("computePoints", () => {
   it("returns 0 for wrong answers regardless of speed", () => {
-    expect(
-      computePoints({ ...BASE, isCorrect: false, timeSpentMs: 0 }),
-    ).toBe(0);
+    expect(computePoints({ ...BASE, isCorrect: false, timeSpentMs: 0 })).toBe(
+      0,
+    );
     expect(
       computePoints({ ...BASE, isCorrect: false, timeSpentMs: 5000 }),
     ).toBe(0);

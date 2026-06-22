@@ -227,7 +227,11 @@ export function DisplayClient({
   branding,
   canControlSession,
 }: {
-  initialParticipants: { id: string; nickname: string; presenceStatus: "offline" | "online" }[];
+  initialParticipants: {
+    id: string;
+    nickname: string;
+    presenceStatus: "offline" | "online";
+  }[];
   pin: string;
   quizTitle: string;
   qrCodeDataUrl: string;

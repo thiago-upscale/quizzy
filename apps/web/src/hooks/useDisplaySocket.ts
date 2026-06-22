@@ -46,8 +46,9 @@ export function useDisplaySocket({
     rejectedAnswersCount: 0,
     status: "waiting",
   });
-  const [currentQuestion, setCurrentQuestion] =
-    useState<ActiveQuestion | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
+    null,
+  );
   const [currentResult, setCurrentResult] = useState<QuestionResult | null>(
     null,
   );

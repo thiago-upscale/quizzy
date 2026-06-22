@@ -24,7 +24,10 @@ describe("isValidHostToken", () => {
   });
 
   it("rejects a token generated with a different secret", () => {
-    const token = makeHostToken(SESSION_ID, "completely-different-secret-string");
+    const token = makeHostToken(
+      SESSION_ID,
+      "completely-different-secret-string",
+    );
     expect(isValidHostToken(SESSION_ID, token, SECRET)).toBe(false);
   });
 

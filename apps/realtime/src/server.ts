@@ -1160,9 +1160,9 @@ const answerSubmitTimestamps = new Map<string, number[]>();
 function isAnswerRateLimited(participantToken: string): boolean {
   const now = Date.now();
   const cutoff = now - ANSWER_RATE_LIMIT_WINDOW_MS;
-  const timestamps = (answerSubmitTimestamps.get(participantToken) ?? []).filter(
-    (t) => t > cutoff,
-  );
+  const timestamps = (
+    answerSubmitTimestamps.get(participantToken) ?? []
+  ).filter((t) => t > cutoff);
   timestamps.push(now);
   answerSubmitTimestamps.set(participantToken, timestamps);
   return timestamps.length > ANSWER_RATE_LIMIT_MAX;
