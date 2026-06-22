@@ -509,26 +509,36 @@ async function persistAnswer(payload: PersistAnswerPayload) {
   }
 }
 
+let pendingPersistCount = 0;
+
 function queuePersistAnswer(payload: PersistAnswerPayload, attempt = 1) {
-  void persistAnswer(payload).catch((error) => {
-    if (attempt >= ANSWER_PERSIST_MAX_ATTEMPTS) {
-      logger.error(
-        { attempt, error, payload },
-        "answer.persist_exhausted_retries",
+  if (attempt === 1) pendingPersistCount++;
+
+  void persistAnswer(payload).then(
+    () => {
+      pendingPersistCount--;
+    },
+    (error) => {
+      if (attempt >= ANSWER_PERSIST_MAX_ATTEMPTS) {
+        logger.error(
+          { attempt, error, payload },
+          "answer.persist_exhausted_retries",
+        );
+        pendingPersistCount--;
+        return;
+      }
+
+      const delayMs = attempt * 1500;
+      logger.warn(
+        { attempt, delayMs, error, payload },
+        "answer.persist_retry_scheduled",
       );
-      return;
-    }
 
-    const delayMs = attempt * 1500;
-    logger.warn(
-      { attempt, delayMs, error, payload },
-      "answer.persist_retry_scheduled",
-    );
-
-    setTimeout(() => {
-      queuePersistAnswer(payload, attempt + 1);
-    }, delayMs);
-  });
+      setTimeout(() => {
+        queuePersistAnswer(payload, attempt + 1);
+      }, delayMs);
+    },
+  );
 }
 
 async function fetchRecoverySnapshot(params: {
@@ -2029,3 +2039,48 @@ io.on("connection", (socket) => {
 httpServer.listen(env.PORT, () => {
   logger.info({ port: env.PORT }, "Quizzy realtime server listening");
 });
+
+async function shutdown(signal: string) {
+  logger.info({ signal }, "shutdown.initiated");
+
+  io.emit("server:shutdown", { reason: "server_restart" });
+
+  const SHUTDOWN_TIMEOUT_MS = 10_000;
+  const PERSIST_POLL_INTERVAL_MS = 200;
+
+  const closeServer = new Promise<void>((resolve) => {
+    httpServer.close(() => resolve());
+    setTimeout(resolve, SHUTDOWN_TIMEOUT_MS);
+  });
+
+  const flushPersists = new Promise<void>((resolve) => {
+    if (pendingPersistCount === 0) {
+      resolve();
+      return;
+    }
+    const interval = setInterval(() => {
+      if (pendingPersistCount === 0) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, PERSIST_POLL_INTERVAL_MS);
+    setTimeout(() => {
+      clearInterval(interval);
+      if (pendingPersistCount > 0) {
+        logger.warn(
+          { pendingPersistCount },
+          "shutdown.persist_timeout_with_pending_answers",
+        );
+      }
+      resolve();
+    }, SHUTDOWN_TIMEOUT_MS);
+  });
+
+  await Promise.all([closeServer, flushPersists]);
+
+  logger.info("shutdown.complete");
+  process.exit(0);
+}
+
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));
