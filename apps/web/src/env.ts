@@ -45,6 +45,9 @@ export const env = envSchema.parse({
     "postgresql://postgres:postgres@localhost:5432/quizzy",
   NEXTAUTH_SECRET:
     process.env.NEXTAUTH_SECRET ?? "development-secret-development-secret",
+  REALTIME_INTERNAL_TOKEN:
+    process.env.REALTIME_INTERNAL_TOKEN ??
+    "development-internal-token-placeholder",
   STORAGE_BASE_PATH:
     process.env.STORAGE_BASE_PATH ??
     process.env.RAILWAY_VOLUME_MOUNT_PATH ??
