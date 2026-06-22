@@ -12,7 +12,7 @@
   --quizzy-border: #d8e2ee;
   --quizzy-text: #18202f;
   --quizzy-muted: #667085;
-  --quizzy-success: #0f766e;
+  --quizzy-success: #16a34a;
   --quizzy-warning: #b54708;
   --quizzy-logo-font: "BBH Hegarty", sans-serif;
 }
@@ -38,6 +38,23 @@ body {
   background: var(--background);
   color: var(--quizzy-text);
   font-family: var(--font-geist-sans), sans-serif;
+}
+
+button,
+[role="button"],
+label[for],
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="submit"],
+input[type="reset"],
+input[type="file"] {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
 }
 
 @keyframes quizzy-rise {
