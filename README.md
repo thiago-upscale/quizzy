@@ -4,10 +4,10 @@ Plataforma de quiz ao vivo para treinamentos corporativos e eventos no Brasil. S
 
 ## Workspace
 
-| Pacote | Descrição |
-|--------|-----------|
-| `apps/web` | Next.js — dashboard do criador, APIs HTTP, páginas do participante e relatórios |
-| `apps/realtime` | Socket.IO standalone — gerencia estado de sessões ao vivo via Redis |
+| Pacote          | Descrição                                                                       |
+| --------------- | ------------------------------------------------------------------------------- |
+| `apps/web`      | Next.js — dashboard do criador, APIs HTTP, páginas do participante e relatórios |
+| `apps/realtime` | Socket.IO standalone — gerencia estado de sessões ao vivo via Redis             |
 
 ## Stack
 
