@@ -100,7 +100,9 @@ async function main() {
   console.log("\n✅ Tudo pronto!");
   console.log(`Quiz ID: ${quizId}`);
   console.log(`URL local:  http://localhost:3000/dashboard/quizzes/${quizId}`);
-  console.log(`URL Railway: https://web-production-d2696.up.railway.app/dashboard/quizzes/${quizId}`);
+  console.log(
+    `URL Railway: https://web-production-d2696.up.railway.app/dashboard/quizzes/${quizId}`,
+  );
 
   await sql.end();
 }

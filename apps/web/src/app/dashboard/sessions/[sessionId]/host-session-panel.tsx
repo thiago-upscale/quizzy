@@ -104,11 +104,7 @@ function SubmitButton({
   const { pending } = useFormStatus();
 
   return (
-    <button
-      className={className}
-      disabled={disabled || pending}
-      type="submit"
-    >
+    <button className={className} disabled={disabled || pending} type="submit">
       {pending ? loadingLabel : label}
     </button>
   );
@@ -501,7 +497,11 @@ export function HostSessionPanel({
               <SubmitButton
                 className="cursor-pointer rounded-full bg-[var(--quizzy-navy)] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--quizzy-teal)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={status !== "waiting"}
-                label={status === "waiting" ? "Iniciar contagem regressiva" : "Sessão em andamento"}
+                label={
+                  status === "waiting"
+                    ? "Iniciar contagem regressiva"
+                    : "Sessão em andamento"
+                }
                 loadingLabel="Iniciando…"
               />
             </form>
@@ -784,7 +784,9 @@ export function HostSessionPanel({
                       : "rounded-full bg-[var(--quizzy-surface)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--quizzy-muted)]"
                   }
                 >
-                  {participant.presenceStatus === "online" ? "Online" : "Offline"}
+                  {participant.presenceStatus === "online"
+                    ? "Online"
+                    : "Offline"}
                 </span>
               </div>
             ))}

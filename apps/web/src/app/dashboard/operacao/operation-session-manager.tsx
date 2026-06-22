@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useDeferredValue, useEffect, useRef, useState } from "react";
+import {
+  useActionState,
+  useDeferredValue,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import type { DeleteSessionsState } from "../actions";
 import { deleteSessions } from "../actions";
@@ -54,10 +60,13 @@ function describeSessionAccess(session: ManagedSession) {
 
 function buildDeleteSummary(sessions: ManagedSession[]) {
   return {
-    activeCount: sessions.filter((session) => isActiveStatus(session.status)).length,
-    finishedCount: sessions.filter((session) => session.status === "finished").length,
-    interruptedCount: sessions.filter((session) => session.status === "interrupted")
+    activeCount: sessions.filter((session) => isActiveStatus(session.status))
       .length,
+    finishedCount: sessions.filter((session) => session.status === "finished")
+      .length,
+    interruptedCount: sessions.filter(
+      (session) => session.status === "interrupted",
+    ).length,
     participantCount: sessions.reduce(
       (total, session) => total + session.participantCount,
       0,
@@ -154,7 +163,9 @@ export function OperationSessionManager({
   function toggleAllFiltered() {
     setSelectedIds((currentIds) => {
       if (allFilteredSelected) {
-        return currentIds.filter((sessionId) => !filteredIds.includes(sessionId));
+        return currentIds.filter(
+          (sessionId) => !filteredIds.includes(sessionId),
+        );
       }
 
       return [...new Set([...currentIds, ...filteredIds])];
@@ -178,7 +189,9 @@ export function OperationSessionManager({
     <div className="mt-6 space-y-4">
       <div className="grid gap-3 rounded-[1.4rem] border border-[var(--quizzy-border)] bg-[var(--quizzy-surface)] p-4 md:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,0.8fr))]">
         <label className="grid gap-2 text-sm text-[var(--quizzy-muted)]">
-          <span className="font-semibold text-[var(--quizzy-text)]">Buscar</span>
+          <span className="font-semibold text-[var(--quizzy-text)]">
+            Buscar
+          </span>
           <input
             className="rounded-2xl border border-[var(--quizzy-border)] bg-white px-4 py-3 text-sm text-[var(--quizzy-text)] outline-none transition focus:border-[var(--quizzy-teal)]"
             placeholder="Título, PIN ou token"
@@ -188,7 +201,9 @@ export function OperationSessionManager({
         </label>
 
         <label className="grid gap-2 text-sm text-[var(--quizzy-muted)]">
-          <span className="font-semibold text-[var(--quizzy-text)]">Status</span>
+          <span className="font-semibold text-[var(--quizzy-text)]">
+            Status
+          </span>
           <select
             className="rounded-2xl border border-[var(--quizzy-border)] bg-white px-4 py-3 text-sm text-[var(--quizzy-text)] outline-none transition focus:border-[var(--quizzy-teal)]"
             value={statusFilter}
@@ -328,14 +343,19 @@ export function OperationSessionManager({
                   </div>
 
                   <p className="mt-2 text-sm text-[var(--quizzy-muted)]">
-                    {describeSessionAccess(session)} • {session.participantCount}{" "}
-                    participantes
+                    {describeSessionAccess(session)} •{" "}
+                    {session.participantCount} participantes
                   </p>
 
                   <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--quizzy-muted)]">
-                    <span>Criada em {formatDate(new Date(session.createdAt))}</span>
                     <span>
-                      Início {formatDate(session.startsAt ? new Date(session.startsAt) : null)}
+                      Criada em {formatDate(new Date(session.createdAt))}
+                    </span>
+                    <span>
+                      Início{" "}
+                      {formatDate(
+                        session.startsAt ? new Date(session.startsAt) : null,
+                      )}
                     </span>
                     <span>
                       Expira em{" "}
@@ -350,7 +370,9 @@ export function OperationSessionManager({
                     <span>
                       Encerrada em{" "}
                       {formatDate(
-                        session.finishedAt ? new Date(session.finishedAt) : null,
+                        session.finishedAt
+                          ? new Date(session.finishedAt)
+                          : null,
                       )}
                     </span>
                   </div>
@@ -385,7 +407,10 @@ export function OperationSessionManager({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#b91c1c]">
               Confirmação destrutiva
             </p>
-            <h3 id="delete-modal-title" className="mt-3 text-2xl font-semibold text-[var(--quizzy-text)]">
+            <h3
+              id="delete-modal-title"
+              className="mt-3 text-2xl font-semibold text-[var(--quizzy-text)]"
+            >
               {modalScope === "filtered"
                 ? "Apagar todas as sessões filtradas"
                 : "Apagar sessões selecionadas"}
@@ -446,7 +471,10 @@ export function OperationSessionManager({
               </label>
             ) : null}
 
-            <form action={deleteAction} className="mt-6 flex flex-wrap justify-end gap-3">
+            <form
+              action={deleteAction}
+              className="mt-6 flex flex-wrap justify-end gap-3"
+            >
               <input
                 name="confirmationText"
                 type="hidden"
@@ -456,7 +484,9 @@ export function OperationSessionManager({
               <input
                 name="sessionIds"
                 type="hidden"
-                value={JSON.stringify(modalSessions.map((session) => session.id))}
+                value={JSON.stringify(
+                  modalSessions.map((session) => session.id),
+                )}
               />
 
               <button

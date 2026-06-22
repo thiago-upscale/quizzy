@@ -108,8 +108,8 @@ export default async function IndividualPlayPage({
                 <>
                   <h2 className="text-2xl font-semibold">Prazo encerrado</h2>
                   <p className="mt-3 text-sm leading-7 text-white/75">
-                    Esta sessão individual não aceita novas entradas. Se o
-                    prazo foi estendido, peça um novo link a quem compartilhou.
+                    Esta sessão individual não aceita novas entradas. Se o prazo
+                    foi estendido, peça um novo link a quem compartilhou.
                   </p>
                   <Link
                     className="mt-6 inline-flex rounded-full border border-white/25 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
@@ -314,7 +314,8 @@ export default async function IndividualPlayPage({
               </div>
             </div>
             <p className="mt-6 text-sm leading-7 text-white/75">
-              Prazo final: {formatDateTime(session.endsAt ?? session.expiresAt)}.
+              Prazo final: {formatDateTime(session.endsAt ?? session.expiresAt)}
+              .
             </p>
           </article>
 

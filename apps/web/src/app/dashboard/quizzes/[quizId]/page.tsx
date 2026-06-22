@@ -120,38 +120,38 @@ export default async function QuizDetailPage({
   }>;
   return (
     <div className="mx-auto w-full max-w-5xl">
-        <QuizEditor
-          branding={{
-            primaryColor: branding.primaryColor ?? "#0f766e",
-            secondaryColor: branding.secondaryColor ?? "#10233f",
-            accentColor: branding.accentColor ?? "#f59e0b",
-            fontFamily: branding.fontFamily ?? "DM Sans",
-            backgroundImageUrl: branding.backgroundImageUrl ?? null,
-            logoUrl: branding.logoUrl ?? null,
-            showQuestionOnMobile: branding.showQuestionOnMobile ?? false,
-          }}
-          description={quiz.description ?? ""}
-          initialQuestions={initialQuestions}
-          liveSessionDefaults={{
-            requireParticipantEmail: false,
-          }}
-          liveSessionAction={createLiveSession}
-          quizId={quiz.id}
-          saveAction={saveQuiz}
-          deleteQuizAction={deleteQuiz}
-          sessionSummary={{
-            activeLiveCount: liveSessions.length,
-            latestLivePin: liveSessions[0]?.pin ?? null,
-            latestShareToken: latestIndividualSession?.shareToken ?? null,
-          }}
-          individualSessionDefaults={{
-            maxAttempts: 1,
-            requireParticipantEmail: false,
-          }}
-          startIndividualSessionAction={createIndividualSession}
-          status={quiz.status}
-          title={quiz.title}
-        />
+      <QuizEditor
+        branding={{
+          primaryColor: branding.primaryColor ?? "#0f766e",
+          secondaryColor: branding.secondaryColor ?? "#10233f",
+          accentColor: branding.accentColor ?? "#f59e0b",
+          fontFamily: branding.fontFamily ?? "DM Sans",
+          backgroundImageUrl: branding.backgroundImageUrl ?? null,
+          logoUrl: branding.logoUrl ?? null,
+          showQuestionOnMobile: branding.showQuestionOnMobile ?? false,
+        }}
+        description={quiz.description ?? ""}
+        initialQuestions={initialQuestions}
+        liveSessionDefaults={{
+          requireParticipantEmail: false,
+        }}
+        liveSessionAction={createLiveSession}
+        quizId={quiz.id}
+        saveAction={saveQuiz}
+        deleteQuizAction={deleteQuiz}
+        sessionSummary={{
+          activeLiveCount: liveSessions.length,
+          latestLivePin: liveSessions[0]?.pin ?? null,
+          latestShareToken: latestIndividualSession?.shareToken ?? null,
+        }}
+        individualSessionDefaults={{
+          maxAttempts: 1,
+          requireParticipantEmail: false,
+        }}
+        startIndividualSessionAction={createIndividualSession}
+        status={quiz.status}
+        title={quiz.title}
+      />
     </div>
   );
 }

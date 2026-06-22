@@ -38,80 +38,80 @@ export default async function AccountPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <header className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-          <Link
-            className="text-sm font-semibold text-[#0f766e]"
-            href="/dashboard"
-          >
-            Voltar ao dashboard
-          </Link>
-          <div className="mt-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
-              Conta
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold">
-              Perfil e segurança do criador
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
-              Ajuste identidade, acesso e recuperação — tudo em um lugar.
-            </p>
+      <header className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+        <Link
+          className="text-sm font-semibold text-[#0f766e]"
+          href="/dashboard"
+        >
+          Voltar ao dashboard
+        </Link>
+        <div className="mt-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#0f766e]">
+            Conta
+          </p>
+          <h1 className="mt-3 text-4xl font-semibold">
+            Perfil e segurança do criador
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61708c]">
+            Ajuste identidade, acesso e recuperação — tudo em um lugar.
+          </p>
+        </div>
+      </header>
+
+      <div className="grid gap-4">
+        <SurfaceCard>
+          <SectionHeading
+            eyebrow="Perfil"
+            helper="Nome e empresa orientam seu espaço de criador e aparecem como referência operacional nas áreas autenticadas."
+            title="Identidade principal"
+          />
+          <div className="mt-6">
+            <ProfileForm
+              initialCompany={user.company ?? ""}
+              initialName={user.name}
+            />
           </div>
-        </header>
+        </SurfaceCard>
 
-        <div className="grid gap-4">
-          <SurfaceCard>
-            <SectionHeading
-              eyebrow="Perfil"
-              helper="Nome e empresa orientam seu espaço de criador e aparecem como referência operacional nas áreas autenticadas."
-              title="Identidade principal"
-            />
-            <div className="mt-6">
-              <ProfileForm
-                initialCompany={user.company ?? ""}
-                initialName={user.name}
-              />
+        <SurfaceCard>
+          <SectionHeading
+            eyebrow="Segurança"
+            helper={`Email atual: ${user.email}`}
+            title="Senha e recuperação"
+          />
+          {user.passwordHash ? (
+            <div className="mt-6 space-y-6">
+              <PasswordChangeForm />
+              <div className="border-t border-[var(--quizzy-border)] pt-6">
+                <PasswordResetRequestInline email={user.email} />
+              </div>
             </div>
-          </SurfaceCard>
-
-          <SurfaceCard>
-            <SectionHeading
-              eyebrow="Segurança"
-              helper={`Email atual: ${user.email}`}
-              title="Senha e recuperação"
-            />
-            {user.passwordHash ? (
-              <div className="mt-6 space-y-6">
-                <PasswordChangeForm />
-                <div className="border-t border-[var(--quizzy-border)] pt-6">
-                  <PasswordResetRequestInline email={user.email} />
-                </div>
-              </div>
-            ) : (
-              <div className="mt-6">
-                <StatusAlert tone="warning">
-                  Esta conta ainda não usa senha local. O acesso por senha
-                  pode ser introduzido depois da ativação do Google, se isso
-                  fizer sentido para a operação.
-                </StatusAlert>
-              </div>
-            )}
-          </SurfaceCard>
-
-          <SurfaceCard>
-            <SectionHeading
-              eyebrow="Login social"
-              helper="Estado real de prontidão do provider Google."
-              title="Google"
-            />
+          ) : (
             <div className="mt-6">
-              <StatusAlert tone={hasGoogle ? "success" : "info"}>
-                {hasGoogle
-                  ? "O provider Google está configurado e pronto para aparecer no login."
-                  : "O provider Google já está preparado no produto e entra no ar assim que as credenciais forem adicionadas."}
+              <StatusAlert tone="warning">
+                Esta conta ainda não usa senha local. O acesso por senha pode
+                ser introduzido depois da ativação do Google, se isso fizer
+                sentido para a operação.
               </StatusAlert>
             </div>
-          </SurfaceCard>
-        </div>
+          )}
+        </SurfaceCard>
+
+        <SurfaceCard>
+          <SectionHeading
+            eyebrow="Login social"
+            helper="Estado real de prontidão do provider Google."
+            title="Google"
+          />
+          <div className="mt-6">
+            <StatusAlert tone={hasGoogle ? "success" : "info"}>
+              {hasGoogle
+                ? "O provider Google está configurado e pronto para aparecer no login."
+                : "O provider Google já está preparado no produto e entra no ar assim que as credenciais forem adicionadas."}
+            </StatusAlert>
+          </div>
+        </SurfaceCard>
+      </div>
     </div>
   );
 }

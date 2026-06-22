@@ -1,12 +1,15 @@
 import postgres from "postgres";
 
 async function fixSchema() {
-  const sql = postgres("postgresql://postgres:PgOvGwIipBfDgnOcycrVXkZbCfUMhvqe@zephyr.proxy.rlwy.net:54062/railway");
+  const sql = postgres(
+    "postgresql://postgres:PgOvGwIipBfDgnOcycrVXkZbCfUMhvqe@zephyr.proxy.rlwy.net:54062/railway",
+  );
 
   const questionsData = [
     {
       orderIndex: 0,
-      question: "Luciana recebeu um evento com todas as contratações realizadas pelo Cliente, onde ela apenas realizaria a intermediação de pagamento desse evento, porém o Tipo de Evento está classificado como Mini Meeting, o que deve ser feito:",
+      question:
+        "Luciana recebeu um evento com todas as contratações realizadas pelo Cliente, onde ela apenas realizaria a intermediação de pagamento desse evento, porém o Tipo de Evento está classificado como Mini Meeting, o que deve ser feito:",
       options: [
         "Efetuar os devidos lançamentos e solicitar que o Financeiro altere o tipo de Evento para Intermediação de Pagamentos",
         "Efetuar os devidos lançamentos e fechar o evento, não se esquecendo de comprovar que o cliente que realizou todas as contratações",
@@ -17,7 +20,8 @@ async function fixSchema() {
     },
     {
       orderIndex: 1,
-      question: "Sabrina precisa realizar um lançamento de Fee e um do Imposto sob o Fee:",
+      question:
+        "Sabrina precisa realizar um lançamento de Fee e um do Imposto sob o Fee:",
       options: [
         "Ela lança duas linhas de Cobrança de Serviço, uma de Imposto e uma de Fee",
         "Ela lança o valor total como Imposto sob o Fee já que não tem problema",
@@ -28,7 +32,8 @@ async function fixSchema() {
     },
     {
       orderIndex: 2,
-      question: "Na nota fiscal David recebeu um descritivo de um job que teve AB, Hospedagem e Equipamentos:",
+      question:
+        "Na nota fiscal David recebeu um descritivo de um job que teve AB, Hospedagem e Equipamentos:",
       options: [
         "Solicito que o fornecedor envie uma nota para cada serviço e lanço uma linha para cada nota",
         "Lanço uma única linha com o tipo de serviço AB no valor total",
@@ -50,7 +55,8 @@ async function fixSchema() {
     },
     {
       orderIndex: 4,
-      question: "Getulio identificou que precisa lançar um Tipo de Serviço que não tem cadastrado, o que ele deve fazer?",
+      question:
+        "Getulio identificou que precisa lançar um Tipo de Serviço que não tem cadastrado, o que ele deve fazer?",
       options: [
         "Inserir qualquer outro Tipo de Serviço, desde que o valor esteja correto não tem problema",
         "Solicita a criação do Tipo de Serviço ao TI",
@@ -89,12 +95,19 @@ async function fixSchema() {
     WHERE quiz_id = '8e0c09a1-c711-4047-a36a-9df405b3d7a3'
     ORDER BY order_index
   `;
-  check.forEach(q =>
-    console.log(`Q${Number(q.order_index)+1}: "${String(q.question).substring(0,50)}..." → índice ${q.correct_index}`)
+  check.forEach((q) =>
+    console.log(
+      `Q${Number(q.order_index) + 1}: "${String(q.question).substring(0, 50)}..." → índice ${q.correct_index}`,
+    ),
   );
 
-  console.log("\n✅ Schema corrigido! Campos: { question, options[], imageUrl } + { index }");
+  console.log(
+    "\n✅ Schema corrigido! Campos: { question, options[], imageUrl } + { index }",
+  );
   await sql.end();
 }
 
-fixSchema().catch(e => { console.error("❌", e.message); process.exit(1); });
+fixSchema().catch((e) => {
+  console.error("❌", e.message);
+  process.exit(1);
+});

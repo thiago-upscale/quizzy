@@ -63,7 +63,8 @@ export default async function JoinPage({
 
             <div className="mt-8 border-t border-white/10 pt-6">
               <p className="text-xs leading-6 text-white/30">
-                Sem conta necessária. Só o PIN de 6 dígitos mostrado pelo apresentador.
+                Sem conta necessária. Só o PIN de 6 dígitos mostrado pelo
+                apresentador.
               </p>
               <Link
                 className="mt-3 inline-block text-xs font-semibold text-white/40 transition hover:text-white/60"

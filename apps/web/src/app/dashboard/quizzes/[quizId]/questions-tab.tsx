@@ -205,7 +205,10 @@ export function QuestionsTab({
 
                 <div className="flex items-center gap-2 shrink-0">
                   {/* P3.3 — botões de reordenação */}
-                  <div className="flex flex-col" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="flex flex-col"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       type="button"
                       className="p-0.5 text-slate-400 hover:text-[#0f766e] disabled:opacity-25 transition-colors"
@@ -290,7 +293,9 @@ export function QuestionsTab({
                           );
                         }}
                       >
-                        <option value="multiple_choice">Múltipla escolha</option>
+                        <option value="multiple_choice">
+                          Múltipla escolha
+                        </option>
                         <option value="true_false">Verdadeiro / Falso</option>
                       </select>
                     </label>

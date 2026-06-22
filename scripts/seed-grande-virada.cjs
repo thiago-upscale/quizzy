@@ -13,7 +13,7 @@ async function main() {
   try {
     // 1. Busca usuário e organização
     const usersResult = await client.query(
-      "SELECT id as user_id, organization_id FROM users LIMIT 1"
+      "SELECT id as user_id, organization_id FROM users LIMIT 1",
     );
     const { user_id, organization_id } = usersResult.rows[0];
     console.log("User ID:", user_id);
@@ -24,7 +24,15 @@ async function main() {
     await client.query(
       `INSERT INTO quizzes (id, organization_id, created_by, title, description, branding, status, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
-      [quizId, organization_id, user_id, "A Grande Virada", null, "{}", "draft"]
+      [
+        quizId,
+        organization_id,
+        user_id,
+        "A Grande Virada",
+        null,
+        "{}",
+        "draft",
+      ],
     );
     console.log("Quiz criado:", quizId);
 
@@ -102,7 +110,16 @@ async function main() {
       await client.query(
         `INSERT INTO questions (id, quiz_id, order_index, type, content, correct_answer, points_base, time_limit_seconds, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-        [q.id, quizId, q.orderIndex, "multiple_choice", content, correctAnswer, 1000, 30]
+        [
+          q.id,
+          quizId,
+          q.orderIndex,
+          "multiple_choice",
+          content,
+          correctAnswer,
+          1000,
+          30,
+        ],
       );
       console.log(`  ✓ Pergunta ${q.orderIndex + 1} inserida`);
     }

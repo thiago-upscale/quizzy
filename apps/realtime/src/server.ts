@@ -464,14 +464,17 @@ async function notifyWebOfStateChange(params: {
 
 async function persistAnswer(payload: PersistAnswerPayload) {
   try {
-    const response = await fetch(new URL("/api/internal/live/answer", env.WEB_ORIGIN), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+    const response = await fetch(
+      new URL("/api/internal/live/answer", env.WEB_ORIGIN),
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`persist_live_answer_failed:${response.status}`);
@@ -886,10 +889,7 @@ function computePoints(params: {
   }
 
   const totalMs = Math.max(1, params.timeLimitSeconds * 1000);
-  const speedFactor = Math.max(
-    0.5,
-    1 - (params.timeSpentMs / totalMs) * 0.5,
-  );
+  const speedFactor = Math.max(0.5, 1 - (params.timeSpentMs / totalMs) * 0.5);
   const streakMultiplier = Math.min(1.5, 1 + params.currentStreak * 0.1);
   return Math.round(params.pointsBase * speedFactor * streakMultiplier);
 }
@@ -1606,37 +1606,34 @@ io.on("connection", (socket) => {
     },
   );
 
-  socket.on(
-    "display:watch",
-    async (payload: { pin?: string }) => {
-      const pin = payload.pin?.trim();
-      if (!pin) return;
-      await socket.join(pin);
-      const room = await ensureRoomHydrated(io, {
-        pin,
-        room: getOrCreateRoom(pin),
-      });
-      socket.emit("participant:list", {
-        connectedCount: getConnectedParticipantCount(room),
-        participants: serializeParticipants(room),
-      });
-      socket.emit("session:state", buildSessionStatePayload(room));
-      socket.emit("leaderboard:update", { entries: buildLeaderboard(room) });
-      if (room.status === "playing") {
-        const currentQuestion = serializeCurrentQuestion(room);
-        if (currentQuestion) {
-          socket.emit("session:question", { question: currentQuestion });
-        }
-        const questionStats = getQuestionStats(room);
-        if (questionStats) {
-          socket.emit("question:stats", questionStats);
-        }
+  socket.on("display:watch", async (payload: { pin?: string }) => {
+    const pin = payload.pin?.trim();
+    if (!pin) return;
+    await socket.join(pin);
+    const room = await ensureRoomHydrated(io, {
+      pin,
+      room: getOrCreateRoom(pin),
+    });
+    socket.emit("participant:list", {
+      connectedCount: getConnectedParticipantCount(room),
+      participants: serializeParticipants(room),
+    });
+    socket.emit("session:state", buildSessionStatePayload(room));
+    socket.emit("leaderboard:update", { entries: buildLeaderboard(room) });
+    if (room.status === "playing") {
+      const currentQuestion = serializeCurrentQuestion(room);
+      if (currentQuestion) {
+        socket.emit("session:question", { question: currentQuestion });
       }
-      if (room.status === "question_result" && room.currentQuestionResult) {
-        socket.emit("question:result", { result: room.currentQuestionResult });
+      const questionStats = getQuestionStats(room);
+      if (questionStats) {
+        socket.emit("question:stats", questionStats);
       }
-    },
-  );
+    }
+    if (room.status === "question_result" && room.currentQuestionResult) {
+      socket.emit("question:result", { result: room.currentQuestionResult });
+    }
+  });
 
   socket.on(
     "host:watch",

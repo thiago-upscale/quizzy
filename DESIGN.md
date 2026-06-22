@@ -17,19 +17,20 @@ The one exception: quiz branding screens (the display/lobby) which are HYBRID �
 Defined in `apps/web/src/app/globals.css`:
 
 ```css
---quizzy-navy:        #10233f   /* Primary brand — headers, strong CTA backgrounds */
---quizzy-teal:        #0f766e   /* Action color — buttons, links, published state */
---quizzy-accent:      #f59e0b   /* Warning / attention — interrupted sessions */
---quizzy-surface:     #f7f8fa   /* Page background */
---quizzy-surface-strong: #ffffff /* Card/panel background */
---quizzy-border:      #d8e2ee   /* Default border */
---quizzy-text:        #18202f   /* Primary text */
---quizzy-muted:       #667085   /* Secondary text, labels, timestamps */
---quizzy-success:     #0f766e   /* = teal; live/published/healthy state */
---quizzy-warning:     #b54708   /* Degraded/error state */
+--quizzy-navy: #10233f /* Primary brand — headers, strong CTA backgrounds */
+  --quizzy-teal: #0f766e /* Action color — buttons, links, published state */
+  --quizzy-accent: #f59e0b /* Warning / attention — interrupted sessions */
+  --quizzy-surface: #f7f8fa /* Page background */
+  --quizzy-surface-strong: #ffffff /* Card/panel background */
+  --quizzy-border: #d8e2ee /* Default border */ --quizzy-text: #18202f
+  /* Primary text */ --quizzy-muted: #667085
+  /* Secondary text, labels, timestamps */ --quizzy-success: #0f766e
+  /* = teal; live/published/healthy state */ --quizzy-warning: #b54708
+  /* Degraded/error state */;
 ```
 
 **When to use which:**
+
 - Teal: primary action (Novo quiz, Iniciar sessão, Abrir quiz)
 - Navy: secondary/structural (wordmark, headings, session card back)
 - Accent: urgency/warning (interrupted sessions, degraded realtime)
@@ -47,27 +48,29 @@ Defined in `apps/web/src/app/globals.css`:
 
 **Type scale (in use):**
 
-| Role | Size | Weight | Class |
-|------|------|--------|-------|
-| Page heading (h1) | 36–40px | 600 | `text-4xl font-semibold` |
-| Section heading (h2) | 24px | 600 | `text-2xl font-semibold` |
-| Card title | 20px | 600 | `text-xl font-semibold` |
-| Body / helper | 14px / 1.75 line-height | 400 | `text-sm leading-7` |
-| Eyebrow label | 12px | 600 | `text-xs uppercase tracking-[0.18em]` |
-| Badge / status | **minimum 12px** | 600 | `text-xs` (never below this) |
-| Metric value | 30px | 600 | `text-3xl font-semibold` |
+| Role                 | Size                    | Weight | Class                                 |
+| -------------------- | ----------------------- | ------ | ------------------------------------- |
+| Page heading (h1)    | 36–40px                 | 600    | `text-4xl font-semibold`              |
+| Section heading (h2) | 24px                    | 600    | `text-2xl font-semibold`              |
+| Card title           | 20px                    | 600    | `text-xl font-semibold`               |
+| Body / helper        | 14px / 1.75 line-height | 400    | `text-sm leading-7`                   |
+| Eyebrow label        | 12px                    | 600    | `text-xs uppercase tracking-[0.18em]` |
+| Badge / status       | **minimum 12px**        | 600    | `text-xs` (never below this)          |
+| Metric value         | 30px                    | 600    | `text-3xl font-semibold`              |
 
 ---
 
 ## Spacing & Radius
 
 **Border radius system:**
+
 - Page header card: `rounded-[2rem]`
 - Surface cards (SurfaceCard): `rounded-[1.75rem]`
 - Content cards (quiz/session): `rounded-[1.5rem]` or `rounded-[1.4rem]`
 - Small items (badges, pills, inputs): `rounded-full`
 
 **Shadow system:**
+
 - Subtle (cards at rest): `shadow-[0_8px_30px_rgba(16,35,63,0.04)]`
 - Elevated (SurfaceCard): `shadow-[0_18px_70px_rgba(15,23,42,0.06)]`
 - Hover lift: `hover:shadow-[0_16px_40px_rgba(16,35,63,0.08)]` + `-translate-y-0.5`
@@ -79,17 +82,20 @@ Defined in `apps/web/src/app/globals.css`:
 ## Component Rules
 
 ### Buttons
+
 - **Primary CTA:** `bg-[var(--quizzy-teal)] text-white rounded-full px-5 py-2 text-sm font-semibold`
 - **Secondary / outlined:** `border border-[var(--quizzy-border)] rounded-full px-5 py-2 text-sm font-semibold`
 - Touch target minimum: 44px height on mobile (use `py-3` for mobile-primary actions)
 
 ### Status Badges
+
 - Always `rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]`
 - **Never below 12px text.** The `text-[11px]` pattern is forbidden.
 - Colors via color-mix: `bg-[color:color-mix(in_srgb,var(--token)_10%,white)]`
 - Labels must be in Portuguese (see mapping below)
 
 **Status label mapping (Portuguese):**
+
 ```
 playing          → AO VIVO
 question_result  → RESULTADO
@@ -102,16 +108,19 @@ draft            → RASCUNHO
 ```
 
 ### Cards (quiz/session)
+
 - Background: `bg-[var(--quizzy-surface-strong)]`
 - Border: `border border-[var(--quizzy-border)]`
 - Hover: `-translate-y-0.5 hover:shadow-elevated`
 - Delete/destructive actions: positioned OUTSIDE the `<Link>` wrapper, never overlapping the card tap target
 
 ### EmptyStateCard
+
 - Always has: title (warm, action-oriented), description (context), primary action button
 - Never: "No items found." or raw zero states
 
 ### MetricCard
+
 - Accent variants: amber (warning), teal (positive), navy (neutral)
 - Helper text optional but recommended for context
 
@@ -122,6 +131,7 @@ draft            → RASCUNHO
 **Shell (2026-06-11):** sidebar fixa no desktop (`dashboard/layout.tsx`), topbar com nav horizontal no mobile. Navegação persistente em todas as rotas `/dashboard/*`.
 
 **Sidebar nav (ordem fixa):**
+
 1. Quizzes → `/dashboard` (administração — página inicial)
 2. Operação ao vivo → `/dashboard/operacao` (métricas, sessões abertas, sinais, saúde)
 3. Resultados → `/dashboard/resultados` (sessões finalizadas + relatórios)
@@ -166,6 +176,7 @@ Rodapé da sidebar: nome + email do usuário + botão Sair. Não há botões de 
 ## Motion
 
 **Keyframes defined in globals.css:**
+
 - `quizzy-rise`: fade-in from translateY(18px) — use for page/card entrance
 - `quizzy-pulse-soft`: scale + glow pulse — use for live status indicators
 

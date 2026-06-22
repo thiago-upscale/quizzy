@@ -13,7 +13,11 @@ import {
   sessionEvents,
 } from "@/db/schema";
 import { getSessionReport } from "@/lib/session-report";
-import { advanceLiveSession, restartLiveSession, startLiveSession } from "../../actions";
+import {
+  advanceLiveSession,
+  restartLiveSession,
+  startLiveSession,
+} from "../../actions";
 import {
   formatDate,
   formatEventType,
@@ -133,8 +137,8 @@ export default async function SessionDetailPage({
           ) : null}
         </div>
         <p className="mt-2 text-sm text-[var(--quizzy-muted)]">
-          {isLive ? "Sessão ao vivo" : "Sessão individual"} • Versão publicada
-          #{quizSession.versionNumber} • Criada em{" "}
+          {isLive ? "Sessão ao vivo" : "Sessão individual"} • Versão publicada #
+          {quizSession.versionNumber} • Criada em{" "}
           {formatDate(quizSession.createdAt)}
         </p>
       </header>
@@ -173,7 +177,9 @@ export default async function SessionDetailPage({
               </dd>
             </div>
             <div>
-              <dt className="font-semibold text-[var(--quizzy-text)]">Início</dt>
+              <dt className="font-semibold text-[var(--quizzy-text)]">
+                Início
+              </dt>
               <dd className="mt-1 text-[var(--quizzy-muted)]">
                 {formatDate(quizSession.startsAt)}
               </dd>

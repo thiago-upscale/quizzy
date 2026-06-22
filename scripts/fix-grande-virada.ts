@@ -2,10 +2,13 @@ import postgres from "postgres";
 import { randomUUID } from "crypto";
 
 async function fix() {
-  const sql = postgres("postgresql://postgres:PgOvGwIipBfDgnOcycrVXkZbCfUMhvqe@zephyr.proxy.rlwy.net:54062/railway");
+  const sql = postgres(
+    "postgresql://postgres:PgOvGwIipBfDgnOcycrVXkZbCfUMhvqe@zephyr.proxy.rlwy.net:54062/railway",
+  );
 
   // Verifica o que está salvo hoje
-  const raw = await sql`SELECT id, order_index, content FROM questions WHERE quiz_id = '8e0c09a1-c711-4047-a36a-9df405b3d7a3' ORDER BY order_index LIMIT 1`;
+  const raw =
+    await sql`SELECT id, order_index, content FROM questions WHERE quiz_id = '8e0c09a1-c711-4047-a36a-9df405b3d7a3' ORDER BY order_index LIMIT 1`;
   console.log("Content atual (Q1):", JSON.stringify(raw[0]?.content));
 
   const questionsData = [
@@ -90,12 +93,17 @@ async function fix() {
     WHERE quiz_id = '8e0c09a1-c711-4047-a36a-9df405b3d7a3'
     ORDER BY order_index
   `;
-  check.forEach(q =>
-    console.log(`Q${Number(q.order_index)+1}: ${String(q.text).substring(0,60)}... ✓`)
+  check.forEach((q) =>
+    console.log(
+      `Q${Number(q.order_index) + 1}: ${String(q.text).substring(0, 60)}... ✓`,
+    ),
   );
 
   console.log("\n✅ Conteúdo corrigido com sucesso!");
   await sql.end();
 }
 
-fix().catch(e => { console.error("❌", e.message); process.exit(1); });
+fix().catch((e) => {
+  console.error("❌", e.message);
+  process.exit(1);
+});

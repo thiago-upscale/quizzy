@@ -18,7 +18,9 @@ type OperationTabProps = {
 function buildDefaultIndividualEndsAtValue() {
   const value = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const timezoneOffsetMs = value.getTimezoneOffset() * 60 * 1000;
-  return new Date(value.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+  return new Date(value.getTime() - timezoneOffsetMs)
+    .toISOString()
+    .slice(0, 16);
 }
 
 export function OperationTab({
@@ -160,15 +162,12 @@ export function OperationTab({
                   </span>
                   <select
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none transition focus:border-[#0f766e]"
-                    defaultValue={String(
-                      individualSessionDefaults.maxAttempts,
-                    )}
+                    defaultValue={String(individualSessionDefaults.maxAttempts)}
                     name="maxAttempts"
                   >
                     {[1, 2, 3].map((attempts) => (
                       <option key={attempts} value={attempts}>
-                        {attempts}{" "}
-                        {attempts === 1 ? "tentativa" : "tentativas"}
+                        {attempts} {attempts === 1 ? "tentativa" : "tentativas"}
                       </option>
                     ))}
                   </select>

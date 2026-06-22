@@ -113,14 +113,12 @@ export type SessionReport = {
     answersCount: number;
     averageScore: number;
     averageTimePerAnswerMs: number | null;
-    hardestQuestion:
-      | {
-          accuracyPercent: number;
-          orderIndex: number;
-          prompt: string;
-          responsesCount: number;
-        }
-      | null;
+    hardestQuestion: {
+      accuracyPercent: number;
+      orderIndex: number;
+      prompt: string;
+      responsesCount: number;
+    } | null;
     participantsCount: number;
   };
 };
@@ -238,66 +236,65 @@ export async function getSessionReport(params: {
     answerRows,
     currentQuestionRows,
     skippedQuestionEventRows,
-  ] =
-    await Promise.all([
-      db
-        .select({
-          email: participants.email,
-          id: participants.id,
-          nickname: participants.nickname,
-          score: participants.score,
-          totalTimeMs: participants.totalTimeMs,
-        })
-        .from(participants)
-        .where(eq(participants.sessionId, session.id)),
-      db
-        .select({
-          attemptNumber: attempts.attemptNumber,
-          finishedAt: attempts.finishedAt,
-          id: attempts.id,
-          participantId: attempts.participantId,
-          score: attempts.score,
-          status: attempts.status,
-          totalTimeMs: attempts.totalTimeMs,
-        })
-        .from(attempts)
-        .where(eq(attempts.sessionId, session.id))
-        .orderBy(asc(attempts.participantId), asc(attempts.attemptNumber)),
-      db
-        .select({
-          answer: answers.answer,
-          attemptId: answers.attemptId,
-          isCorrect: answers.isCorrect,
-          participantId: answers.participantId,
-          pointsEarned: answers.pointsEarned,
-          questionId: answers.questionId,
-          questionOrderIndex: questions.orderIndex,
-          timeSpentMs: answers.timeSpentMs,
-        })
-        .from(answers)
-        .innerJoin(questions, eq(answers.questionId, questions.id))
-        .where(eq(answers.sessionId, session.id))
-        .orderBy(asc(questions.orderIndex), asc(answers.createdAt)),
-      db
-        .select({
-          id: questions.id,
-          orderIndex: questions.orderIndex,
-        })
-        .from(questions)
-        .where(eq(questions.quizId, session.quizId))
-        .orderBy(asc(questions.orderIndex)),
-      db
-        .select({
-          payload: sessionEvents.payload,
-        })
-        .from(sessionEvents)
-        .where(
-          and(
-            eq(sessionEvents.sessionId, session.id),
-            eq(sessionEvents.eventType, "session.question_skipped"),
-          ),
+  ] = await Promise.all([
+    db
+      .select({
+        email: participants.email,
+        id: participants.id,
+        nickname: participants.nickname,
+        score: participants.score,
+        totalTimeMs: participants.totalTimeMs,
+      })
+      .from(participants)
+      .where(eq(participants.sessionId, session.id)),
+    db
+      .select({
+        attemptNumber: attempts.attemptNumber,
+        finishedAt: attempts.finishedAt,
+        id: attempts.id,
+        participantId: attempts.participantId,
+        score: attempts.score,
+        status: attempts.status,
+        totalTimeMs: attempts.totalTimeMs,
+      })
+      .from(attempts)
+      .where(eq(attempts.sessionId, session.id))
+      .orderBy(asc(attempts.participantId), asc(attempts.attemptNumber)),
+    db
+      .select({
+        answer: answers.answer,
+        attemptId: answers.attemptId,
+        isCorrect: answers.isCorrect,
+        participantId: answers.participantId,
+        pointsEarned: answers.pointsEarned,
+        questionId: answers.questionId,
+        questionOrderIndex: questions.orderIndex,
+        timeSpentMs: answers.timeSpentMs,
+      })
+      .from(answers)
+      .innerJoin(questions, eq(answers.questionId, questions.id))
+      .where(eq(answers.sessionId, session.id))
+      .orderBy(asc(questions.orderIndex), asc(answers.createdAt)),
+    db
+      .select({
+        id: questions.id,
+        orderIndex: questions.orderIndex,
+      })
+      .from(questions)
+      .where(eq(questions.quizId, session.quizId))
+      .orderBy(asc(questions.orderIndex)),
+    db
+      .select({
+        payload: sessionEvents.payload,
+      })
+      .from(sessionEvents)
+      .where(
+        and(
+          eq(sessionEvents.sessionId, session.id),
+          eq(sessionEvents.eventType, "session.question_skipped"),
         ),
-    ]);
+      ),
+  ]);
 
   const questionDefinitions = getQuestionDefinitions({
     currentQuestions: currentQuestionRows,
@@ -540,11 +537,12 @@ export async function getSessionReport(params: {
 
   const answersCount = answerRows.length;
   const totalCorrectAnswers = answerRows.filter((row) => row.isCorrect).length;
-  const hardestQuestion =
-    questionBreakdown.some((question) => !question.skipped)
-      ? questionBreakdown
-          .filter((question) => !question.skipped)
-          .sort((left, right) => {
+  const hardestQuestion = questionBreakdown.some(
+    (question) => !question.skipped,
+  )
+    ? (questionBreakdown
+        .filter((question) => !question.skipped)
+        .sort((left, right) => {
           if (left.accuracyPercent !== right.accuracyPercent) {
             return left.accuracyPercent - right.accuracyPercent;
           }
@@ -554,8 +552,8 @@ export async function getSessionReport(params: {
           }
 
           return left.orderIndex - right.orderIndex;
-          })[0] ?? null
-      : null;
+        })[0] ?? null)
+    : null;
 
   return {
     attemptRows: individualAttemptRows,
@@ -586,8 +584,10 @@ export async function getSessionReport(params: {
       averageTimePerAnswerMs:
         answersCount > 0
           ? Math.round(
-              answerRows.reduce((total, answer) => total + answer.timeSpentMs, 0) /
-                answersCount,
+              answerRows.reduce(
+                (total, answer) => total + answer.timeSpentMs,
+                0,
+              ) / answersCount,
             )
           : null,
       hardestQuestion: hardestQuestion

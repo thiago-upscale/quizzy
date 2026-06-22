@@ -531,7 +531,8 @@ export function LobbyClient({
         setAnswerState({
           accepted: true,
           answerIndex: payload.answerIndex ?? null,
-          currentStreak: payload.currentStreak ?? playerCurrentStreakRef.current,
+          currentStreak:
+            payload.currentStreak ?? playerCurrentStreakRef.current,
           isCorrect: payload.isCorrect ?? null,
           pointsEarned: payload.pointsEarned ?? 0,
           submitted: true,
@@ -626,14 +627,17 @@ export function LobbyClient({
                   aria-live="polite"
                   className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]"
                 >
-                  <span aria-hidden="true" className="text-xl font-black">{visibleQuestionTime}</span>
+                  <span aria-hidden="true" className="text-xl font-black">
+                    {visibleQuestionTime}
+                  </span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <span
                     className="inline-flex rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-[#10233f]"
                     style={{ backgroundColor: branding.accentColor }}
                   >
-                    Pergunta {currentQuestion.orderIndex + 1} de {currentQuestion.totalQuestions}
+                    Pergunta {currentQuestion.orderIndex + 1} de{" "}
+                    {currentQuestion.totalQuestions}
                   </span>
                   <p className="mt-2 text-sm font-semibold text-white/80">
                     {answerState.submitted
@@ -666,8 +670,9 @@ export function LobbyClient({
                 {currentQuestion.options.map((option, optionIndex) => {
                   const isChosen = answerState.answerIndex === optionIndex;
                   const tileStyle =
-                    ANSWER_TILE_STYLES[optionIndex % ANSWER_TILE_STYLES.length] ??
-                    ANSWER_TILE_STYLES[0]!;
+                    ANSWER_TILE_STYLES[
+                      optionIndex % ANSWER_TILE_STYLES.length
+                    ] ?? ANSWER_TILE_STYLES[0]!;
 
                   return (
                     <button
@@ -688,7 +693,9 @@ export function LobbyClient({
                       type="button"
                     >
                       <div className="flex h-full flex-col justify-between gap-4">
-                        <span className="text-xl font-black">{tileStyle.icon}</span>
+                        <span className="text-xl font-black">
+                          {tileStyle.icon}
+                        </span>
                         <span className="text-[1rem] font-bold leading-snug">
                           {option}
                         </span>
@@ -699,9 +706,13 @@ export function LobbyClient({
               </div>
 
               <div className="mt-3 flex items-center justify-between rounded-full bg-[#1e3a8a] px-4 py-2.5 text-sm text-white/80">
-                <span className="font-semibold tracking-[0.08em]">PIN {pin}</span>
+                <span className="font-semibold tracking-[0.08em]">
+                  PIN {pin}
+                </span>
                 <span className="font-semibold">
-                  {answerState.submitted ? "Aguardando resultado" : "Responda agora"}
+                  {answerState.submitted
+                    ? "Aguardando resultado"
+                    : "Responda agora"}
                 </span>
               </div>
             </div>
@@ -734,7 +745,9 @@ export function LobbyClient({
               </p>
               <h1
                 className={`mt-4 font-bold leading-[1.04] tracking-[-0.03em] ${
-                  shouldUseCompactMobileLobby ? "text-3xl md:text-4xl" : "text-4xl"
+                  shouldUseCompactMobileLobby
+                    ? "text-3xl md:text-4xl"
+                    : "text-4xl"
                 }`}
               >
                 {quizTitle}
@@ -746,7 +759,8 @@ export function LobbyClient({
                     : "text-base leading-8"
                 }`}
               >
-                Olá, {participant.nickname}. Seu lugar na sala já está garantido.
+                Olá, {participant.nickname}. Seu lugar na sala já está
+                garantido.
               </p>
               <span
                 className="mt-5 inline-flex w-fit rounded-full px-5 py-2.5 text-xs font-bold uppercase tracking-[0.24em] text-[#10233f]"
@@ -807,16 +821,16 @@ export function LobbyClient({
           </div>
         </header>
 
-        <section className={`space-y-4 ${shouldUseMobileAnswerMode ? "hidden md:block" : ""}`}>
+        <section
+          className={`space-y-4 ${shouldUseMobileAnswerMode ? "hidden md:block" : ""}`}
+        >
           <article
             className={`rounded-[1.8rem] bg-white/10 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur ${
               shouldUseCompactMobileLobby ? "hidden md:block p-5" : "p-5"
             }`}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-              {sessionState.status === "playing"
-                ? "Sua rodada"
-                : "Sala pronta"}
+              {sessionState.status === "playing" ? "Sua rodada" : "Sala pronta"}
             </p>
             <p className="mt-3 text-5xl font-black tracking-[-0.04em]">
               {sessionState.status === "playing" && currentQuestion
@@ -851,7 +865,8 @@ export function LobbyClient({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                   {sessionState.status === "playing" ? "Tempo" : "Sequência"}
                 </p>
-                {sessionState.status === "playing" && visibleQuestionTime !== null ? (
+                {sessionState.status === "playing" &&
+                visibleQuestionTime !== null ? (
                   <p className="mt-2 text-3xl font-black tracking-[-0.03em]">
                     {visibleQuestionTime}s
                   </p>
@@ -870,7 +885,8 @@ export function LobbyClient({
                       🔥 Sequência ×{activeStreak}
                     </span>
                     <p className="mt-2 text-xs text-white/65">
-                      Multiplicador {formatStreakMultiplier(activeStreak)}× ativo
+                      Multiplicador {formatStreakMultiplier(activeStreak)}×
+                      ativo
                     </p>
                   </div>
                 ) : (
@@ -948,8 +964,9 @@ export function LobbyClient({
                   {currentQuestion.options.map((option, optionIndex) => {
                     const isChosen = answerState.answerIndex === optionIndex;
                     const tileStyle =
-                      ANSWER_TILE_STYLES[optionIndex % ANSWER_TILE_STYLES.length] ??
-                      ANSWER_TILE_STYLES[0]!;
+                      ANSWER_TILE_STYLES[
+                        optionIndex % ANSWER_TILE_STYLES.length
+                      ] ?? ANSWER_TILE_STYLES[0]!;
 
                     return (
                       <button
@@ -1244,11 +1261,13 @@ export function LobbyClient({
                       </p>
                     </div>
                     {formatRankDelta(rankDeltaById[entry.id] ?? 0) ? (
-                      <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                        (rankDeltaById[entry.id] ?? 0) > 0 
-                          ? "bg-[#ecfdf3] text-[#0f766e]" 
-                          : "bg-[#fef2f2] text-[#b91c1c]"
-                      }`}>
+                      <span
+                        className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                          (rankDeltaById[entry.id] ?? 0) > 0
+                            ? "bg-[#ecfdf3] text-[#0f766e]"
+                            : "bg-[#fef2f2] text-[#b91c1c]"
+                        }`}
+                      >
                         {formatRankDelta(rankDeltaById[entry.id] ?? 0)}
                       </span>
                     ) : null}

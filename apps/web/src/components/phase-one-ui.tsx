@@ -72,8 +72,10 @@ export function StatusAlert({
     error:
       "border-[color:color-mix(in_srgb,var(--quizzy-warning)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-warning)_10%,white)] text-[var(--quizzy-warning)]",
     info: "border-[color:color-mix(in_srgb,var(--quizzy-navy)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-navy)_10%,white)] text-[var(--quizzy-navy)]",
-    success: "border-[color:color-mix(in_srgb,var(--quizzy-success)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] text-[var(--quizzy-success)]",
-    warning: "border-[color:color-mix(in_srgb,var(--quizzy-warning)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-warning)_10%,white)] text-[var(--quizzy-warning)]",
+    success:
+      "border-[color:color-mix(in_srgb,var(--quizzy-success)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] text-[var(--quizzy-success)]",
+    warning:
+      "border-[color:color-mix(in_srgb,var(--quizzy-warning)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-warning)_10%,white)] text-[var(--quizzy-warning)]",
   } as const;
 
   return (
@@ -122,7 +124,8 @@ export function MetricCard({
   value: ReactNode;
 }) {
   const accentClasses = {
-    amber: "border-[color:color-mix(in_srgb,var(--quizzy-warning)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-warning)_5%,white)]",
+    amber:
+      "border-[color:color-mix(in_srgb,var(--quizzy-warning)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-warning)_5%,white)]",
     navy: "border-[var(--quizzy-border)] bg-[var(--quizzy-surface-strong)]",
     teal: "border-[color:color-mix(in_srgb,var(--quizzy-success)_30%,white)] bg-[color:color-mix(in_srgb,var(--quizzy-success)_5%,white)]",
   } as const;
@@ -168,11 +171,7 @@ export function FieldPanel({
   );
 }
 
-export function SkeletonBlock({
-  className,
-}: {
-  className?: string;
-}) {
+export function SkeletonBlock({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"

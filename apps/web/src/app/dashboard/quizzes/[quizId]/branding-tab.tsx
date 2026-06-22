@@ -2,7 +2,11 @@
 
 import { useMemo } from "react";
 import { FieldPanel, SectionHeading } from "@/components/phase-one-ui";
-import type { BrandingState, ContrastWarning, EditorQuestion } from "./editor-types";
+import type {
+  BrandingState,
+  ContrastWarning,
+  EditorQuestion,
+} from "./editor-types";
 import { fontOptions } from "./editor-types";
 import { computeContrastWarnings } from "./color-utils";
 import { AssetUploadField } from "./asset-upload-field";
@@ -268,8 +272,7 @@ export function BrandingTab({
                 onClick={() =>
                   setBranding((currentBranding) => ({
                     ...currentBranding,
-                    showQuestionOnMobile:
-                      !currentBranding.showQuestionOnMobile,
+                    showQuestionOnMobile: !currentBranding.showQuestionOnMobile,
                   }))
                 }
                 type="button"

@@ -35,7 +35,11 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function DashboardNav({ orientation }: { orientation: "vertical" | "horizontal" }) {
+export function DashboardNav({
+  orientation,
+}: {
+  orientation: "vertical" | "horizontal";
+}) {
   const pathname = usePathname();
 
   return (

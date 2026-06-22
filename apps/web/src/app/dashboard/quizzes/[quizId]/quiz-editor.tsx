@@ -45,7 +45,10 @@ export function QuizEditor({
     () => initialQuestions[0]?.id ?? null,
   );
   const [menuOpen, setMenuOpen] = useState(false);
-  const [saveState, saveFormAction] = useActionState(saveAction, initialSaveState);
+  const [saveState, saveFormAction] = useActionState(
+    saveAction,
+    initialSaveState,
+  );
 
   const tabs = [
     { id: "questions" as const, label: "Perguntas", Icon: Edit3 },

@@ -132,7 +132,9 @@ export function ReportSection({
                 accent="navy"
                 helper="Tempo medio por resposta para calibrar ritmo e clareza."
                 label="Ritmo medio"
-                value={formatReportDuration(report.summary.averageTimePerAnswerMs)}
+                value={formatReportDuration(
+                  report.summary.averageTimePerAnswerMs,
+                )}
               />
               <MetricCard
                 accent="teal"

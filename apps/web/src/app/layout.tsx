@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://web-production-d2696.up.railway.app",
+    process.env.NEXT_PUBLIC_APP_URL ??
+      "https://web-production-d2696.up.railway.app",
   ),
   title: {
     default: "Quizzy — Quiz ao vivo com a marca da sua empresa",

@@ -108,7 +108,9 @@ export default async function Home() {
   const primaryLabel = isAuthenticated
     ? "Abrir dashboard"
     : "Criar meu primeiro quiz — grátis no beta";
-  const headerPrimaryLabel = isAuthenticated ? "Abrir dashboard" : "Entrar no beta";
+  const headerPrimaryLabel = isAuthenticated
+    ? "Abrir dashboard"
+    : "Entrar no beta";
   const secondaryHref = isAuthenticated ? "/dashboard" : "/login";
   const secondaryLabel = isAuthenticated ? "Ver operação" : "Já tenho conta";
 
@@ -155,8 +157,8 @@ export default async function Home() {
                 Quiz ao vivo para empresas
               </p>
               <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[1.04] tracking-[-0.04em] text-[#1d2a3e] sm:text-6xl">
-                O quiz ao vivo com a cara da sua empresa — não com a cara de
-                uma ferramenta.
+                O quiz ao vivo com a cara da sua empresa — não com a cara de uma
+                ferramenta.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--quizzy-muted)] sm:text-xl">
                 Aplique sua marca, abra um PIN e conduza a sala em tempo real.
@@ -214,11 +216,13 @@ export default async function Home() {
                     Qual valor precisa abrir o encontro da liderança?
                   </p>
                   <div className="mt-5 grid gap-3">
-                    {([
-                      ["Inovação", false],
-                      ["Proximidade com o cliente", true],
-                      ["Eficiência operacional", false],
-                    ] as const).map(([label, active]) => (
+                    {(
+                      [
+                        ["Inovação", false],
+                        ["Proximidade com o cliente", true],
+                        ["Eficiência operacional", false],
+                      ] as const
+                    ).map(([label, active]) => (
                       <div
                         key={label}
                         className={
@@ -312,8 +316,8 @@ export default async function Home() {
             diretoria também.
           </p>
           <p className="mt-6 text-xl font-semibold leading-9 text-[var(--quizzy-navy)]">
-            O problema não é fazer quiz. É fazer um quiz que pareça parte do
-            seu evento.
+            O problema não é fazer quiz. É fazer um quiz que pareça parte do seu
+            evento.
           </p>
         </section>
 
@@ -401,8 +405,8 @@ export default async function Home() {
           </h2>
           <p className="mt-4 max-w-2xl text-base leading-8 text-white/75">
             Você ganha acesso completo grátis e setup acompanhado pelo nosso
-            time. Em troca, só pedimos que use de verdade — seu feedback molda
-            o produto.
+            time. Em troca, só pedimos que use de verdade — seu feedback molda o
+            produto.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -424,7 +428,9 @@ export default async function Home() {
               className="inline-flex items-center justify-center rounded-full bg-[var(--quizzy-accent)] px-6 py-3.5 text-sm font-semibold text-[var(--quizzy-navy)] transition hover:bg-[#f7b338]"
               href={primaryHref}
             >
-              {isAuthenticated ? "Abrir dashboard" : "Garantir acesso de fundador"}
+              {isAuthenticated
+                ? "Abrir dashboard"
+                : "Garantir acesso de fundador"}
             </Link>
             <Link
               className="inline-flex items-center justify-center rounded-full border border-white/18 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
@@ -502,7 +508,9 @@ export default async function Home() {
           >
             Quizzy
           </span>
-          <p>Quiz ao vivo com a marca da sua empresa — em beta para empresas.</p>
+          <p>
+            Quiz ao vivo com a marca da sua empresa — em beta para empresas.
+          </p>
         </footer>
       </div>
     </main>

@@ -43,8 +43,8 @@ export default async function ResultadosPage() {
           Sessões finalizadas
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--quizzy-muted)]">
-          As últimas sessões encerradas, com acesso ao relatório de
-          participação e acertos de cada uma.
+          As últimas sessões encerradas, com acesso ao relatório de participação
+          e acertos de cada uma.
         </p>
       </header>
 
@@ -75,7 +75,9 @@ export default async function ResultadosPage() {
                   {s.quizTitle}
                 </p>
                 <p className="mt-1 text-sm text-[var(--quizzy-muted)]">
-                  {s.mode === "live" ? `Live • PIN ${s.pin ?? "—"}` : "Individual"}{" "}
+                  {s.mode === "live"
+                    ? `Live • PIN ${s.pin ?? "—"}`
+                    : "Individual"}{" "}
                   • {s.participantCount} participantes
                   {s.finishedAt ? ` • ${formatDate(s.finishedAt)}` : ""}
                 </p>

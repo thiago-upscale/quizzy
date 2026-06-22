@@ -62,19 +62,39 @@ const OPTION_STYLES = [
 ];
 
 const PODIUM_CONFIG = [
-  { rank: 2, height: "h-40", color: "#94a3b8", badge: "bg-[#94a3b8]", label: "2º" },
-  { rank: 1, height: "h-56", color: "#f59e0b", badge: "bg-[#f59e0b]", label: "1º" },
-  { rank: 3, height: "h-28", color: "#f97316", badge: "bg-[#f97316]", label: "3º" },
+  {
+    rank: 2,
+    height: "h-40",
+    color: "#94a3b8",
+    badge: "bg-[#94a3b8]",
+    label: "2º",
+  },
+  {
+    rank: 1,
+    height: "h-56",
+    color: "#f59e0b",
+    badge: "bg-[#f59e0b]",
+    label: "1º",
+  },
+  {
+    rank: 3,
+    height: "h-28",
+    color: "#f97316",
+    badge: "bg-[#f97316]",
+    label: "3º",
+  },
 ];
 
 // Deterministic confetti generator based on index
 function generateConfetti(count: number) {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
-    left: ((i * 37 + 11) % 100),
+    left: (i * 37 + 11) % 100,
     delay: (i * 0.13) % 3,
     duration: 2.5 + (i % 5) * 0.4,
-    color: ["#f59e0b", "#e21b3c", "#1368ce", "#26890c", "#a855f7", "#ec4899"][i % 6],
+    color: ["#f59e0b", "#e21b3c", "#1368ce", "#26890c", "#a855f7", "#ec4899"][
+      i % 6
+    ],
     size: 6 + (i % 4) * 3,
     shape: i % 2 === 0 ? "rounded-sm" : "rounded-full",
   }));
@@ -87,10 +107,12 @@ type DensityMode = "normal" | "compact" | "dense";
 function getDisplayDensityMode(prompt: string, options: string[]): DensityMode {
   const promptLength = prompt.trim().length;
   const optionLengths = options.map((option) => option.trim().length);
-  const maxOptionLength = optionLengths.length > 0 ? Math.max(...optionLengths) : 0;
+  const maxOptionLength =
+    optionLengths.length > 0 ? Math.max(...optionLengths) : 0;
   const averageOptionLength =
     optionLengths.length > 0
-      ? optionLengths.reduce((sum, length) => sum + length, 0) / optionLengths.length
+      ? optionLengths.reduce((sum, length) => sum + length, 0) /
+        optionLengths.length
       : 0;
   const totalTextLength =
     promptLength + optionLengths.reduce((sum, length) => sum + length, 0);
@@ -268,9 +290,12 @@ export function DisplayClient({
     status: "waiting",
     countdownSeconds: null,
   });
-  const [currentQuestion, setCurrentQuestion] =
-    useState<ActiveQuestion | null>(null);
-  const [currentResult, setCurrentResult] = useState<QuestionResult | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
+    null,
+  );
+  const [currentResult, setCurrentResult] = useState<QuestionResult | null>(
+    null,
+  );
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [submittedCount, setSubmittedCount] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -284,13 +309,10 @@ export function DisplayClient({
     message: "",
     status: "idle",
   });
-  const [advanceState, advanceFormAction] = useActionState(
-    advanceLiveSession,
-    {
-      message: "",
-      status: "idle",
-    },
-  );
+  const [advanceState, advanceFormAction] = useActionState(advanceLiveSession, {
+    message: "",
+    status: "idle",
+  });
   const [skipState, skipFormAction] = useActionState(skipLiveQuestion, {
     message: "",
     status: "idle",
@@ -462,9 +484,13 @@ export function DisplayClient({
     const top3 = leaderboard.slice(0, 3);
 
     // Session summary calculations
-    const totalAnswered = questionStats.reduce((s, q) => s + q.submittedCount, 0);
+    const totalAnswered = questionStats.reduce(
+      (s, q) => s + q.submittedCount,
+      0,
+    );
     const totalCorrect = questionStats.reduce((s, q) => s + q.correctCount, 0);
-    const pctCorrect = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+    const pctCorrect =
+      totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
     const hardQuestions = questionStats.filter(
       (q) => q.submittedCount > 0 && q.correctCount / q.submittedCount < 0.5,
     ).length;
@@ -483,7 +509,9 @@ export function DisplayClient({
         >
           <div className="w-full max-w-2xl">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-black text-white">Resumo da sessão</h2>
+              <h2 className="text-2xl font-black text-white">
+                Resumo da sessão
+              </h2>
               <button
                 className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
                 onClick={() => setShowSummary(false)}
@@ -502,14 +530,20 @@ export function DisplayClient({
                   Respostas corretas
                 </p>
                 <p className="mt-1 text-lg font-bold text-white">
-                  {pctCorrect >= 80 ? "Grande desempenho!" : pctCorrect >= 50 ? "Bom esforço!" : "Pode melhorar!"}
+                  {pctCorrect >= 80
+                    ? "Grande desempenho!"
+                    : pctCorrect >= 50
+                      ? "Bom esforço!"
+                      : "Pode melhorar!"}
                 </p>
               </div>
 
               <div className="rounded-2xl bg-white/10 p-6 text-center">
                 <div
                   className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-3xl font-black text-white ring-4 ring-white/20"
-                  style={{ backgroundColor: hardQuestions > 0 ? "#e21b3c" : "#26890c" }}
+                  style={{
+                    backgroundColor: hardQuestions > 0 ? "#e21b3c" : "#26890c",
+                  }}
                 >
                   {hardQuestions}
                 </div>
@@ -517,7 +551,9 @@ export function DisplayClient({
                   Perguntas difíceis
                 </p>
                 <p className="mt-1 text-lg font-bold text-white">
-                  {hardQuestions === 0 ? "A prática leva à perfeição!" : `${hardQuestions} pergunta${hardQuestions > 1 ? "s" : ""} com menos de 50% de acertos`}
+                  {hardQuestions === 0
+                    ? "A prática leva à perfeição!"
+                    : `${hardQuestions} pergunta${hardQuestions > 1 ? "s" : ""} com menos de 50% de acertos`}
                 </p>
               </div>
             </div>
@@ -637,7 +673,10 @@ export function DisplayClient({
   }
 
   // ── LOBBY ────────────────────────────────────────────────────────────────────
-  if (sessionState.status === "waiting" || sessionState.status === "countdown") {
+  if (
+    sessionState.status === "waiting" ||
+    sessionState.status === "countdown"
+  ) {
     return (
       <div
         className="relative flex flex-1 flex-col overflow-hidden"
@@ -650,9 +689,21 @@ export function DisplayClient({
           preserveAspectRatio="xMidYMid slice"
           viewBox="0 0 1920 1080"
         >
-          <polygon fill="#ffffff" points="0,1080 420,340 840,1080" opacity="0.05" />
-          <polygon fill="#ffffff" points="380,1080 820,220 1260,1080" opacity="0.04" />
-          <polygon fill="#ffffff" points="820,1080 1320,150 1800,1080" opacity="0.03" />
+          <polygon
+            fill="#ffffff"
+            points="0,1080 420,340 840,1080"
+            opacity="0.05"
+          />
+          <polygon
+            fill="#ffffff"
+            points="380,1080 820,220 1260,1080"
+            opacity="0.04"
+          />
+          <polygon
+            fill="#ffffff"
+            points="820,1080 1320,150 1800,1080"
+            opacity="0.03"
+          />
         </svg>
 
         {canControlSession ? (
@@ -684,7 +735,11 @@ export function DisplayClient({
               </p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <div className="mt-3 overflow-hidden rounded-2xl bg-white p-3">
-                <img alt="QR code da sessão" className="h-auto w-full" src={qrCodeDataUrl} />
+                <img
+                  alt="QR code da sessão"
+                  className="h-auto w-full"
+                  src={qrCodeDataUrl}
+                />
               </div>
             </div>
             <div>
@@ -716,7 +771,9 @@ export function DisplayClient({
             {sessionState.status === "countdown" ? (
               <>
                 <div className="rounded-full bg-black/40 px-7 py-2.5">
-                  <p className="text-sm font-bold text-white/70">Começando em</p>
+                  <p className="text-sm font-bold text-white/70">
+                    Começando em
+                  </p>
                 </div>
                 <p className="text-[12rem] font-black leading-none text-white drop-shadow-2xl">
                   {sessionState.countdownSeconds ?? 3}
@@ -730,7 +787,12 @@ export function DisplayClient({
                   </p>
                 </div>
                 <div className="rounded-2xl bg-white px-10 py-5 shadow-2xl">
-                  <h1 className="text-4xl font-black" style={{ color: branding.secondaryColor }}>{quizTitle}</h1>
+                  <h1
+                    className="text-4xl font-black"
+                    style={{ color: branding.secondaryColor }}
+                  >
+                    {quizTitle}
+                  </h1>
                 </div>
               </>
             )}
@@ -742,7 +804,10 @@ export function DisplayClient({
               <p className="text-sm font-bold text-white">Participantes:</p>
               <span
                 className="rounded-full px-2.5 py-0.5 text-sm font-black"
-                style={{ backgroundColor: branding.accentColor, color: branding.secondaryColor }}
+                style={{
+                  backgroundColor: branding.accentColor,
+                  color: branding.secondaryColor,
+                }}
               >
                 {connectedCount}
               </span>
@@ -752,7 +817,10 @@ export function DisplayClient({
                 <p className="text-sm text-white/30">Aguardando...</p>
               ) : (
                 participants.map((p) => (
-                  <p key={p.id} className="py-1.5 text-sm font-semibold text-white/80">
+                  <p
+                    key={p.id}
+                    className="py-1.5 text-sm font-semibold text-white/80"
+                  >
                     {p.nickname}
                   </p>
                 ))
@@ -788,13 +856,17 @@ export function DisplayClient({
 
   // ── PLAYING / QUESTION RESULT ────────────────────────────────────────────────
   if (
-    (sessionState.status === "playing" || sessionState.status === "question_result") &&
+    (sessionState.status === "playing" ||
+      sessionState.status === "question_result") &&
     (currentQuestion || currentResult)
   ) {
     const question = currentResult
       ? { prompt: currentResult.prompt, options: currentResult.options }
       : currentQuestion!;
-    const densityMode = getDisplayDensityMode(question.prompt, question.options);
+    const densityMode = getDisplayDensityMode(
+      question.prompt,
+      question.options,
+    );
     const promptDensity = getPromptDensityClasses(densityMode);
     const isLastQuestion = currentQuestion
       ? currentQuestion.orderIndex === currentQuestion.totalQuestions - 1
@@ -836,7 +908,9 @@ export function DisplayClient({
                 aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
                 className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-[#334155] shadow-sm transition hover:bg-slate-50 active:translate-y-px"
                 onClick={() => void toggleFullscreen()}
-                title={isFullscreen ? "Sair da tela cheia (F)" : "Tela cheia (F)"}
+                title={
+                  isFullscreen ? "Sair da tela cheia (F)" : "Tela cheia (F)"
+                }
                 type="button"
               >
                 {isFullscreen ? (
@@ -858,8 +932,8 @@ export function DisplayClient({
               Seguir sem mostrar o resultado?
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              As respostas já enviadas permanecem registradas, mas esta
-              pergunta será marcada como pulada no relatório.
+              As respostas já enviadas permanecem registradas, mas esta pergunta
+              será marcada como pulada no relatório.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -926,9 +1000,7 @@ export function DisplayClient({
                 {currentQuestion.totalQuestions}
               </span>
             ) : null}
-            <h1 className={promptDensity.heading}>
-              {question.prompt}
-            </h1>
+            <h1 className={promptDensity.heading}>{question.prompt}</h1>
           </div>
 
           <div className="absolute right-8 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-3">
@@ -947,7 +1019,8 @@ export function DisplayClient({
         <div className="grid grid-cols-2 gap-0">
           {question.options.map((option, i) => {
             const style = OPTION_STYLES[i % OPTION_STYLES.length];
-            const isCorrect = currentResult && i === currentResult.correctOptionIndex;
+            const isCorrect =
+              currentResult && i === currentResult.correctOptionIndex;
             const optionDensity = getOptionDensityClasses(option, densityMode);
 
             return (
@@ -955,16 +1028,19 @@ export function DisplayClient({
                 key={i}
                 className={`relative flex items-start text-white ${optionDensity.card}`}
                 style={{
-                  backgroundColor: currentResult && !isCorrect ? "#555" : (style?.bg ?? "#333"),
+                  backgroundColor:
+                    currentResult && !isCorrect
+                      ? "#555"
+                      : (style?.bg ?? "#333"),
                   opacity: currentResult && !isCorrect ? 0.5 : 1,
                 }}
               >
                 <span className={optionDensity.icon}>{style?.icon}</span>
-                <span className={optionDensity.text}>
-                  {option}
-                </span>
+                <span className={optionDensity.text}>{option}</span>
                 {isCorrect ? (
-                  <span className={`ml-auto self-center ${optionDensity.mark}`}>✓</span>
+                  <span className={`ml-auto self-center ${optionDensity.mark}`}>
+                    ✓
+                  </span>
                 ) : null}
               </div>
             );

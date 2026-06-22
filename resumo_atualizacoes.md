@@ -113,18 +113,18 @@
 
 ## 📦 Commits Recentes (ordem cronológica reversa)
 
-| Hash | Descrição |
-|------|-----------|
-| `a987c3d` | feat: add delete quiz feature with cascade cleanup |
-| `aa8fa4d` | style: remove QR code panel from join page |
-| `7ff7179` | feat: thank-you screen, session summary on display, and restart session button |
-| `0d39629` | feat: podium screen with confetti animation on quiz finish |
-| `5ed6df1` | feat: display page shows question + colored options during quiz (Kahoot-style) |
+| Hash      | Descrição                                                                                   |
+| --------- | ------------------------------------------------------------------------------------------- |
+| `a987c3d` | feat: add delete quiz feature with cascade cleanup                                          |
+| `aa8fa4d` | style: remove QR code panel from join page                                                  |
+| `7ff7179` | feat: thank-you screen, session summary on display, and restart session button              |
+| `0d39629` | feat: podium screen with confetti animation on quiz finish                                  |
+| `5ed6df1` | feat: display page shows question + colored options during quiz (Kahoot-style)              |
 | `adf4b19` | feat: add /live/[pin]/display — projector lobby page with QR code, PIN and participant list |
-| `df79880` | style: add QR code to join page — 2-panel layout like Kahoot |
-| `8fe8b18` | style: redesign join page — clean dark PIN entry screen |
-| `b23e0c4` | feat: auto-close question when all participants have answered |
-| `85c9010` | feat: ui/ux improvements for dashboard, live session, and landing pages |
-| `7b318f8` | fix: harden realtime session flow and live feedback |
-| `87010b9` | Add individual sessions, R2 storage, live hardening, and load testing scripts |
-| `e9e0572` | Add account management and password recovery |
+| `df79880` | style: add QR code to join page — 2-panel layout like Kahoot                                |
+| `8fe8b18` | style: redesign join page — clean dark PIN entry screen                                     |
+| `b23e0c4` | feat: auto-close question when all participants have answered                               |
+| `85c9010` | feat: ui/ux improvements for dashboard, live session, and landing pages                     |
+| `7b318f8` | fix: harden realtime session flow and live feedback                                         |
+| `87010b9` | Add individual sessions, R2 storage, live hardening, and load testing scripts               |
+| `e9e0572` | Add account management and password recovery                                                |

@@ -202,7 +202,11 @@ function parseSessionIds(rawValue: string) {
       return [];
     }
 
-    return [...new Set(parsed.filter((value): value is string => typeof value === "string"))];
+    return [
+      ...new Set(
+        parsed.filter((value): value is string => typeof value === "string"),
+      ),
+    ];
   } catch {
     return [];
   }
@@ -212,14 +216,17 @@ async function notifyRealtimeSessionTermination(params: {
   pin: string;
   sessionId: string;
 }) {
-  const response = await fetch(`${env.REALTIME_URL}/internal/session/terminate`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+  const response = await fetch(
+    `${env.REALTIME_URL}/internal/session/terminate`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-quizzy-internal-token": env.REALTIME_INTERNAL_TOKEN,
+      },
+      body: JSON.stringify(params),
     },
-    body: JSON.stringify(params),
-  });
+  );
 
   if (!response.ok) {
     throw new Error("Nao foi possivel encerrar a sala realtime.");
@@ -355,7 +362,9 @@ export async function saveQuiz(
     };
   }
 
-  const existingQuestionIds = new Set(existingQuestionRows.map((row) => row.id));
+  const existingQuestionIds = new Set(
+    existingQuestionRows.map((row) => row.id),
+  );
   const referencedQuestionIds = new Set(
     referencedAnswerRows.map((row) => row.questionId),
   );
@@ -369,7 +378,8 @@ export async function saveQuiz(
   );
   const removedReferencedQuestions = existingQuestionRows.filter(
     (row) =>
-      referencedQuestionIds.has(row.id) && !retainedExistingQuestionIds.has(row.id),
+      referencedQuestionIds.has(row.id) &&
+      !retainedExistingQuestionIds.has(row.id),
   );
 
   if (removedReferencedQuestions.length > 0) {
@@ -433,7 +443,9 @@ export async function saveQuiz(
       .filter((questionId) => !referencedQuestionIds.has(questionId));
 
     if (removableQuestionIds.length > 0) {
-      await tx.delete(questions).where(inArray(questions.id, removableQuestionIds));
+      await tx
+        .delete(questions)
+        .where(inArray(questions.id, removableQuestionIds));
     }
 
     if (intent === "publish") {
@@ -1153,8 +1165,12 @@ export async function deleteSessions(
 ): Promise<DeleteSessionsState> {
   const session = await requireAuthSession();
   const scope = String(formData.get("scope") ?? "selected");
-  const confirmationText = String(formData.get("confirmationText") ?? "").trim();
-  const sessionIds = parseSessionIds(String(formData.get("sessionIds") ?? "[]"));
+  const confirmationText = String(
+    formData.get("confirmationText") ?? "",
+  ).trim();
+  const sessionIds = parseSessionIds(
+    String(formData.get("sessionIds") ?? "[]"),
+  );
 
   if (sessionIds.length === 0) {
     return {
@@ -1163,7 +1179,10 @@ export async function deleteSessions(
     };
   }
 
-  if (scope === "filtered" && confirmationText !== destructiveConfirmationText) {
+  if (
+    scope === "filtered" &&
+    confirmationText !== destructiveConfirmationText
+  ) {
     return {
       message: `Digite ${destructiveConfirmationText} para confirmar a exclusão em massa.`,
       status: "error",

@@ -27,15 +27,11 @@ export function ParticipantEntryForm({
       <input name="pin" type="hidden" value={pin} />
 
       {state.status === "error" ? (
-        <StatusAlert tone="error">
-          {state.message}
-        </StatusAlert>
+        <StatusAlert tone="error">{state.message}</StatusAlert>
       ) : null}
 
       <label className="block space-y-2.5">
-        <span className="text-sm font-semibold text-slate-500">
-          Nickname
-        </span>
+        <span className="text-sm font-semibold text-slate-500">Nickname</span>
         <input
           className="w-full rounded-[1.2rem] border border-slate-200 bg-slate-50 px-4 py-3.5 text-base font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/20"
           maxLength={20}

@@ -1,19 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
-import {
-  FieldPanel,
-  StatusAlert,
-} from "@/components/phase-one-ui";
+import { FieldPanel, StatusAlert } from "@/components/phase-one-ui";
 import {
   changeAccountPassword,
   requestPasswordReset,
   updateAccountProfile,
 } from "./actions";
-import {
-  accountInitialState,
-  type AccountActionState,
-} from "./action-state";
+import { accountInitialState, type AccountActionState } from "./action-state";
 
 function FeedbackMessage({ state }: { state: AccountActionState }) {
   if (state.status === "idle" || !state.message) {
