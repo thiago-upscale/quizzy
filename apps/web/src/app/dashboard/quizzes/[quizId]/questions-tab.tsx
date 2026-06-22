@@ -38,7 +38,7 @@ type PendingDelete = {
 
 function isQuestionComplete(q: EditorQuestion) {
   if (!q.question.trim()) return false;
-  if (q.type === "multiple_choice") {
+  if (q.type === "multiple_choice" || q.type === "poll") {
     return q.options.every((opt) => opt.trim().length > 0);
   }
   return true;
@@ -194,7 +194,9 @@ export function QuestionsTab({
                       <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">
                         {question.type === "true_false"
                           ? "Verd. / Falso"
-                          : "Múltipla escolha"}
+                          : question.type === "poll"
+                            ? "Enquete"
+                            : "Múltipla escolha"}
                       </span>
                       <span className="text-xs text-slate-500 font-medium">
                         {question.timeLimitSeconds}s
@@ -286,7 +288,7 @@ export function QuestionsTab({
                                               "Opção C",
                                               "Opção D",
                                             ],
-                                    correctIndex: 0,
+                                    correctIndex: nextType === "poll" ? -1 : 0,
                                   }
                                 : item,
                             ),
@@ -297,6 +299,7 @@ export function QuestionsTab({
                           Múltipla escolha
                         </option>
                         <option value="true_false">Verdadeiro / Falso</option>
+                        <option value="poll">Enquete</option>
                       </select>
                     </label>
 
@@ -373,34 +376,48 @@ export function QuestionsTab({
                         </select>
                       </label>
 
-                      <label className="space-y-2 text-sm font-semibold text-[#22304a]">
-                        <span>Resposta correta</span>
-                        <select
-                          className="w-full rounded-xl border border-[#cad5e3] px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
-                          value={question.correctIndex}
-                          onChange={(event) =>
-                            setQuestions((currentQuestions) =>
-                              currentQuestions.map((item) =>
-                                item.id === question.id
-                                  ? {
-                                      ...item,
-                                      correctIndex: Number(event.target.value),
-                                    }
-                                  : item,
-                              ),
-                            )
-                          }
-                        >
-                          {question.options.map((option, optionIndex) => (
-                            <option
-                              key={`${question.id}-${optionIndex}`}
-                              value={optionIndex}
-                            >
-                              {option || `Opção ${optionIndex + 1}`}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      {question.type === "poll" ? (
+                        <div className="space-y-2">
+                          <span className="text-sm font-semibold text-[#22304a]">
+                            Resposta correta
+                          </span>
+                          <p className="rounded-xl border border-[#cad5e3] bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                            Enquetes não têm resposta certa — todos os votos
+                            valem.
+                          </p>
+                        </div>
+                      ) : (
+                        <label className="space-y-2 text-sm font-semibold text-[#22304a]">
+                          <span>Resposta correta</span>
+                          <select
+                            className="w-full rounded-xl border border-[#cad5e3] px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
+                            value={question.correctIndex}
+                            onChange={(event) =>
+                              setQuestions((currentQuestions) =>
+                                currentQuestions.map((item) =>
+                                  item.id === question.id
+                                    ? {
+                                        ...item,
+                                        correctIndex: Number(
+                                          event.target.value,
+                                        ),
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }
+                          >
+                            {question.options.map((option, optionIndex) => (
+                              <option
+                                key={`${question.id}-${optionIndex}`}
+                                value={optionIndex}
+                              >
+                                {option || `Opção ${optionIndex + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
                     </div>
 
                     <FieldPanel className="grid gap-3 bg-[color:color-mix(in_srgb,var(--quizzy-surface)_58%,white)]">

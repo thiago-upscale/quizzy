@@ -725,19 +725,30 @@ export function LobbyClient({
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Resultado da rodada
+                      {currentResult.questionType === "poll"
+                        ? "Resultado da enquete"
+                        : "Resultado da rodada"}
                     </p>
                     <h2 className="mt-3 text-2xl font-bold leading-tight text-slate-950">
                       {currentResult.prompt}
                     </h2>
                   </div>
-                  <span
-                    className="rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
-                    style={{ backgroundColor: branding.accentColor }}
-                  >
-                    {currentResult.correctCount}/{currentResult.submittedCount}{" "}
-                    acertaram
-                  </span>
+                  {currentResult.questionType === "poll" ? (
+                    <span
+                      className="rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
+                      style={{ backgroundColor: branding.accentColor }}
+                    >
+                      {currentResult.submittedCount} votos
+                    </span>
+                  ) : (
+                    <span
+                      className="rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
+                      style={{ backgroundColor: branding.accentColor }}
+                    >
+                      {currentResult.correctCount}/
+                      {currentResult.submittedCount} acertaram
+                    </span>
+                  )}
                 </div>
 
                 {currentResult.imageUrl ? (
@@ -749,53 +760,101 @@ export function LobbyClient({
                   />
                 ) : null}
 
-                <div className="mt-5 grid gap-3">
-                  {currentResult.options.map((option, optionIndex) => {
-                    const isCorrectOption =
-                      optionIndex === currentResult.correctOptionIndex;
-                    const isChosenOption =
-                      answerState.answerIndex === optionIndex;
-
-                    return (
-                      <div
-                        key={`${currentResult.questionId}-${optionIndex}`}
-                        className={
-                          isCorrectOption
-                            ? "scale-[1.03] rounded-[1.35rem] bg-[#16a34a] px-4 py-4 text-sm font-semibold text-white shadow-lg transition-transform"
-                            : isChosenOption
-                              ? "rounded-[1.35rem] border border-[#fecaca] bg-[#7f1d1d] px-4 py-4 text-sm font-semibold text-white"
-                              : "rounded-[1.35rem] bg-slate-100 px-4 py-4 text-sm font-medium text-slate-700"
-                        }
-                      >
-                        <div className="flex items-center justify-between gap-4">
-                          <span>{option}</span>
-                          {isCorrectOption ? (
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#dcfce7]">
-                              Correta
+                {currentResult.questionType === "poll" ? (
+                  <div className="mt-5 grid gap-3">
+                    {currentResult.options.map((option, optionIndex) => {
+                      const votes = currentResult.voteCounts[optionIndex] ?? 0;
+                      const total = currentResult.submittedCount || 1;
+                      const pct = Math.round((votes / total) * 100);
+                      const isChosen = answerState.answerIndex === optionIndex;
+                      return (
+                        <div
+                          key={`${currentResult.questionId}-${optionIndex}`}
+                          className={`rounded-[1.35rem] px-4 py-4 ${isChosen ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-800"}`}
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-sm font-semibold">
+                              {option}
                             </span>
-                          ) : null}
-                          {!isCorrectOption && isChosenOption ? (
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">
-                              Sua escolha
+                            <span className="shrink-0 text-sm font-black">
+                              {pct}%
+                              {isChosen ? (
+                                <span className="ml-2 text-[11px] font-semibold uppercase tracking-[0.14em] opacity-60">
+                                  seu voto
+                                </span>
+                              ) : null}
                             </span>
-                          ) : null}
+                          </div>
+                          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/20">
+                            <div
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{
+                                width: `${pct}%`,
+                                backgroundColor: isChosen
+                                  ? "#94a3b8"
+                                  : "#cbd5e1",
+                              }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-5 grid gap-3">
+                    {currentResult.options.map((option, optionIndex) => {
+                      const isCorrectOption =
+                        optionIndex === currentResult.correctOptionIndex;
+                      const isChosenOption =
+                        answerState.answerIndex === optionIndex;
+
+                      return (
+                        <div
+                          key={`${currentResult.questionId}-${optionIndex}`}
+                          className={
+                            isCorrectOption
+                              ? "scale-[1.03] rounded-[1.35rem] bg-[#16a34a] px-4 py-4 text-sm font-semibold text-white shadow-lg transition-transform"
+                              : isChosenOption
+                                ? "rounded-[1.35rem] border border-[#fecaca] bg-[#7f1d1d] px-4 py-4 text-sm font-semibold text-white"
+                                : "rounded-[1.35rem] bg-slate-100 px-4 py-4 text-sm font-medium text-slate-700"
+                          }
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <span>{option}</span>
+                            {isCorrectOption ? (
+                              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#dcfce7]">
+                                Correta
+                              </span>
+                            ) : null}
+                            {!isCorrectOption && isChosenOption ? (
+                              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">
+                                Sua escolha
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[1.35rem] bg-slate-100 px-4 py-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Seu resultado
+                      {currentResult.questionType === "poll"
+                        ? "Seu voto"
+                        : "Seu resultado"}
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-800">
-                      {personalStanding?.answeredCurrentQuestion
-                        ? personalStanding.lastIsCorrect
-                          ? `Você acertou e ganhou ${personalStanding.lastPointsEarned} pontos.`
-                          : "Você respondeu, mas não acertou nesta rodada."
-                        : "Você não respondeu a tempo nesta rodada."}
+                      {currentResult.questionType === "poll"
+                        ? personalStanding?.answeredCurrentQuestion
+                          ? `Você votou em "${currentResult.options[answerState.answerIndex ?? -1] ?? "?"}".`
+                          : "Você não votou nesta enquete."
+                        : personalStanding?.answeredCurrentQuestion
+                          ? personalStanding.lastIsCorrect
+                            ? `Você acertou e ganhou ${personalStanding.lastPointsEarned} pontos.`
+                            : "Você respondeu, mas não acertou nesta rodada."
+                          : "Você não respondeu a tempo nesta rodada."}
                     </p>
                     {activeStreak >= 2 ? (
                       <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">

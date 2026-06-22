@@ -64,16 +64,23 @@ export default async function QuizDetailPage({
     };
     const correctAnswer = question.correctAnswer as { index?: number };
 
+    const qType =
+      question.type === "true_false"
+        ? "true_false"
+        : question.type === "poll"
+          ? "poll"
+          : "multiple_choice";
+
     return {
       id: question.id,
-      type: question.type === "true_false" ? "true_false" : "multiple_choice",
+      type: qType,
       question: content.question ?? "",
       imageUrl: content.imageUrl ?? null,
       options:
         question.type === "true_false"
           ? ["Verdadeiro", "Falso"]
           : (content.options ?? ["Opção A", "Opção B", "Opção C", "Opção D"]),
-      correctIndex: correctAnswer.index ?? 0,
+      correctIndex: qType === "poll" ? -1 : (correctAnswer.index ?? 0),
       timeLimitSeconds: question.timeLimitSeconds,
     } as const;
   });

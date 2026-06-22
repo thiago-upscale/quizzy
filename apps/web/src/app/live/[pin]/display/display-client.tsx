@@ -730,6 +730,8 @@ export function DisplayClient({
     const question = currentResult
       ? { prompt: currentResult.prompt, options: currentResult.options }
       : currentQuestion!;
+    const isPoll =
+      (currentResult?.questionType ?? currentQuestion?.type) === "poll";
     const densityMode = getDisplayDensityMode(
       question.prompt,
       question.options,
@@ -883,36 +885,101 @@ export function DisplayClient({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-0">
-          {question.options.map((option, i) => {
-            const style = OPTION_STYLES[i % OPTION_STYLES.length];
-            const isCorrect =
-              currentResult && i === currentResult.correctOptionIndex;
-            const optionDensity = getOptionDensityClasses(option, densityMode);
-
-            return (
-              <div
-                key={i}
-                className={`relative flex items-start text-white ${optionDensity.card}`}
-                style={{
-                  backgroundColor:
-                    currentResult && !isCorrect
-                      ? "#555"
-                      : (style?.bg ?? "#333"),
-                  opacity: currentResult && !isCorrect ? 0.5 : 1,
-                }}
-              >
-                <span className={optionDensity.icon}>{style?.icon}</span>
-                <span className={optionDensity.text}>{option}</span>
-                {isCorrect ? (
-                  <span className={`ml-auto self-center ${optionDensity.mark}`}>
-                    ✓
+        {isPoll && currentResult ? (
+          <div className="flex flex-1 flex-col justify-center gap-3 px-8 py-6">
+            {question.options.map((option, i) => {
+              const style = OPTION_STYLES[i % OPTION_STYLES.length];
+              const votes = currentResult.voteCounts[i] ?? 0;
+              const total = currentResult.submittedCount || 1;
+              const pct = Math.round((votes / total) * 100);
+              return (
+                <div key={i} className="flex items-center gap-4">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg font-black text-white"
+                    style={{ backgroundColor: style?.bg ?? "#333" }}
+                  >
+                    {style?.icon}
                   </span>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-white">
+                        {option}
+                      </span>
+                      <span className="text-sm font-black text-white/80">
+                        {pct}% · {votes}
+                      </span>
+                    </div>
+                    <div className="h-4 w-full overflow-hidden rounded-full bg-white/20">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: style?.bg ?? "#333",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : isPoll ? (
+          <div className="grid grid-cols-2 gap-0">
+            {question.options.map((option, i) => {
+              const style = OPTION_STYLES[i % OPTION_STYLES.length];
+              const optionDensity = getOptionDensityClasses(
+                option,
+                densityMode,
+              );
+              return (
+                <div
+                  key={i}
+                  className={`relative flex items-start text-white ${optionDensity.card}`}
+                  style={{ backgroundColor: style?.bg ?? "#333" }}
+                >
+                  <span className={optionDensity.icon}>{style?.icon}</span>
+                  <span className={optionDensity.text}>{option}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-0">
+            {question.options.map((option, i) => {
+              const style = OPTION_STYLES[i % OPTION_STYLES.length];
+              const isCorrect =
+                currentResult && i === currentResult.correctOptionIndex;
+              const optionDensity = getOptionDensityClasses(
+                option,
+                densityMode,
+              );
+
+              return (
+                <div
+                  key={i}
+                  className={`relative flex items-start text-white ${optionDensity.card}`}
+                  style={{
+                    backgroundColor:
+                      currentResult && !isCorrect
+                        ? "#555"
+                        : (style?.bg ?? "#333"),
+                    opacity: currentResult && !isCorrect ? 0.5 : 1,
+                  }}
+                >
+                  <span className={optionDensity.icon}>{style?.icon}</span>
+                  <span className={optionDensity.text}>{option}</span>
+                  {isCorrect ? (
+                    <span
+                      className={`ml-auto self-center ${optionDensity.mark}`}
+                    >
+                      ✓
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div
           className="flex items-center justify-between px-8 py-3"

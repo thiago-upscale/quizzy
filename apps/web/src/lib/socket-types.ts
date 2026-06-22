@@ -44,7 +44,7 @@ export type ActiveQuestion = {
   submittedCount: number;
   timeLimitSeconds: number;
   totalQuestions: number;
-  type: "multiple_choice" | "true_false";
+  type: "multiple_choice" | "true_false" | "poll";
 };
 
 export type QuestionResult = {
@@ -56,6 +56,8 @@ export type QuestionResult = {
   prompt: string;
   questionId: string;
   questionOrderIndex: number;
+  questionType: "multiple_choice" | "true_false" | "poll";
   submittedCount: number;
   totalQuestions: number;
+  voteCounts: number[];
 };

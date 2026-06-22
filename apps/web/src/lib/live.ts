@@ -30,7 +30,7 @@ export type RuntimeLiveQuestion = {
   pointsBase: number;
   prompt: string;
   timeLimitSeconds: number;
-  type: "multiple_choice" | "true_false";
+  type: "multiple_choice" | "true_false" | "poll";
 };
 
 export type LiveRecoveryParticipant = {
@@ -291,7 +291,8 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
     const options = question.content?.options ?? [];
 
     return {
-      correctIndex: question.correctAnswer?.index ?? 0,
+      correctIndex:
+        question.type === "poll" ? -1 : (question.correctAnswer?.index ?? 0),
       id: currentQuestion?.id ?? `virtual-${liveSession.id}-${index}`,
       imageUrl:
         typeof question.content?.imageUrl === "string"
@@ -303,7 +304,12 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
       pointsBase: currentQuestion?.pointsBase ?? 1000,
       prompt: question.content?.question ?? `Pergunta ${index + 1}`,
       timeLimitSeconds: question.timeLimitSeconds ?? 20,
-      type: question.type === "true_false" ? "true_false" : "multiple_choice",
+      type:
+        question.type === "true_false"
+          ? "true_false"
+          : question.type === "poll"
+            ? "poll"
+            : "multiple_choice",
     } satisfies RuntimeLiveQuestion;
   });
 }

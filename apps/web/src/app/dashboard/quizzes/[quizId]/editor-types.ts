@@ -2,7 +2,7 @@ import type { SaveQuizState } from "../../actions";
 
 export type EditorQuestion = {
   id: string;
-  type: "multiple_choice" | "true_false";
+  type: "multiple_choice" | "true_false" | "poll";
   imageUrl: string | null;
   question: string;
   options: string[];

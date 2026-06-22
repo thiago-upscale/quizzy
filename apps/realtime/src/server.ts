@@ -50,7 +50,7 @@ type RoomQuestion = {
   pointsBase: number;
   prompt: string;
   timeLimitSeconds: number;
-  type: "multiple_choice" | "true_false";
+  type: "multiple_choice" | "true_false" | "poll";
 };
 
 type RoomAnswer = {
@@ -82,8 +82,10 @@ type QuestionResultSnapshot = {
   prompt: string;
   questionId: string;
   questionOrderIndex: number;
+  questionType: "multiple_choice" | "true_false" | "poll";
   submittedCount: number;
   totalQuestions: number;
+  voteCounts: number[];
 };
 
 type SessionStatePayload = {
@@ -415,6 +417,10 @@ function buildQuestionResult(room: RoomState) {
     (answer) => answer.isCorrect,
   ).length;
 
+  const voteCounts = currentQuestion.options.map(
+    (_, i) => [...answers.values()].filter((a) => a.answerIndex === i).length,
+  );
+
   return {
     correctCount,
     correctOptionIndex: currentQuestion.correctIndex,
@@ -424,8 +430,10 @@ function buildQuestionResult(room: RoomState) {
     prompt: currentQuestion.prompt,
     questionId: currentQuestion.id,
     questionOrderIndex: currentQuestion.orderIndex,
+    questionType: currentQuestion.type,
     submittedCount: answers.size,
     totalQuestions: room.questions.length,
+    voteCounts,
   } satisfies QuestionResultSnapshot;
 }
 
@@ -1847,15 +1855,20 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const isCorrect = currentQuestion.correctIndex === answerIndex;
+      const isPoll = currentQuestion.type === "poll";
+      const isCorrect = isPoll
+        ? false
+        : currentQuestion.correctIndex === answerIndex;
       const nextStreak = isCorrect ? participant.currentStreak + 1 : 0;
-      const pointsEarned = computePoints({
-        currentStreak: participant.currentStreak,
-        isCorrect,
-        pointsBase: currentQuestion.pointsBase,
-        timeLimitSeconds: currentQuestion.timeLimitSeconds,
-        timeSpentMs,
-      });
+      const pointsEarned = isPoll
+        ? 0
+        : computePoints({
+            currentStreak: participant.currentStreak,
+            isCorrect,
+            pointsBase: currentQuestion.pointsBase,
+            timeLimitSeconds: currentQuestion.timeLimitSeconds,
+            timeSpentMs,
+          });
 
       questionAnswers.set(participantToken, {
         answerIndex,
