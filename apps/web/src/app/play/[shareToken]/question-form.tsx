@@ -37,7 +37,7 @@ export function IndividualQuestionForm({
       <input name="startedAt" type="hidden" value={String(startedAt)} />
 
       {state.status === "error" ? (
-        <p className="rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-medium text-[#b42318]">
+        <p className="rounded-2xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm font-medium text-[var(--quizzy-error)]">
           {state.message}
         </p>
       ) : null}

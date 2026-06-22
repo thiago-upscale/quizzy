@@ -90,7 +90,7 @@ export function LoginForm() {
         </a>
       </div>
       {state.error ? (
-        <p className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm text-[#9f1239]">
+        <p className="rounded-xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm text-[var(--quizzy-error)]">
           {state.error}
         </p>
       ) : null}

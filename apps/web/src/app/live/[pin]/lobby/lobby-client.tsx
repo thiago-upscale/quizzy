@@ -278,7 +278,7 @@ export function LobbyClient({
         {shouldUseMobileAnswerMode && currentQuestion ? (
           <section className="flex min-h-[100dvh] flex-col md:hidden">
             {branding.showQuestionOnMobile ? (
-              <div className="rounded-[1.25rem] bg-white px-4 py-4 text-center text-[#1e3a8a] shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
+              <div className="rounded-[1.25rem] bg-white px-4 py-4 text-center text-[var(--quizzy-deep-blue)] shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
                 <p className="text-[1.45rem] font-black leading-[1.15] tracking-[-0.03em]">
                   {currentQuestion.prompt}
                 </p>
@@ -291,7 +291,7 @@ export function LobbyClient({
                   aria-atomic="true"
                   aria-label={`${visibleQuestionTime} segundos restantes`}
                   aria-live="polite"
-                  className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]"
+                  className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[var(--quizzy-deep-blue)] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]"
                 >
                   <span aria-hidden="true" className="text-xl font-black">
                     {visibleQuestionTime}
@@ -313,7 +313,7 @@ export function LobbyClient({
                       : `${submissionStats.submittedCount}/${submissionStats.totalParticipants} respostas`}
                   </p>
                 </div>
-                <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
+                <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[var(--quizzy-deep-blue)] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
                   <span className="text-xl font-black">
                     {submissionStats.submittedCount}
                   </span>
@@ -371,7 +371,7 @@ export function LobbyClient({
                 })}
               </div>
 
-              <div className="mt-3 flex items-center justify-between rounded-full bg-[#1e3a8a] px-4 py-2.5 text-sm text-white/80">
+              <div className="mt-3 flex items-center justify-between rounded-full bg-[var(--quizzy-deep-blue)] px-4 py-2.5 text-sm text-white/80">
                 <span className="font-semibold tracking-[0.08em]">
                   PIN {pin}
                 </span>

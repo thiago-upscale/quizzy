@@ -572,7 +572,7 @@ export function DisplayClient({
         {canControlSession ? (
           <div className="relative z-20 flex items-start justify-end gap-3 px-6 pt-5">
             {startState.status === "error" ? (
-              <p className="rounded-xl bg-[#fff1f0] px-4 py-3 text-sm font-semibold text-[#b42318] shadow-lg">
+              <p className="rounded-xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--quizzy-error)] shadow-lg">
                 {startState.message}
               </p>
             ) : null}
@@ -823,7 +823,7 @@ export function DisplayClient({
 
         {canControlSession &&
         (advanceState.status === "error" || skipState.status === "error") ? (
-          <div className="absolute right-6 top-28 z-40 max-w-sm rounded-xl bg-[#fff1f0] px-4 py-3 text-sm font-semibold text-[#b42318] shadow-xl">
+          <div className="absolute right-6 top-28 z-40 max-w-sm rounded-xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm font-semibold text-[var(--quizzy-error)] shadow-xl">
             {advanceState.status === "error"
               ? advanceState.message
               : skipState.message}

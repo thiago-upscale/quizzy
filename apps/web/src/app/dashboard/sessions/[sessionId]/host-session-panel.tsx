@@ -359,7 +359,7 @@ export function HostSessionPanel({
               QR Code e PIN
             </h2>
           </div>
-          <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
+          <span className="rounded-full bg-[var(--quizzy-info-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-info)]">
             {getStatusLabel(status)}
           </span>
         </div>
@@ -419,7 +419,7 @@ export function HostSessionPanel({
 
           <div aria-live="polite" aria-atomic="true" role="status">
             {startState.status === "error" ? (
-              <p className="rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-medium text-[#b42318]">
+              <p className="rounded-2xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm font-medium text-[var(--quizzy-error)]">
                 {startState.message}
               </p>
             ) : startSuccessVisible ? (
@@ -431,7 +431,7 @@ export function HostSessionPanel({
 
           <div aria-live="polite" aria-atomic="true" role="status">
             {advanceState.status === "error" ? (
-              <p className="rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-medium text-[#b42318]">
+              <p className="rounded-2xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm font-medium text-[var(--quizzy-error)]">
                 {advanceState.message}
               </p>
             ) : advanceSuccessVisible ? (
@@ -443,7 +443,7 @@ export function HostSessionPanel({
 
           <div aria-live="assertive" role="alert">
             {restartState.status === "error" ? (
-              <p className="rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-medium text-[#b42318]">
+              <p className="rounded-2xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm font-medium text-[var(--quizzy-error)]">
                 {restartState.message}
               </p>
             ) : null}
@@ -451,7 +451,7 @@ export function HostSessionPanel({
 
           <div aria-live="polite" role="status">
             {reconnectNote ? (
-              <p className="rounded-2xl bg-[#eff6ff] px-4 py-3 text-sm font-medium text-[#1d4ed8]">
+              <p className="rounded-2xl bg-[var(--quizzy-info-bg)] px-4 py-3 text-sm font-medium text-[var(--quizzy-info)]">
                 {reconnectNote}
               </p>
             ) : null}
@@ -534,14 +534,14 @@ export function HostSessionPanel({
         {recoverySecondsRemaining !== null &&
         operationalState.hostPresenceStatus === "offline" &&
         status !== "interrupted" ? (
-          <div className="mt-6 rounded-[1.5rem] border border-[#bfdbfe] bg-[#eff6ff] p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
+          <div className="mt-6 rounded-[1.5rem] border border-[var(--quizzy-info-border)] bg-[var(--quizzy-info-bg)] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-info)]">
               Janela de reconexão
             </p>
             <h3 className="mt-2 text-xl font-semibold text-[var(--quizzy-text)]">
               A sala ainda pode ser recuperada sem interromper a rodada
             </h3>
-            <p className="mt-3 text-sm leading-7 text-[#1e3a8a]">
+            <p className="mt-3 text-sm leading-7 text-[var(--quizzy-deep-blue)]">
               Se o host voltar em até {recoverySecondsRemaining}s, a sessão
               segue para um estado seguro automaticamente.
             </p>
@@ -624,7 +624,7 @@ export function HostSessionPanel({
                   key={`${currentResult.questionId}-${optionIndex}`}
                   className={
                     optionIndex === currentResult.correctOptionIndex
-                      ? "rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3 text-sm font-semibold text-[var(--quizzy-text)]"
+                      ? "rounded-2xl border border-[var(--quizzy-info-border)] bg-[var(--quizzy-info-bg)] px-4 py-3 text-sm font-semibold text-[var(--quizzy-text)]"
                       : "rounded-2xl border border-[var(--quizzy-border)] bg-white px-4 py-3 text-sm font-medium text-[var(--quizzy-text)]"
                   }
                 >

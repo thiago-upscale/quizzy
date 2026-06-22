@@ -14,6 +14,12 @@
   --quizzy-muted: #667085;
   --quizzy-success: #16a34a;
   --quizzy-warning: #b54708;
+  --quizzy-error: #b42318;
+  --quizzy-error-bg: #fff1f0;
+  --quizzy-info: #1d4ed8;
+  --quizzy-info-bg: #eff6ff;
+  --quizzy-info-border: #bfdbfe;
+  --quizzy-deep-blue: #1e3a8a;
   --quizzy-logo-font: "BBH Hegarty", sans-serif;
 }
 
@@ -30,6 +36,12 @@
   --color-quizzy-muted: var(--quizzy-muted);
   --color-quizzy-success: var(--quizzy-success);
   --color-quizzy-warning: var(--quizzy-warning);
+  --color-quizzy-error: var(--quizzy-error);
+  --color-quizzy-error-bg: var(--quizzy-error-bg);
+  --color-quizzy-info: var(--quizzy-info);
+  --color-quizzy-info-bg: var(--quizzy-info-bg);
+  --color-quizzy-info-border: var(--quizzy-info-border);
+  --color-quizzy-deep-blue: var(--quizzy-deep-blue);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

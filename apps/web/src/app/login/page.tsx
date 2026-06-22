@@ -48,7 +48,7 @@ export default async function LoginPage({
           ) : null}
 
           {params.reset === "1" ? (
-            <p className="mb-6 rounded-xl bg-[#eff6ff] px-4 py-3 text-sm text-[#1d4ed8]">
+            <p className="mb-6 rounded-xl bg-[var(--quizzy-info-bg)] px-4 py-3 text-sm text-[var(--quizzy-info)]">
               Senha redefinida. Entre com a nova credencial.
             </p>
           ) : null}

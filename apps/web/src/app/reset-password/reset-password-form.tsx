@@ -53,7 +53,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           className={
             state.status === "success"
               ? "rounded-xl bg-[#ecfdf3] px-4 py-3 text-sm text-[#0f766e]"
-              : "rounded-xl bg-[#fff1f0] px-4 py-3 text-sm text-[#9f1239]"
+              : "rounded-xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm text-[var(--quizzy-error)]"
           }
         >
           {state.message}

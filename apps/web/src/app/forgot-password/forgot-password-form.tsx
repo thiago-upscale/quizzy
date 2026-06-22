@@ -17,7 +17,7 @@ function FeedbackMessage({ state }: { state: AccountActionState }) {
       className={
         state.status === "success"
           ? "rounded-xl bg-[#ecfdf3] px-4 py-3 text-sm text-[#0f766e]"
-          : "rounded-xl bg-[#fff1f0] px-4 py-3 text-sm text-[#9f1239]"
+          : "rounded-xl bg-[var(--quizzy-error-bg)] px-4 py-3 text-sm text-[var(--quizzy-error)]"
       }
     >
       <p>{state.message}</p>
