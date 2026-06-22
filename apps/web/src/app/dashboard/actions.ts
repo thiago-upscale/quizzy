@@ -1093,6 +1093,68 @@ export async function restartLiveSession(
   return { status: "idle" };
 }
 
+const SESSIONS_PAGE_SIZE = 50;
+
+export async function loadMoreSessions(offset: number): Promise<{
+  hasMore: boolean;
+  sessions: Array<{
+    createdAt: Date;
+    endsAt: Date | null;
+    expiresAt: Date | null;
+    finishedAt: Date | null;
+    id: string;
+    mode: string;
+    participantCount: number;
+    pin: string | null;
+    quizTitle: string;
+    shareToken: string | null;
+    startsAt: Date | null;
+    status: string;
+  }>;
+  total: number;
+}> {
+  const session = await requireAuthSession();
+
+  const [rows, totalRows] = await Promise.all([
+    db
+      .select({
+        id: quizSessions.id,
+        pin: quizSessions.pin,
+        shareToken: quizSessions.shareToken,
+        mode: quizSessions.mode,
+        status: quizSessions.status,
+        createdAt: quizSessions.createdAt,
+        startsAt: quizSessions.startsAt,
+        endsAt: quizSessions.endsAt,
+        expiresAt: quizSessions.expiresAt,
+        finishedAt: quizSessions.finishedAt,
+        quizTitle: quizzes.title,
+        participantCount: count(participants.id),
+      })
+      .from(quizSessions)
+      .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+      .leftJoin(participants, eq(participants.sessionId, quizSessions.id))
+      .where(eq(quizzes.organizationId, session.user.organizationId))
+      .groupBy(quizSessions.id, quizzes.id)
+      .orderBy(desc(quizSessions.createdAt))
+      .limit(SESSIONS_PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ total: count() })
+      .from(quizSessions)
+      .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+      .where(eq(quizzes.organizationId, session.user.organizationId)),
+  ]);
+
+  const total = totalRows[0]?.total ?? 0;
+
+  return {
+    hasMore: offset + rows.length < total,
+    sessions: rows,
+    total,
+  };
+}
+
 export async function getSessionParticipantsForDashboard(sessionId: string) {
   await requireAuthSession();
 

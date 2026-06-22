@@ -79,29 +79,38 @@ async function getRealtimeHealth(): Promise<RealtimeHealth> {
 export default async function OperacaoPage() {
   const session = await requireAuthSession();
 
-  const [allSessionsRaw, recentEvents, realtimeHealth] = await Promise.all([
-    db
-      .select({
-        id: quizSessions.id,
-        quizId: quizSessions.quizId,
-        pin: quizSessions.pin,
-        shareToken: quizSessions.shareToken,
-        mode: quizSessions.mode,
-        status: quizSessions.status,
-        createdAt: quizSessions.createdAt,
-        startsAt: quizSessions.startsAt,
-        endsAt: quizSessions.endsAt,
-        expiresAt: quizSessions.expiresAt,
-        finishedAt: quizSessions.finishedAt,
-        quizTitle: quizzes.title,
-        participantCount: count(participants.id),
-      })
-      .from(quizSessions)
-      .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
-      .leftJoin(participants, eq(participants.sessionId, quizSessions.id))
-      .where(eq(quizzes.organizationId, session.user.organizationId))
-      .groupBy(quizSessions.id, quizzes.id)
-      .orderBy(desc(quizSessions.createdAt)),
+  const INITIAL_SESSIONS_LOAD = 50;
+
+  const [allSessionsRaw, totalSessionsRows, recentEvents, realtimeHealth] =
+    await Promise.all([
+      db
+        .select({
+          id: quizSessions.id,
+          quizId: quizSessions.quizId,
+          pin: quizSessions.pin,
+          shareToken: quizSessions.shareToken,
+          mode: quizSessions.mode,
+          status: quizSessions.status,
+          createdAt: quizSessions.createdAt,
+          startsAt: quizSessions.startsAt,
+          endsAt: quizSessions.endsAt,
+          expiresAt: quizSessions.expiresAt,
+          finishedAt: quizSessions.finishedAt,
+          quizTitle: quizzes.title,
+          participantCount: count(participants.id),
+        })
+        .from(quizSessions)
+        .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+        .leftJoin(participants, eq(participants.sessionId, quizSessions.id))
+        .where(eq(quizzes.organizationId, session.user.organizationId))
+        .groupBy(quizSessions.id, quizzes.id)
+        .orderBy(desc(quizSessions.createdAt))
+        .limit(INITIAL_SESSIONS_LOAD),
+      db
+        .select({ total: count() })
+        .from(quizSessions)
+        .innerJoin(quizzes, eq(quizSessions.quizId, quizzes.id))
+        .where(eq(quizzes.organizationId, session.user.organizationId)),
     db
       .select({
         id: sessionEvents.id,
@@ -120,6 +129,9 @@ export default async function OperacaoPage() {
       .limit(12),
     getRealtimeHealth(),
   ]);
+
+  const totalSessions = totalSessionsRows[0]?.total ?? 0;
+  const hasMoreSessions = allSessionsRaw.length < totalSessions;
 
   const activeSessions = allSessionsRaw.filter((sessionItem) =>
     activeSessionStatuses.includes(
@@ -196,11 +208,12 @@ export default async function OperacaoPage() {
             title="Todas as sessões da organização"
             trailing={
               <span className="rounded-full bg-[#f8fbff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#61708c]">
-                {allSessionsRaw.length} no total
+                {totalSessions} no total
               </span>
             }
           />
           <OperationSessionManager
+            hasMore={hasMoreSessions}
             sessions={allSessionsRaw.map((sessionItem) => ({
               createdAt: sessionItem.createdAt.toISOString(),
               endsAt: sessionItem.endsAt?.toISOString() ?? null,
@@ -215,6 +228,7 @@ export default async function OperacaoPage() {
               startsAt: sessionItem.startsAt?.toISOString() ?? null,
               status: sessionItem.status,
             }))}
+            total={totalSessions}
           />
         </SurfaceCard>
 

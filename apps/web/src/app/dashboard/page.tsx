@@ -11,10 +11,19 @@ import { activeSessionStatuses, getStatusLabel } from "./dashboard-helpers";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
-  const session = await requireAuthSession();
+const QUIZZES_PAGE_SIZE = 20;
 
-  const [quizList, activeSessionsRaw] = await Promise.all([
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const session = await requireAuthSession();
+  const params = await searchParams;
+  const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
+  const offset = (currentPage - 1) * QUIZZES_PAGE_SIZE;
+
+  const [quizList, quizStatusCounts, activeSessionsRaw] = await Promise.all([
     db
       .select({
         id: quizzes.id,
@@ -25,7 +34,14 @@ export default async function DashboardPage() {
       })
       .from(quizzes)
       .where(eq(quizzes.organizationId, session.user.organizationId))
-      .orderBy(desc(quizzes.updatedAt)),
+      .orderBy(desc(quizzes.updatedAt))
+      .limit(QUIZZES_PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ status: quizzes.status, total: count() })
+      .from(quizzes)
+      .where(eq(quizzes.organizationId, session.user.organizationId))
+      .groupBy(quizzes.status),
     db
       .select({
         id: quizSessions.id,
@@ -50,10 +66,15 @@ export default async function DashboardPage() {
     (s) => s.status === "interrupted",
   ).length;
 
-  const publishedQuizzes = quizList.filter(
-    (quiz) => quiz.status === "published",
-  );
-  const draftQuizzes = quizList.filter((quiz) => quiz.status !== "published");
+  const publishedCount =
+    quizStatusCounts.find((row) => row.status === "published")?.total ?? 0;
+  const draftCount = quizStatusCounts
+    .filter((row) => row.status !== "published")
+    .reduce((sum, row) => sum + row.total, 0);
+  const totalQuizzes = publishedCount + draftCount;
+  const totalPages = Math.max(1, Math.ceil(totalQuizzes / QUIZZES_PAGE_SIZE));
+  const hasPrevPage = currentPage > 1;
+  const hasNextPage = currentPage < totalPages;
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,10 +89,10 @@ export default async function DashboardPage() {
           </h1>
           <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--quizzy-muted)]">
             <span className="rounded-full bg-[color:color-mix(in_srgb,var(--quizzy-success)_10%,white)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-success)]">
-              {publishedQuizzes.length} publicados
+              {publishedCount} publicados
             </span>
             <span className="rounded-full bg-[var(--quizzy-surface-strong)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--quizzy-muted)]">
-              {draftQuizzes.length} rascunhos
+              {draftCount} rascunhos
             </span>
           </p>
         </div>
@@ -111,7 +132,7 @@ export default async function DashboardPage() {
 
       {/* Quiz library */}
       <section aria-label="Biblioteca de quizzes" className="grid gap-4">
-        {quizList.length === 0 ? (
+        {totalQuizzes === 0 ? (
           <EmptyStateCard
             action={
               <form action={createQuiz}>
@@ -190,6 +211,35 @@ export default async function DashboardPage() {
             </div>
           ))
         )}
+
+        {totalPages > 1 ? (
+          <nav
+            aria-label="Paginação de quizzes"
+            className="flex items-center justify-between gap-4 pt-2"
+          >
+            <span className="text-sm text-[var(--quizzy-muted)]">
+              Página {currentPage} de {totalPages} · {totalQuizzes} quizzes
+            </span>
+            <div className="flex gap-2">
+              {hasPrevPage ? (
+                <Link
+                  className="rounded-full border border-[var(--quizzy-border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--quizzy-text)] transition hover:bg-[var(--quizzy-surface)]"
+                  href={`/dashboard?page=${currentPage - 1}`}
+                >
+                  ← Anterior
+                </Link>
+              ) : null}
+              {hasNextPage ? (
+                <Link
+                  className="rounded-full bg-[var(--quizzy-teal)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90"
+                  href={`/dashboard?page=${currentPage + 1}`}
+                >
+                  Próxima →
+                </Link>
+              ) : null}
+            </div>
+          </nav>
+        ) : null}
       </section>
     </div>
   );

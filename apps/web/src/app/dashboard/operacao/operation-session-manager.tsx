@@ -7,10 +7,11 @@ import {
   useEffect,
   useRef,
   useState,
+  useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
 import type { DeleteSessionsState } from "../actions";
-import { deleteSessions } from "../actions";
+import { deleteSessions, loadMoreSessions } from "../actions";
 import {
   activeSessionStatuses,
   formatDate,
@@ -76,14 +77,21 @@ function buildDeleteSummary(sessions: ManagedSession[]) {
 }
 
 export function OperationSessionManager({
-  sessions,
+  hasMore: initialHasMore,
+  sessions: initialSessions,
+  total,
 }: {
+  hasMore: boolean;
   sessions: ManagedSession[];
+  total: number;
 }) {
   const router = useRouter();
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
+  const [allSessions, setAllSessions] = useState(initialSessions);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isLoadingMore, startLoadingMore] = useTransition();
   const [deleteState, deleteAction, deletePending] = useActionState(
     deleteSessions,
     initialDeleteState,
@@ -96,7 +104,7 @@ export function OperationSessionManager({
   const [modalScope, setModalScope] = useState<DeleteScope | null>(null);
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
 
-  const filteredSessions = sessions.filter((session) => {
+  const filteredSessions = allSessions.filter((session) => {
     const matchesQuery =
       deferredQuery.length === 0 ||
       session.quizTitle.toLowerCase().includes(deferredQuery) ||
@@ -110,10 +118,21 @@ export function OperationSessionManager({
   });
 
   const filteredIds = filteredSessions.map((session) => session.id);
+
+  function handleLoadMore() {
+    startLoadingMore(async () => {
+      const result = await loadMoreSessions(allSessions.length);
+      setAllSessions((prev) => [
+        ...prev,
+        ...(result.sessions as unknown as ManagedSession[]),
+      ]);
+      setHasMore(result.hasMore);
+    });
+  }
   const modalSessions =
     modalScope === "filtered"
       ? filteredSessions
-      : sessions.filter((session) => selectedIds.includes(session.id));
+      : allSessions.filter((session) => selectedIds.includes(session.id));
   const allFilteredSelected =
     filteredIds.length > 0 &&
     filteredIds.every((sessionId) => selectedIds.includes(sessionId));
@@ -235,7 +254,10 @@ export function OperationSessionManager({
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--quizzy-muted)]">
         <span className="rounded-full bg-[var(--quizzy-surface)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
-          {sessions.length} totais
+          {total} totais
+        </span>
+        <span className="rounded-full bg-[var(--quizzy-surface)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
+          {allSessions.length} carregadas
         </span>
         <span className="rounded-full bg-[var(--quizzy-surface)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
           {filteredSessions.length} filtradas
@@ -387,10 +409,21 @@ export function OperationSessionManager({
               type="button"
               onClick={() => setPage((p) => p + 1)}
             >
-              Carregar mais · {filteredSessions.length - page * PAGE_SIZE}{" "}
+              Mostrar mais · {filteredSessions.length - page * PAGE_SIZE}{" "}
               {filteredSessions.length - page * PAGE_SIZE === 1
                 ? "restante"
                 : "restantes"}
+            </button>
+          ) : hasMore ? (
+            <button
+              className="w-full rounded-[1.4rem] border border-dashed border-[var(--quizzy-border)] bg-[var(--quizzy-surface)] py-4 text-sm font-semibold text-[var(--quizzy-muted)] transition hover:border-[var(--quizzy-teal)] hover:text-[var(--quizzy-teal)] disabled:cursor-wait disabled:opacity-60"
+              disabled={isLoadingMore}
+              type="button"
+              onClick={handleLoadMore}
+            >
+              {isLoadingMore
+                ? "Carregando…"
+                : `Carregar mais sessões · ${total - allSessions.length} ${total - allSessions.length === 1 ? "restante" : "restantes"}`}
             </button>
           ) : null}
         </div>
