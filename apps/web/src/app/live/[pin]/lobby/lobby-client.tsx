@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StatusAlert } from "@/components/phase-one-ui";
-import { io, type Socket } from "socket.io-client";
 import type { LiveBranding } from "@/lib/live";
 import type {
   ActiveQuestion,
@@ -10,34 +9,10 @@ import type {
   QuestionResult,
   SessionStatePayload,
 } from "@/lib/socket-types";
-
-type Participant = {
-  avatar: string;
-  currentStreak: number;
-  id: string;
-  nickname: string;
-  presenceStatus: "offline" | "online";
-  score: number;
-  totalTimeMs: number;
-};
-
-type AnswerState = {
-  accepted: boolean;
-  answerIndex: number | null;
-  currentStreak: number;
-  isCorrect: boolean | null;
-  pointsEarned: number;
-  submitted: boolean;
-};
-
-const initialAnswerState: AnswerState = {
-  accepted: false,
-  answerIndex: null,
-  currentStreak: 0,
-  isCorrect: null,
-  pointsEarned: 0,
-  submitted: false,
-};
+import {
+  useLiveParticipantSocket,
+  type ParticipantListEntry,
+} from "@/hooks/useLiveParticipantSocket";
 
 function formatDuration(totalTimeMs: number) {
   const totalSeconds = Math.round(totalTimeMs / 1000);
@@ -96,7 +71,7 @@ export function LobbyClient({
   realtimeUrl,
 }: {
   branding: LiveBranding;
-  initialParticipants: Participant[];
+  initialParticipants: ParticipantListEntry[];
   initialSessionStatus: string;
   participant: {
     avatar: string;
@@ -111,62 +86,36 @@ export function LobbyClient({
   quizTitle: string;
   realtimeUrl: string;
 }) {
-  const [participants, setParticipants] =
-    useState<Participant[]>(initialParticipants);
-  const [connectedCount, setConnectedCount] = useState(
-    initialParticipants.filter(
-      (currentParticipant) => currentParticipant.presenceStatus === "online",
-    ).length,
-  );
-  const [sessionState, setSessionStatePayload] = useState<SessionStatePayload>({
-    connectedParticipantsCount: initialParticipants.filter(
-      (currentParticipant) => currentParticipant.presenceStatus === "online",
-    ).length,
-    countdownSeconds: initialSessionStatus === "countdown" ? 3 : null,
-    hostRecoveryDeadlineAt: null,
-    hostLastSeenAt: null,
-    hostPresenceStatus: "offline",
-    interruptionReason: null,
-    lastEventAt: null,
-    offlineParticipantsCount: initialParticipants.length,
-    rejectedAnswersCount: 0,
-    status: initialSessionStatus as SessionStatePayload["status"],
+  const {
+    answerState,
+    connectedCount,
+    currentQuestion,
+    currentResult,
+    finalLeaderboard,
+    justReconnected,
+    leaderboard,
+    leaderboardVersion,
+    participants,
+    playerCurrentStreak,
+    rankDeltaById,
+    sessionState,
+    socketConnected,
+    socketRef,
+    submissionStats,
+  } = useLiveParticipantSocket({
+    realtimeUrl,
+    pin,
+    participant,
+    initialParticipants,
+    initialSessionStatus,
   });
-  const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
-    null,
-  );
-  const [currentResult, setCurrentResult] = useState<QuestionResult | null>(
-    null,
-  );
-  const [finalLeaderboard, setFinalLeaderboard] = useState<LeaderboardEntry[]>(
-    [],
-  );
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [leaderboardVersion, setLeaderboardVersion] = useState(0);
-  const [rankDeltaById, setRankDeltaById] = useState<Record<string, number>>(
-    {},
-  );
+
   const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState<
     number | null
   >(null);
-  const [answerState, setAnswerState] =
-    useState<AnswerState>(initialAnswerState);
-  const [socketConnected, setSocketConnected] = useState(false);
-  const [justReconnected, setJustReconnected] = useState(false);
-  const wasDisconnectedRef = useRef(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [playerCurrentStreak, setPlayerCurrentStreak] = useState(
-    participant.currentStreak,
-  );
   const [animatedScore, setAnimatedScore] = useState(participant.score);
-  const [submissionStats, setSubmissionStats] = useState({
-    submittedCount: 0,
-    totalParticipants: initialParticipants.length,
-  });
-  const socketRef = useRef<Socket | null>(null);
   const animatedScoreRef = useRef(participant.score);
-  const previousLeaderboardRef = useRef<LeaderboardEntry[]>([]);
-  const playerCurrentStreakRef = useRef(participant.currentStreak);
 
   const roomLabel = useMemo(() => {
     if (sessionState.status === "finished") {
@@ -207,40 +156,6 @@ export function LobbyClient({
   useEffect(() => {
     animatedScoreRef.current = animatedScore;
   }, [animatedScore]);
-
-  useEffect(() => {
-    playerCurrentStreakRef.current = playerCurrentStreak;
-  }, [playerCurrentStreak]);
-
-  useEffect(() => {
-    if (sessionState.status !== "countdown" || !sessionState.countdownSeconds) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      setSessionStatePayload((currentState) => {
-        if (
-          currentState.status !== "countdown" ||
-          currentState.countdownSeconds === null
-        ) {
-          window.clearInterval(interval);
-          return currentState;
-        }
-
-        return {
-          ...currentState,
-          countdownSeconds:
-            currentState.countdownSeconds > 1
-              ? currentState.countdownSeconds - 1
-              : 1,
-        };
-      });
-    }, 1000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [sessionState.countdownSeconds, sessionState.status]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -309,202 +224,6 @@ export function LobbyClient({
       window.cancelAnimationFrame(frame);
     };
   }, [participant.score, personalStanding?.score, prefersReducedMotion]);
-
-  useEffect(() => {
-    const socket: Socket = io(realtimeUrl, {
-      transports: ["websocket"],
-    });
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      setSocketConnected(true);
-      if (wasDisconnectedRef.current) {
-        wasDisconnectedRef.current = false;
-        setJustReconnected(true);
-        window.setTimeout(() => setJustReconnected(false), 4000);
-      }
-      socket.emit("session:join", {
-        avatar: participant.avatar,
-        currentStreak: participant.currentStreak,
-        nickname: participant.nickname,
-        participantId: participant.id,
-        participantToken: participant.participantToken,
-        pin,
-        role: "participant",
-        score: participant.score,
-        totalTimeMs: participant.totalTimeMs,
-      });
-    });
-
-    socket.on("disconnect", () => {
-      wasDisconnectedRef.current = true;
-      setSocketConnected(false);
-    });
-
-    socket.on(
-      "participant:list",
-      (payload: { connectedCount: number; participants: Participant[] }) => {
-        setParticipants(payload.participants);
-        setConnectedCount(payload.connectedCount);
-        const currentParticipant = payload.participants.find(
-          (entry) => entry.id === participant.id,
-        );
-        if (currentParticipant) {
-          setPlayerCurrentStreak(currentParticipant.currentStreak);
-        }
-        setSubmissionStats((currentStats) => ({
-          ...currentStats,
-          totalParticipants: payload.connectedCount,
-        }));
-      },
-    );
-
-    socket.on("session:state", (payload: SessionStatePayload) => {
-      setSessionStatePayload(payload);
-    });
-
-    socket.on("session:countdown", (payload: { seconds: number }) => {
-      setCurrentResult(null);
-      setSessionStatePayload((currentState) => ({
-        ...currentState,
-        countdownSeconds: payload.seconds,
-        interruptionReason: null,
-        status: "countdown",
-      }));
-    });
-
-    socket.on("session:started", () => {
-      setCurrentResult(null);
-      setFinalLeaderboard([]);
-      setSessionStatePayload((currentState) => ({
-        ...currentState,
-        countdownSeconds: null,
-        interruptionReason: null,
-        status: "playing",
-      }));
-    });
-
-    socket.on("session:question", (payload: { question: ActiveQuestion }) => {
-      setCurrentQuestion(payload.question);
-      setCurrentResult(null);
-      setAnswerState(initialAnswerState);
-      setQuestionRemainingSeconds(payload.question.timeLimitSeconds);
-      setSubmissionStats((currentStats) => ({
-        submittedCount: payload.question.submittedCount,
-        totalParticipants: currentStats.totalParticipants,
-      }));
-    });
-
-    socket.on(
-      "question:stats",
-      (payload: { submittedCount: number; totalParticipants: number }) => {
-        setSubmissionStats({
-          submittedCount: payload.submittedCount,
-          totalParticipants: payload.totalParticipants,
-        });
-      },
-    );
-
-    socket.on(
-      "leaderboard:update",
-      (payload: { entries: LeaderboardEntry[] }) => {
-        const previousRanks = new Map(
-          previousLeaderboardRef.current.map((entry) => [entry.id, entry.rank]),
-        );
-        const nextRankDeltaById = payload.entries.reduce<
-          Record<string, number>
-        >((accumulator, entry) => {
-          const previousRank = previousRanks.get(entry.id);
-
-          if (typeof previousRank === "number" && previousRank !== entry.rank) {
-            accumulator[entry.id] = previousRank - entry.rank;
-          }
-
-          return accumulator;
-        }, {});
-
-        previousLeaderboardRef.current = payload.entries;
-        setRankDeltaById(nextRankDeltaById);
-        setLeaderboardVersion((currentVersion) => currentVersion + 1);
-        const currentParticipant = payload.entries.find(
-          (entry) => entry.id === participant.id,
-        );
-        if (currentParticipant) {
-          setPlayerCurrentStreak(currentParticipant.currentStreak);
-        }
-        setLeaderboard(payload.entries);
-      },
-    );
-
-    socket.on("question:result", (payload: { result: QuestionResult }) => {
-      setCurrentResult(payload.result);
-      setLeaderboard(payload.result.leaderboard);
-      setQuestionRemainingSeconds(0);
-      setSessionStatePayload((currentState) => ({
-        ...currentState,
-        countdownSeconds: null,
-        interruptionReason: null,
-        status: "question_result",
-      }));
-    });
-
-    socket.on(
-      "session:final",
-      (payload: { leaderboard: LeaderboardEntry[]; status: string }) => {
-        setFinalLeaderboard(payload.leaderboard);
-        setLeaderboard(payload.leaderboard);
-        setSessionStatePayload((currentState) => ({
-          ...currentState,
-          countdownSeconds: null,
-          interruptionReason: null,
-          status: payload.status as SessionStatePayload["status"],
-        }));
-      },
-    );
-
-    socket.on(
-      "answer:ack",
-      (payload: {
-        accepted: boolean;
-        answerIndex?: number;
-        currentStreak?: number;
-        isCorrect?: boolean;
-        pointsEarned?: number;
-      }) => {
-        if (!payload.accepted) {
-          return;
-        }
-
-        setAnswerState({
-          accepted: true,
-          answerIndex: payload.answerIndex ?? null,
-          currentStreak:
-            payload.currentStreak ?? playerCurrentStreakRef.current,
-          isCorrect: payload.isCorrect ?? null,
-          pointsEarned: payload.pointsEarned ?? 0,
-          submitted: true,
-        });
-        setPlayerCurrentStreak(
-          payload.currentStreak ?? playerCurrentStreakRef.current,
-        );
-      },
-    );
-
-    return () => {
-      socketRef.current = null;
-      socket.disconnect();
-    };
-  }, [
-    participant.avatar,
-    participant.currentStreak,
-    participant.id,
-    participant.nickname,
-    participant.participantToken,
-    participant.score,
-    participant.totalTimeMs,
-    pin,
-    realtimeUrl,
-  ]);
 
   const displayedScore = prefersReducedMotion
     ? (personalStanding?.score ?? participant.score)
