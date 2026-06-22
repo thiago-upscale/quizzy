@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { URL } from "node:url";
 import { Redis } from "ioredis";
@@ -5,6 +6,29 @@ import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { env } from "./env.js";
 import { logger } from "./logger.js";
+
+function isValidHostToken(
+  sessionId: string,
+  token: string | undefined,
+  secret: string,
+): boolean {
+  if (!token) return false;
+  const hourWindow = Math.floor(Date.now() / 3_600_000);
+  for (const w of [hourWindow, hourWindow - 1]) {
+    const expected = createHmac("sha256", secret)
+      .update(`host:${sessionId}:${w}`)
+      .digest("hex");
+    const expectedBuf = Buffer.from(expected);
+    const tokenBuf = Buffer.from(token);
+    if (
+      expectedBuf.length === tokenBuf.length &&
+      timingSafeEqual(expectedBuf, tokenBuf)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 type SessionStatus =
   | "waiting"
@@ -1637,11 +1661,25 @@ io.on("connection", (socket) => {
 
   socket.on(
     "host:watch",
-    async (payload: { pin?: string; sessionId?: string }) => {
+    async (payload: {
+      hostToken?: string;
+      pin?: string;
+      sessionId?: string;
+    }) => {
       const pin = payload.pin?.trim();
       const sessionId = payload.sessionId?.trim();
+      const hostToken = payload.hostToken?.trim();
 
       if (!pin) {
+        return;
+      }
+
+      if (
+        !sessionId ||
+        !isValidHostToken(sessionId, hostToken, env.REALTIME_INTERNAL_TOKEN)
+      ) {
+        logger.warn({ pin, sessionId }, "host.watch.rejected_invalid_token");
+        socket.emit("host:error", { reason: "unauthorized" });
         return;
       }
 

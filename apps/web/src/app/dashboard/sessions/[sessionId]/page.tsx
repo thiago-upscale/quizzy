@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
@@ -28,6 +29,13 @@ import { HostSessionPanel } from "./host-session-panel";
 import { ReportSection } from "./report-section";
 
 export const dynamic = "force-dynamic";
+
+function makeHostToken(sessionId: string, secret: string): string {
+  const hourWindow = Math.floor(Date.now() / 3_600_000);
+  return createHmac("sha256", secret)
+    .update(`host:${sessionId}:${hourWindow}`)
+    .digest("hex");
+}
 
 export default async function SessionDetailPage({
   params,
@@ -146,6 +154,7 @@ export default async function SessionDetailPage({
       {isLive && quizSession.pin && publicUrl && qrCodeDataUrl ? (
         <HostSessionPanel
           advanceAction={advanceLiveSession}
+          hostToken={makeHostToken(quizSession.id, env.REALTIME_INTERNAL_TOKEN)}
           initialParticipants={joinedParticipants.map((participant) => ({
             ...participant,
             presenceStatus: "offline" as const,

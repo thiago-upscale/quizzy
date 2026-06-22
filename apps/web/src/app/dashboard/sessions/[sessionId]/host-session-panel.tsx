@@ -118,6 +118,7 @@ function SubmitButton({
 
 export function HostSessionPanel({
   advanceAction,
+  hostToken,
   initialParticipants,
   pin,
   publicUrl,
@@ -132,6 +133,7 @@ export function HostSessionPanel({
     state: StartLiveSessionState,
     formData: FormData,
   ) => Promise<StartLiveSessionState>;
+  hostToken: string;
   initialParticipants: Participant[];
   pin: string;
   publicUrl: string;
@@ -294,7 +296,7 @@ export function HostSessionPanel({
       setSocketConnected(true);
       setSocketPhase("connected");
       setReconnectNote(null);
-      socket.emit("host:watch", { pin, sessionId });
+      socket.emit("host:watch", { hostToken, pin, sessionId });
     });
 
     socket.on("disconnect", () => {
@@ -385,7 +387,7 @@ export function HostSessionPanel({
       socket.io.off("error");
       socket.disconnect();
     };
-  }, [pin, realtimeUrl, sessionId]);
+  }, [hostToken, pin, realtimeUrl, sessionId]);
 
   return (
     <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
