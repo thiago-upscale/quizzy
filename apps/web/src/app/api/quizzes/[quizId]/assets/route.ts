@@ -10,7 +10,7 @@ import { uploadStoredObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
-const MAX_ASSET_SIZE_BYTES = 2 * 1024 * 1024;
+const MAX_ASSET_SIZE_BYTES = 5 * 1024 * 1024;
 
 const assetMimeTypes = {
   "image/avif": "avif",
@@ -19,6 +19,39 @@ const assetMimeTypes = {
   "image/png": "png",
   "image/webp": "webp",
 } as const;
+
+function detectMimeFromBytes(buf: Uint8Array): string | null {
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff)
+    return "image/jpeg";
+  if (
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47 &&
+    buf[4] === 0x0d &&
+    buf[5] === 0x0a &&
+    buf[6] === 0x1a &&
+    buf[7] === 0x0a
+  )
+    return "image/png";
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38)
+    return "image/gif";
+  if (
+    buf[0] === 0x52 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x46 &&
+    buf[8] === 0x57 &&
+    buf[9] === 0x45 &&
+    buf[10] === 0x42 &&
+    buf[11] === 0x50
+  )
+    return "image/webp";
+  // AVIF/HEIF: ftyp box at offset 4
+  if (buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70)
+    return "image/avif";
+  return null;
+}
 
 type AssetType = "branding-background" | "branding-logo" | "question-image";
 
@@ -67,6 +100,15 @@ export async function POST(
 
   if (file.size === 0 || file.size > MAX_ASSET_SIZE_BYTES) {
     return NextResponse.json({ error: "invalid_size" }, { status: 400 });
+  }
+
+  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const detectedMime = detectMimeFromBytes(bytes);
+  if (detectedMime !== file.type) {
+    return NextResponse.json(
+      { error: "content_type_mismatch" },
+      { status: 400 },
+    );
   }
 
   const extension = assetMimeTypes[file.type as keyof typeof assetMimeTypes];
