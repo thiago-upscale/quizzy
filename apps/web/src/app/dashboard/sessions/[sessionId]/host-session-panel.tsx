@@ -13,6 +13,13 @@ import { io, type Socket } from "socket.io-client";
 import { formatTime } from "@/lib/datetime";
 import type { StartLiveSessionState } from "../../actions";
 import { getStatusLabel } from "../../dashboard-helpers";
+import type {
+  ActiveQuestion,
+  LeaderboardEntry,
+  QuestionResult,
+  SessionStatePayload,
+  SessionStatus,
+} from "@/lib/socket-types";
 
 type Participant = {
   avatar: string;
@@ -21,55 +28,6 @@ type Participant = {
   presenceStatus: "offline" | "online";
   score: number;
   totalTimeMs: number;
-};
-
-type LeaderboardEntry = {
-  answeredCurrentQuestion: boolean;
-  avatar: string;
-  id: string;
-  lastIsCorrect: boolean | null;
-  lastPointsEarned: number;
-  nickname: string;
-  rank: number;
-  score: number;
-  totalTimeMs: number;
-};
-
-type ActiveQuestion = {
-  id: string;
-  options: string[];
-  orderIndex: number;
-  prompt: string;
-  startedAt: number;
-  submittedCount: number;
-  timeLimitSeconds: number;
-  totalQuestions: number;
-  type: "multiple_choice" | "true_false";
-};
-
-type QuestionResult = {
-  correctCount: number;
-  correctOptionIndex: number;
-  leaderboard: LeaderboardEntry[];
-  options: string[];
-  prompt: string;
-  questionId: string;
-  questionOrderIndex: number;
-  submittedCount: number;
-  totalQuestions: number;
-};
-
-type SessionStatePayload = {
-  connectedParticipantsCount: number;
-  countdownSeconds: number | null;
-  hostRecoveryDeadlineAt: number | null;
-  hostLastSeenAt: number | null;
-  hostPresenceStatus: "offline" | "online";
-  interruptionReason: "host_disconnected" | null;
-  lastEventAt: number | null;
-  offlineParticipantsCount: number;
-  rejectedAnswersCount: number;
-  status: string;
 };
 
 const initialActionState: StartLiveSessionState = {
@@ -177,7 +135,7 @@ export function HostSessionPanel({
       lastEventAt: null,
       offlineParticipantsCount: initialParticipants.length,
       rejectedAnswersCount: 0,
-      status: sessionStatus,
+      status: sessionStatus as SessionStatus,
     },
   );
   const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(

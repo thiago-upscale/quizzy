@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StatusAlert } from "@/components/phase-one-ui";
 import { io, type Socket } from "socket.io-client";
+import type { LiveBranding } from "@/lib/live";
+import type {
+  ActiveQuestion,
+  LeaderboardEntry,
+  QuestionResult,
+  SessionStatePayload,
+} from "@/lib/socket-types";
 
 type Participant = {
   avatar: string;
@@ -12,67 +19,6 @@ type Participant = {
   presenceStatus: "offline" | "online";
   score: number;
   totalTimeMs: number;
-};
-
-type LeaderboardEntry = {
-  answeredCurrentQuestion: boolean;
-  avatar: string;
-  currentStreak: number;
-  id: string;
-  lastIsCorrect: boolean | null;
-  lastPointsEarned: number;
-  nickname: string;
-  rank: number;
-  score: number;
-  totalTimeMs: number;
-};
-
-type LiveBranding = {
-  accentColor: string;
-  backgroundImageUrl: string | null;
-  fontFamily: string;
-  logoUrl: string | null;
-  primaryColor: string;
-  secondaryColor: string;
-  showQuestionOnMobile: boolean;
-};
-
-type SessionState = {
-  connectedParticipantsCount: number;
-  countdownSeconds: number | null;
-  hostLastSeenAt: number | null;
-  hostPresenceStatus: "offline" | "online";
-  interruptionReason: "host_disconnected" | null;
-  lastEventAt: number | null;
-  offlineParticipantsCount: number;
-  rejectedAnswersCount: number;
-  status: string;
-};
-
-type ActiveQuestion = {
-  id: string;
-  imageUrl: string | null;
-  options: string[];
-  orderIndex: number;
-  prompt: string;
-  startedAt: number;
-  submittedCount: number;
-  timeLimitSeconds: number;
-  totalQuestions: number;
-  type: "multiple_choice" | "true_false";
-};
-
-type QuestionResult = {
-  correctCount: number;
-  correctOptionIndex: number;
-  imageUrl: string | null;
-  leaderboard: LeaderboardEntry[];
-  options: string[];
-  prompt: string;
-  questionId: string;
-  questionOrderIndex: number;
-  submittedCount: number;
-  totalQuestions: number;
 };
 
 type AnswerState = {
@@ -172,18 +118,19 @@ export function LobbyClient({
       (currentParticipant) => currentParticipant.presenceStatus === "online",
     ).length,
   );
-  const [sessionState, setSessionState] = useState<SessionState>({
+  const [sessionState, setSessionStatePayload] = useState<SessionStatePayload>({
     connectedParticipantsCount: initialParticipants.filter(
       (currentParticipant) => currentParticipant.presenceStatus === "online",
     ).length,
     countdownSeconds: initialSessionStatus === "countdown" ? 3 : null,
+    hostRecoveryDeadlineAt: null,
     hostLastSeenAt: null,
     hostPresenceStatus: "offline",
     interruptionReason: null,
     lastEventAt: null,
     offlineParticipantsCount: initialParticipants.length,
     rejectedAnswersCount: 0,
-    status: initialSessionStatus,
+    status: initialSessionStatus as SessionStatePayload["status"],
   });
   const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
     null,
@@ -271,7 +218,7 @@ export function LobbyClient({
     }
 
     const interval = window.setInterval(() => {
-      setSessionState((currentState) => {
+      setSessionStatePayload((currentState) => {
         if (
           currentState.status !== "countdown" ||
           currentState.countdownSeconds === null
@@ -412,13 +359,13 @@ export function LobbyClient({
       },
     );
 
-    socket.on("session:state", (payload: SessionState) => {
-      setSessionState(payload);
+    socket.on("session:state", (payload: SessionStatePayload) => {
+      setSessionStatePayload(payload);
     });
 
     socket.on("session:countdown", (payload: { seconds: number }) => {
       setCurrentResult(null);
-      setSessionState((currentState) => ({
+      setSessionStatePayload((currentState) => ({
         ...currentState,
         countdownSeconds: payload.seconds,
         interruptionReason: null,
@@ -429,7 +376,7 @@ export function LobbyClient({
     socket.on("session:started", () => {
       setCurrentResult(null);
       setFinalLeaderboard([]);
-      setSessionState((currentState) => ({
+      setSessionStatePayload((currentState) => ({
         ...currentState,
         countdownSeconds: null,
         interruptionReason: null,
@@ -493,7 +440,7 @@ export function LobbyClient({
       setCurrentResult(payload.result);
       setLeaderboard(payload.result.leaderboard);
       setQuestionRemainingSeconds(0);
-      setSessionState((currentState) => ({
+      setSessionStatePayload((currentState) => ({
         ...currentState,
         countdownSeconds: null,
         interruptionReason: null,
@@ -506,11 +453,11 @@ export function LobbyClient({
       (payload: { leaderboard: LeaderboardEntry[]; status: string }) => {
         setFinalLeaderboard(payload.leaderboard);
         setLeaderboard(payload.leaderboard);
-        setSessionState((currentState) => ({
+        setSessionStatePayload((currentState) => ({
           ...currentState,
           countdownSeconds: null,
           interruptionReason: null,
-          status: payload.status,
+          status: payload.status as SessionStatePayload["status"],
         }));
       },
     );

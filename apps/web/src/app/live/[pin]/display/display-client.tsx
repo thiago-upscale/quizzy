@@ -9,44 +9,18 @@ import {
   startLiveSession,
 } from "@/app/dashboard/actions";
 import type { LiveBranding } from "@/lib/live";
+import type {
+  ActiveQuestion,
+  LeaderboardEntry,
+  QuestionResult,
+  SessionStatePayload,
+} from "@/lib/socket-types";
 import { io } from "socket.io-client";
 
 type Participant = {
   id: string;
   nickname: string;
   presenceStatus: "offline" | "online";
-};
-
-type LeaderboardEntry = {
-  id: string;
-  nickname: string;
-  rank: number;
-  score: number;
-};
-
-type ActiveQuestion = {
-  id: string;
-  options: string[];
-  orderIndex: number;
-  prompt: string;
-  startedAt: number;
-  timeLimitSeconds: number;
-  totalQuestions: number;
-  type: "multiple_choice" | "true_false";
-};
-
-type QuestionResult = {
-  correctCount: number;
-  correctOptionIndex: number;
-  options: string[];
-  prompt: string;
-  questionId: string;
-  submittedCount: number;
-};
-
-type SessionState = {
-  status: string;
-  countdownSeconds: number | null;
 };
 
 type QuestionStat = {
@@ -286,9 +260,17 @@ export function DisplayClient({
   const [connectedCount, setConnectedCount] = useState(
     initialParticipants.filter((p) => p.presenceStatus === "online").length,
   );
-  const [sessionState, setSessionState] = useState<SessionState>({
-    status: "waiting",
+  const [sessionState, setSessionStatePayload] = useState<SessionStatePayload>({
+    connectedParticipantsCount: 0,
     countdownSeconds: null,
+    hostRecoveryDeadlineAt: null,
+    hostLastSeenAt: null,
+    hostPresenceStatus: "offline",
+    interruptionReason: null,
+    lastEventAt: null,
+    offlineParticipantsCount: 0,
+    rejectedAnswersCount: 0,
+    status: "waiting",
   });
   const [currentQuestion, setCurrentQuestion] = useState<ActiveQuestion | null>(
     null,
@@ -342,8 +324,8 @@ export function DisplayClient({
       },
     );
 
-    socket.on("session:state", (payload: SessionState) => {
-      setSessionState(payload);
+    socket.on("session:state", (payload: SessionStatePayload) => {
+      setSessionStatePayload(payload);
     });
 
     socket.on("session:question", (payload: { question: ActiveQuestion }) => {
@@ -381,12 +363,15 @@ export function DisplayClient({
       "session:final",
       (payload: { leaderboard: LeaderboardEntry[]; status: string }) => {
         setLeaderboard(payload.leaderboard);
-        setSessionState((s) => ({ ...s, status: payload.status }));
+        setSessionStatePayload((s) => ({
+          ...s,
+          status: payload.status as SessionStatePayload["status"],
+        }));
       },
     );
 
     socket.on("session:finished", () => {
-      setSessionState((s) => ({ ...s, status: "finished" }));
+      setSessionStatePayload((s) => ({ ...s, status: "finished" }));
     });
 
     return () => {
