@@ -87,6 +87,7 @@ type BrandingPayload = {
 
 export type SaveQuizState = {
   message?: string;
+  quizStatus?: "draft" | "published";
   status: "idle" | "success" | "error";
 };
 
@@ -468,14 +469,21 @@ export async function saveQuiz(
     }
   });
 
+  // Revalidate the dashboard list (title/status changes show there), but NOT the
+  // editor route itself: revalidating the current page re-renders this dynamic
+  // route and remounts the client editor, wiping the in-progress form state back
+  // to (stale) server props — which made an edited "Tempo limite" snap back even
+  // though it was saved correctly. The editor is force-dynamic, so navigating
+  // back to it refetches fresh data anyway. We return quizStatus so the client
+  // can update the published/draft badge without that remount.
   revalidatePath("/dashboard");
-  revalidatePath(`/dashboard/quizzes/${quizId}`);
 
   return {
     message:
       intent === "publish"
         ? "Versao publicada com sucesso."
         : "Rascunho salvo com sucesso.",
+    quizStatus: nextStatus,
     status: "success",
   };
 }
