@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -45,20 +45,18 @@ export function QuizEditor({
     () => initialQuestions[0]?.id ?? null,
   );
   const [menuOpen, setMenuOpen] = useState(false);
-  // Local copy of the published/draft status. The save action no longer
-  // revalidates this route (that remounted the editor and wiped form state), so
-  // we sync the badge from the action result instead of from a refreshed prop.
-  const [statusState, setStatusState] = useState(status);
   const [saveState, saveFormAction] = useActionState(
     saveAction,
     initialSaveState,
   );
 
-  useEffect(() => {
-    if (saveState.status === "success" && saveState.quizStatus) {
-      setStatusState(saveState.quizStatus);
-    }
-  }, [saveState]);
+  // The save action no longer revalidates this route (that remounted the editor
+  // and wiped form state), so the published/draft badge is derived from the
+  // action result instead of from a refreshed prop.
+  const statusState =
+    saveState.status === "success" && saveState.quizStatus
+      ? saveState.quizStatus
+      : status;
 
   const tabs = [
     { id: "questions" as const, label: "Perguntas", Icon: Edit3 },

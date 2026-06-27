@@ -195,13 +195,20 @@ export function LobbyClient({
       );
     };
 
-    setQuestionRemainingSeconds(computeRemaining());
+    // First tick runs on the next macrotask (not synchronously in the effect)
+    // so a late joiner gets the corrected value immediately without violating
+    // react-hooks/set-state-in-effect; before it fires, the render fallback
+    // already shows the full time limit.
+    const prime = window.setTimeout(() => {
+      setQuestionRemainingSeconds(computeRemaining());
+    }, 0);
 
     const interval = window.setInterval(() => {
       setQuestionRemainingSeconds(computeRemaining());
     }, 250);
 
     return () => {
+      window.clearTimeout(prime);
       window.clearInterval(interval);
     };
   }, [currentQuestion, sessionState.status]);
