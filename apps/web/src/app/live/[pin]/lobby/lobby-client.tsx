@@ -262,6 +262,8 @@ export function LobbyClient({
   const shouldUseCompactMobileLobby =
     !shouldUseMobileAnswerMode &&
     (sessionState.status === "waiting" || sessionState.status === "countdown");
+  const shouldUseFullScreenResult =
+    sessionState.status === "question_result" && currentResult !== null;
 
   return (
     <main
@@ -390,9 +392,151 @@ export function LobbyClient({
           </section>
         ) : null}
 
+        {shouldUseFullScreenResult && currentResult ? (
+          <section
+            aria-label="Resultado da rodada"
+            className="flex min-h-[100dvh] flex-col gap-4 md:hidden"
+          >
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt="Logo"
+                className="h-8 w-auto max-w-[140px] self-center object-contain drop-shadow"
+                src={branding.logoUrl}
+              />
+            ) : null}
+
+            {currentResult.questionType === "poll" ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+                  {currentResult.submittedCount} votos registrados
+                </p>
+                {currentResult.options.map((option, idx) => {
+                  const votes = currentResult.voteCounts[idx] ?? 0;
+                  const total = currentResult.submittedCount || 1;
+                  const pct = Math.round((votes / total) * 100);
+                  const isChosen = answerState.answerIndex === idx;
+                  return (
+                    <div
+                      key={`poll-result-${currentResult.questionId}-${idx}`}
+                      className={`rounded-[1.4rem] px-5 py-4 ${
+                        isChosen
+                          ? "bg-white/20 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.22)]"
+                          : "bg-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold leading-snug">
+                          {option}
+                        </span>
+                        <span className="shrink-0 text-sm font-black">
+                          {pct}%{isChosen ? " ★" : ""}
+                        </span>
+                      </div>
+                      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            backgroundColor: isChosen
+                              ? "rgba(255,255,255,0.7)"
+                              : "rgba(255,255,255,0.38)",
+                            width: `${pct}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {!personalStanding?.answeredCurrentQuestion ? (
+                  <div className="rounded-[1.8rem] border border-[rgba(234,179,8,0.25)] bg-[rgba(234,179,8,0.1)] p-6 text-center">
+                    <p className="text-4xl">⏱</p>
+                    <p className="mt-2 text-sm font-bold uppercase tracking-[0.12em] text-[#fde047]">
+                      Tempo esgotado
+                    </p>
+                  </div>
+                ) : personalStanding.lastIsCorrect ? (
+                  <div className="rounded-[1.8rem] border border-[rgba(22,163,74,0.3)] bg-[rgba(22,163,74,0.15)] p-6 text-center">
+                    <p className="text-5xl font-black text-[#4ade80]">✓</p>
+                    <p className="mt-2 text-sm font-bold uppercase tracking-[0.12em] text-[#86efac]">
+                      Você acertou!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-[1.8rem] border border-[rgba(239,68,68,0.25)] bg-[rgba(239,68,68,0.12)] p-6 text-center">
+                    <p className="text-5xl font-black text-[#f87171]">✗</p>
+                    <p className="mt-2 text-sm font-bold uppercase tracking-[0.12em] text-[#fca5a5]">
+                      Você errou
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                    Resposta correta
+                  </p>
+                  <div className="rounded-[1.4rem] bg-[#15803d] px-5 py-4">
+                    <p className="text-base font-semibold leading-snug text-[#dcfce7]">
+                      {currentResult.options[currentResult.correctOptionIndex]}
+                    </p>
+                  </div>
+                </div>
+
+                {personalStanding?.answeredCurrentQuestion &&
+                !personalStanding.lastIsCorrect &&
+                answerState.answerIndex != null ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                      Sua escolha
+                    </p>
+                    <div className="rounded-[1.4rem] border border-[rgba(239,68,68,0.25)] bg-[rgba(185,28,28,0.55)] px-5 py-4">
+                      <p className="text-base font-semibold leading-snug text-[#fca5a5]">
+                        {currentResult.options[answerState.answerIndex]}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {personalStanding ? (
+                  <div
+                    className={`rounded-[1.8rem] p-5 text-center ${
+                      personalStanding.lastIsCorrect
+                        ? "border border-[rgba(22,163,74,0.22)] bg-[rgba(22,163,74,0.12)]"
+                        : "bg-white/6"
+                    }`}
+                  >
+                    <p
+                      className={`text-3xl font-black ${
+                        personalStanding.lastIsCorrect
+                          ? "text-[#4ade80]"
+                          : "text-white/30"
+                      }`}
+                    >
+                      {personalStanding.lastIsCorrect
+                        ? `+${personalStanding.lastPointsEarned} pts`
+                        : "+0 pts"}
+                    </p>
+                    <p className="mt-1 text-sm text-white/35">
+                      {personalStanding.rank}º lugar
+                    </p>
+                  </div>
+                ) : null}
+              </>
+            )}
+
+            <p className="mt-auto pb-2 text-center text-xs text-white/22">
+              Aguardando próxima pergunta...
+            </p>
+          </section>
+        ) : null}
+
         <header
           className={`rounded-[2rem] bg-white/10 p-5 shadow-[0_24px_90px_rgba(15,23,42,0.25)] backdrop-blur ${
-            shouldUseMobileAnswerMode ? "hidden md:block" : ""
+            shouldUseMobileAnswerMode || shouldUseFullScreenResult
+              ? "hidden md:block"
+              : ""
           }`}
         >
           <div className="flex flex-col gap-4">
@@ -496,7 +640,7 @@ export function LobbyClient({
         </header>
 
         <section
-          className={`space-y-4 ${shouldUseMobileAnswerMode ? "hidden md:block" : ""}`}
+          className={`space-y-4 ${shouldUseMobileAnswerMode || shouldUseFullScreenResult ? "hidden md:block" : ""}`}
         >
           <article
             className={`rounded-[1.8rem] bg-white/10 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur ${
