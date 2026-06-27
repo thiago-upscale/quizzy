@@ -60,7 +60,9 @@ export function useDisplaySocket({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    const socket = io(realtimeUrl, { transports: ["websocket"] });
+    const socket = io(realtimeUrl, {
+      transports: ["websocket", "polling"],
+    });
 
     socket.on("connect", () => {
       socket.emit("display:watch", { pin });
@@ -133,8 +135,15 @@ export function useDisplaySocket({
     if (timerRef.current) clearInterval(timerRef.current);
     if (!currentQuestion || sessionState.status !== "playing") return;
 
+    // Anchor on this device's own clock (see lobby-client) so a skewed local
+    // clock can't corrupt the countdown.
+    const clientReceivedAt = Date.now();
+    const serverElapsedAtReceiptMs =
+      currentQuestion.serverNow - currentQuestion.startedAt;
+
     timerRef.current = setInterval(() => {
-      const elapsed = (Date.now() - currentQuestion.startedAt) / 1000;
+      const elapsed =
+        (serverElapsedAtReceiptMs + (Date.now() - clientReceivedAt)) / 1000;
       const remaining = Math.max(
         0,
         Math.ceil(currentQuestion.timeLimitSeconds - elapsed),

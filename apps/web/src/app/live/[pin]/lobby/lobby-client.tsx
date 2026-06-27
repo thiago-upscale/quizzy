@@ -177,14 +177,28 @@ export function LobbyClient({
       return;
     }
 
-    const interval = window.setInterval(() => {
-      const elapsedMs = Date.now() - currentQuestion.startedAt;
-      const remaining = Math.max(
+    // Anchor the countdown on this device's own clock instead of subtracting
+    // the server epoch from Date.now(). Subtracting cross-clock values made a
+    // skewed phone clock corrupt the timer (e.g. a 30s question showing 10s).
+    // serverNow - startedAt = elapsed already counted on the server at receipt;
+    // from there we only add local elapsed measured with this same clock.
+    const clientReceivedAt = Date.now();
+    const serverElapsedAtReceiptMs =
+      currentQuestion.serverNow - currentQuestion.startedAt;
+
+    const computeRemaining = () => {
+      const elapsedMs =
+        serverElapsedAtReceiptMs + (Date.now() - clientReceivedAt);
+      return Math.max(
         0,
         Math.ceil(currentQuestion.timeLimitSeconds - elapsedMs / 1000),
       );
+    };
 
-      setQuestionRemainingSeconds(remaining);
+    setQuestionRemainingSeconds(computeRemaining());
+
+    const interval = window.setInterval(() => {
+      setQuestionRemainingSeconds(computeRemaining());
     }, 250);
 
     return () => {

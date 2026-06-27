@@ -41,6 +41,7 @@ export type ActiveQuestion = {
   orderIndex: number;
   prompt: string;
   startedAt: number;
+  serverNow: number;
   submittedCount: number;
   timeLimitSeconds: number;
   totalQuestions: number;

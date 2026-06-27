@@ -113,7 +113,12 @@ export function useLiveParticipantSocket({
   }, [playerCurrentStreak]);
 
   useEffect(() => {
-    const socket: Socket = io(realtimeUrl, { transports: ["websocket"] });
+    // Keep the polling fallback: on some mobile networks/proxies the raw
+    // WebSocket upgrade is blocked, and websocket-only would leave those
+    // phones unable to connect (blank question screen for the whole game).
+    const socket: Socket = io(realtimeUrl, {
+      transports: ["websocket", "polling"],
+    });
     socketRef.current = socket;
 
     socket.on("connect", () => {

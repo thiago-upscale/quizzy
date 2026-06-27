@@ -247,7 +247,7 @@ export function HostSessionPanel({
 
   useEffect(() => {
     const socket: Socket = io(realtimeUrl, {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
     });
 
     socket.on("connect", () => {

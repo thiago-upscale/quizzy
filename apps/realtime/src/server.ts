@@ -382,6 +382,7 @@ function serializeCurrentQuestion(room: RoomState) {
     orderIndex: currentQuestion.orderIndex,
     prompt: currentQuestion.prompt,
     startedAt: room.questionStartedAt,
+    serverNow: Date.now(),
     submittedCount: getQuestionAnswers(room, currentQuestion).size,
     timeLimitSeconds: currentQuestion.timeLimitSeconds,
     totalQuestions: room.questions.length,
@@ -1601,13 +1602,25 @@ io.on("connection", (socket) => {
       socket.data.pin = pin;
       socket.data.participantToken = participantToken;
       socket.data.role = "participant";
-      socket.join(pin);
+      await socket.join(pin);
       markRoomEvent(room);
 
       emitRoomSnapshot(io, pin, room);
 
       if (room.status === "playing") {
         const currentQuestion = getCurrentQuestion(room);
+
+        // Send the active question directly to the joining socket so a
+        // late/reconnecting participant never depends solely on the room
+        // broadcast above (which can race the Redis adapter join).
+        const serializedQuestion = serializeCurrentQuestion(room);
+        if (serializedQuestion) {
+          socket.emit("session:question", { question: serializedQuestion });
+        }
+        const questionStats = getQuestionStats(room);
+        if (questionStats) {
+          socket.emit("question:stats", questionStats);
+        }
 
         if (currentQuestion) {
           const answer = getQuestionAnswers(room, currentQuestion).get(
@@ -1704,7 +1717,7 @@ io.on("connection", (socket) => {
 
       socket.data.pin = pin;
       socket.data.role = "host";
-      socket.join(pin);
+      await socket.join(pin);
 
       if (room.status === "interrupted") {
         resumeInterruptedRoom(io, { pin, room });
