@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import { getAuthSession } from "@/auth/session";
 import { env } from "@/env";
+import { brandingSurfaceStyle } from "@/lib/branding-theme";
 import {
   getLiveSessionByPin,
   getSessionParticipants,
@@ -49,16 +50,11 @@ export default async function LiveDisplayPage({
   const canControlSession =
     authSession?.user?.organizationId === liveSession.quizOrganizationId;
 
-  const mainStyle = branding.backgroundImageUrl
-    ? {
-        backgroundImage: `linear-gradient(180deg, rgba(16,35,63,0.82) 0%, rgba(0,0,0,0.65) 100%), url(${branding.backgroundImageUrl})`,
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-      }
-    : { backgroundColor: branding.secondaryColor };
-
   return (
-    <main className="flex min-h-screen flex-col text-white" style={mainStyle}>
+    <main
+      className="flex min-h-screen flex-col text-white"
+      style={brandingSurfaceStyle(branding)}
+    >
       <DisplayClient
         baseUrl={env.NEXTAUTH_URL}
         branding={branding}

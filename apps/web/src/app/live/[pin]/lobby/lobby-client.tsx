@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StatusAlert } from "@/components/phase-one-ui";
+import { ANSWER_PALETTE, brandingSurfaceStyle } from "@/lib/branding-theme";
 import type { LiveBranding } from "@/lib/live";
 import type {
   ActiveQuestion,
@@ -38,28 +39,7 @@ function formatRankDelta(delta: number) {
   return delta > 0 ? `+${delta}` : String(delta);
 }
 
-const ANSWER_TILE_STYLES = [
-  {
-    bg: "#e21b3c",
-    fg: "#ffffff",
-    icon: "▲",
-  },
-  {
-    bg: "#1368ce",
-    fg: "#ffffff",
-    icon: "◆",
-  },
-  {
-    bg: "#d89e00",
-    fg: "#ffffff",
-    icon: "●",
-  },
-  {
-    bg: "#26890c",
-    fg: "#ffffff",
-    icon: "■",
-  },
-];
+const ANSWER_TILE_STYLES = ANSWER_PALETTE;
 
 export function LobbyClient({
   branding,
@@ -286,20 +266,21 @@ export function LobbyClient({
   return (
     <main
       className="min-h-screen px-4 py-4 text-white sm:px-6 sm:py-6"
-      style={{
-        backgroundImage: branding.backgroundImageUrl
-          ? `linear-gradient(180deg, rgba(16,35,63,0.84) 0%, rgba(15,118,110,0.84) 100%), url(${branding.backgroundImageUrl})`
-          : `linear-gradient(180deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-        fontFamily: branding.fontFamily,
-      }}
+      style={brandingSurfaceStyle(branding)}
     >
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-4">
         {shouldUseMobileAnswerMode && currentQuestion ? (
           <section className="flex min-h-[100dvh] flex-col md:hidden">
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt="Logo"
+                className="mb-3 h-8 w-auto max-w-[150px] self-center object-contain drop-shadow"
+                src={branding.logoUrl}
+              />
+            ) : null}
             {branding.showQuestionOnMobile ? (
-              <div className="rounded-[1.25rem] bg-white px-4 py-4 text-center text-[var(--quizzy-deep-blue)] shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
+              <div className="rounded-[1.25rem] bg-white px-4 py-4 text-center text-[var(--brand-secondary)] shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
                 <p className="text-[1.45rem] font-black leading-[1.15] tracking-[-0.03em]">
                   {currentQuestion.prompt}
                 </p>
@@ -312,7 +293,7 @@ export function LobbyClient({
                   aria-atomic="true"
                   aria-label={`${visibleQuestionTime} segundos restantes`}
                   aria-live="polite"
-                  className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[var(--quizzy-deep-blue)] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]"
+                  className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[var(--brand-secondary)] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]"
                 >
                   <span aria-hidden="true" className="text-xl font-black">
                     {visibleQuestionTime}
@@ -321,7 +302,10 @@ export function LobbyClient({
                 <div className="min-w-0 flex-1">
                   <span
                     className="inline-flex rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-[0.24em] text-[#10233f]"
-                    style={{ backgroundColor: branding.accentColor }}
+                    style={{
+                      backgroundColor: branding.accentColor,
+                      color: "var(--brand-on-accent)",
+                    }}
                   >
                     Pergunta {currentQuestion.orderIndex + 1} de{" "}
                     {currentQuestion.totalQuestions}
@@ -334,7 +318,7 @@ export function LobbyClient({
                       : `${submissionStats.submittedCount}/${submissionStats.totalParticipants} respostas`}
                   </p>
                 </div>
-                <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[var(--quizzy-deep-blue)] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
+                <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full bg-[var(--brand-secondary)] text-white shadow-[0_12px_30px_rgba(30,58,138,0.35)]">
                   <span className="text-xl font-black">
                     {submissionStats.submittedCount}
                   </span>
@@ -392,7 +376,7 @@ export function LobbyClient({
                 })}
               </div>
 
-              <div className="mt-3 flex items-center justify-between rounded-full bg-[var(--quizzy-deep-blue)] px-4 py-2.5 text-sm text-white/80">
+              <div className="mt-3 flex items-center justify-between rounded-full bg-[var(--brand-secondary)] px-4 py-2.5 text-sm text-white/80">
                 <span className="font-semibold tracking-[0.08em]">
                   PIN {pin}
                 </span>
@@ -451,7 +435,10 @@ export function LobbyClient({
               </p>
               <span
                 className="mt-5 inline-flex w-fit rounded-full px-5 py-2.5 text-xs font-bold uppercase tracking-[0.24em] text-[#10233f]"
-                style={{ backgroundColor: branding.accentColor }}
+                style={{
+                  backgroundColor: branding.accentColor,
+                  color: "var(--brand-on-accent)",
+                }}
               >
                 {roomLabel}
               </span>
@@ -567,6 +554,7 @@ export function LobbyClient({
                             ? "quizzy-pulse-soft 1.2s ease-in-out infinite"
                             : undefined,
                         backgroundColor: branding.accentColor,
+                        color: "var(--brand-on-accent)",
                       }}
                     >
                       🔥 Sequência ×{activeStreak}
@@ -757,14 +745,20 @@ export function LobbyClient({
                   {currentResult.questionType === "poll" ? (
                     <span
                       className="rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
-                      style={{ backgroundColor: branding.accentColor }}
+                      style={{
+                        backgroundColor: branding.accentColor,
+                        color: "var(--brand-on-accent)",
+                      }}
                     >
                       {currentResult.submittedCount} votos
                     </span>
                   ) : (
                     <span
                       className="rounded-full px-4 py-2 text-sm font-semibold text-[#10233f]"
-                      style={{ backgroundColor: branding.accentColor }}
+                      style={{
+                        backgroundColor: branding.accentColor,
+                        color: "var(--brand-on-accent)",
+                      }}
                     >
                       {currentResult.correctCount}/
                       {currentResult.submittedCount} acertaram
@@ -995,7 +989,10 @@ export function LobbyClient({
                   >
                     <div
                       className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-[#10233f]"
-                      style={{ backgroundColor: branding.accentColor }}
+                      style={{
+                        backgroundColor: branding.accentColor,
+                        color: "var(--brand-on-accent)",
+                      }}
                     >
                       {entry.rank}
                     </div>
@@ -1049,7 +1046,10 @@ export function LobbyClient({
                   >
                     <div
                       className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-[#10233f]"
-                      style={{ backgroundColor: branding.accentColor }}
+                      style={{
+                        backgroundColor: branding.accentColor,
+                        color: "var(--brand-on-accent)",
+                      }}
                     >
                       {currentParticipant.nickname.slice(0, 2).toUpperCase()}
                     </div>

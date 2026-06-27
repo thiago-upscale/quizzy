@@ -10,12 +10,21 @@ import {
   sessionEvents,
 } from "@/db/schema";
 
+export type BackgroundDimming = "leve" | "medio" | "forte";
+
+export const BACKGROUND_DIMMING_VALUES: BackgroundDimming[] = [
+  "leve",
+  "medio",
+  "forte",
+];
+
 export type LiveBranding = {
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
   fontFamily: string;
   backgroundImageUrl: string | null;
+  backgroundDimming: BackgroundDimming;
   logoUrl: string | null;
   showQuestionOnMobile: boolean;
 };
@@ -69,6 +78,7 @@ export const defaultLiveBranding: LiveBranding = {
   accentColor: "#f59e0b",
   fontFamily: "DM Sans",
   backgroundImageUrl: null,
+  backgroundDimming: "medio",
   logoUrl: null,
   showQuestionOnMobile: false,
 };
@@ -90,6 +100,11 @@ export function normalizeLiveBranding(
       typeof branding?.backgroundImageUrl === "string"
         ? branding.backgroundImageUrl
         : defaultLiveBranding.backgroundImageUrl,
+    backgroundDimming: BACKGROUND_DIMMING_VALUES.includes(
+      branding?.backgroundDimming as BackgroundDimming,
+    )
+      ? (branding?.backgroundDimming as BackgroundDimming)
+      : defaultLiveBranding.backgroundDimming,
     logoUrl:
       typeof branding?.logoUrl === "string"
         ? branding.logoUrl

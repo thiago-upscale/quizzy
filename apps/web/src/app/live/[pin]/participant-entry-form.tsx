@@ -63,7 +63,11 @@ export function ParticipantEntryForm({
       </div>
 
       <button
-        className="w-full rounded-full bg-[var(--quizzy-accent)] px-5 py-3.5 text-base font-bold text-slate-950 shadow-[0_12px_30px_rgba(245,158,11,0.28)] transition hover:brightness-105 active:scale-[0.99]"
+        className="w-full rounded-full px-5 py-3.5 text-base font-bold shadow-[0_12px_30px_rgba(15,23,42,0.18)] transition hover:brightness-105 active:scale-[0.99]"
+        style={{
+          backgroundColor: "var(--brand-accent, var(--quizzy-accent))",
+          color: "var(--brand-on-accent, #0f172a)",
+        }}
         type="submit"
       >
         Entrar na sala

@@ -122,6 +122,7 @@ export default async function QuizDetailPage({
     accentColor: string;
     fontFamily: string;
     backgroundImageUrl: string | null;
+    backgroundDimming: "leve" | "medio" | "forte";
     logoUrl: string | null;
     showQuestionOnMobile: boolean;
   }>;
@@ -134,6 +135,7 @@ export default async function QuizDetailPage({
           accentColor: branding.accentColor ?? "#f59e0b",
           fontFamily: branding.fontFamily ?? "DM Sans",
           backgroundImageUrl: branding.backgroundImageUrl ?? null,
+          backgroundDimming: branding.backgroundDimming ?? "medio",
           logoUrl: branding.logoUrl ?? null,
           showQuestionOnMobile: branding.showQuestionOnMobile ?? false,
         }}

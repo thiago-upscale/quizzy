@@ -81,6 +81,7 @@ type BrandingPayload = {
   accentColor: string;
   fontFamily: string;
   backgroundImageUrl: string | null;
+  backgroundDimming: "leve" | "medio" | "forte";
   logoUrl: string | null;
   showQuestionOnMobile: boolean;
 };
@@ -106,8 +107,9 @@ const defaultBranding: BrandingPayload = {
   primaryColor: "#0f766e",
   secondaryColor: "#10233f",
   accentColor: "#f59e0b",
-  fontFamily: "Manrope",
+  fontFamily: "DM Sans",
   backgroundImageUrl: null,
+  backgroundDimming: "medio",
   logoUrl: null,
   showQuestionOnMobile: false,
 };
@@ -161,6 +163,11 @@ function normalizeBranding(
         ? branding.fontFamily
         : defaultBranding.fontFamily,
     backgroundImageUrl: sanitizeAssetUrl(branding.backgroundImageUrl),
+    backgroundDimming: (["leve", "medio", "forte"] as const).includes(
+      branding.backgroundDimming as "leve" | "medio" | "forte",
+    )
+      ? (branding.backgroundDimming as "leve" | "medio" | "forte")
+      : defaultBranding.backgroundDimming,
     logoUrl: sanitizeAssetUrl(branding.logoUrl),
     showQuestionOnMobile:
       typeof branding.showQuestionOnMobile === "boolean"

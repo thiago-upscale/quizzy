@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { joinLiveSession } from "../actions";
+import { brandingSurfaceStyle } from "@/lib/branding-theme";
 import {
   canAccessLiveStatus,
   getLiveParticipantCookieName,
@@ -81,14 +82,7 @@ export default async function LiveEntryPage({
   return (
     <main
       className="min-h-screen px-4 py-4 text-white sm:px-6 sm:py-8"
-      style={{
-        backgroundImage: branding.backgroundImageUrl
-          ? `linear-gradient(180deg, rgba(16,35,63,0.84) 0%, rgba(15,118,110,0.84) 100%), url(${branding.backgroundImageUrl})`
-          : `linear-gradient(180deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-        fontFamily: branding.fontFamily,
-      }}
+      style={brandingSurfaceStyle(branding)}
     >
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-md items-center justify-center">
         <section className="w-full rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-[0_24px_90px_rgba(15,23,42,0.25)] backdrop-blur sm:p-6">

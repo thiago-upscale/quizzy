@@ -8,15 +8,11 @@ import {
   skipLiveQuestion,
   startLiveSession,
 } from "@/app/dashboard/actions";
+import { ANSWER_PALETTE, brandingSurfaceStyle } from "@/lib/branding-theme";
 import type { LiveBranding } from "@/lib/live";
 import { useDisplaySocket } from "@/hooks/useDisplaySocket";
 
-const OPTION_STYLES = [
-  { bg: "#e21b3c", icon: "▲" },
-  { bg: "#1368ce", icon: "◆" },
-  { bg: "#d89e00", icon: "●" },
-  { bg: "#26890c", icon: "■" },
-];
+const OPTION_STYLES = ANSWER_PALETTE;
 
 const PODIUM_CONFIG = [
   {
@@ -271,14 +267,7 @@ export function DisplayClient({
     status: "idle",
   });
 
-  const backgroundStyle = {
-    backgroundImage: branding.backgroundImageUrl
-      ? `linear-gradient(180deg, rgba(16,35,63,0.82) 0%, rgba(0,0,0,0.65) 100%), url(${branding.backgroundImageUrl})`
-      : `linear-gradient(160deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
-    backgroundPosition: "center",
-    backgroundSize: "cover",
-    fontFamily: branding.fontFamily,
-  };
+  const backgroundStyle = brandingSurfaceStyle(branding);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -697,11 +686,18 @@ export function DisplayClient({
         </div>
 
         {/* Bottom bar */}
-        <div className="relative z-20 flex items-center justify-between bg-[#0d1220] px-7 py-3">
+        <div
+          className="relative z-20 flex items-center justify-between px-7 py-3"
+          style={{ backgroundColor: "var(--brand-secondary)" }}
+        >
           <div className="flex items-center gap-4">
             <a
-              className="rounded-lg bg-[#26890c] px-5 py-2 text-sm font-black text-white transition hover:bg-[#22780a]"
+              className="rounded-lg px-5 py-2 text-sm font-black transition hover:opacity-90"
               href={`/live/${pin}`}
+              style={{
+                backgroundColor: "var(--brand-accent)",
+                color: "var(--brand-on-accent)",
+              }}
             >
               Entrar
             </a>
@@ -752,7 +748,17 @@ export function DisplayClient({
         className="relative flex flex-1 flex-col"
         style={{ fontFamily: branding.fontFamily }}
       >
-        <div className="relative flex min-h-24 items-center justify-end bg-white px-6 py-5 shadow-lg">
+        <div className="relative flex min-h-24 items-center justify-between bg-white px-6 py-5 shadow-lg">
+          {branding.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              alt="Logo"
+              className="h-12 w-auto max-w-[220px] object-contain"
+              src={branding.logoUrl}
+            />
+          ) : (
+            <span aria-hidden="true" />
+          )}
           {canControlSession ? (
             <div className="z-30 flex items-center gap-2">
               {sessionState.status === "playing" ? (
