@@ -50,16 +50,16 @@ export function brandingBackgroundStyle(branding: LiveBranding): CSSProperties {
     const [top, bottom] = DIMMING_ALPHAS[branding.backgroundDimming];
     return {
       backgroundImage: `linear-gradient(180deg, ${hexToRgba(
-        branding.secondaryColor,
+        branding.primaryColor,
         top,
-      )} 0%, ${hexToRgba(branding.secondaryColor, bottom)} 100%), url(${branding.backgroundImageUrl})`,
+      )} 0%, ${hexToRgba(branding.primaryColor, bottom)} 100%), url(${branding.backgroundImageUrl})`,
       backgroundPosition: "center",
       backgroundSize: "cover",
     };
   }
 
   return {
-    backgroundImage: `linear-gradient(180deg, ${branding.secondaryColor} 0%, ${branding.primaryColor} 100%)`,
+    backgroundImage: `linear-gradient(180deg, ${branding.primaryColor} 0%, ${branding.secondaryColor} 100%)`,
     backgroundPosition: "center",
     backgroundSize: "cover",
   };

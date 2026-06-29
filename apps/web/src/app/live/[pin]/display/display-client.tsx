@@ -686,10 +686,7 @@ export function DisplayClient({
         </div>
 
         {/* Bottom bar */}
-        <div
-          className="relative z-20 flex items-center justify-between px-7 py-3"
-          style={{ backgroundColor: "var(--brand-secondary)" }}
-        >
+        <div className="relative z-20 flex items-center justify-between bg-black/40 px-7 py-3 backdrop-blur-sm">
           <div className="flex items-center gap-4">
             <a
               className="rounded-lg px-5 py-2 text-sm font-black transition hover:opacity-90"
@@ -992,10 +989,7 @@ export function DisplayClient({
           </div>
         )}
 
-        <div
-          className="flex items-center justify-between px-8 py-3"
-          style={{ backgroundColor: branding.secondaryColor }}
-        >
+        <div className="flex items-center justify-between bg-black/40 px-8 py-3 backdrop-blur-sm">
           {branding.showPinOnDisplay ? (
             <span className="text-xs font-semibold text-white/40">
               PIN: <span className="text-white/70">{pinFormatted}</span>

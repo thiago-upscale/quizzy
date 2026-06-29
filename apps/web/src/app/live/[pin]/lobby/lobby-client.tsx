@@ -378,7 +378,7 @@ export function LobbyClient({
                 })}
               </div>
 
-              <div className="mt-3 flex items-center justify-between rounded-full bg-[var(--brand-secondary)] px-4 py-2.5 text-sm text-white/80">
+              <div className="mt-3 flex items-center justify-between rounded-full bg-black/35 px-4 py-2.5 text-sm text-white/80 backdrop-blur-sm">
                 <span className="font-semibold tracking-[0.08em]">
                   PIN {pin}
                 </span>
