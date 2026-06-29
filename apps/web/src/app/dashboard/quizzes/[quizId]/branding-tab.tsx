@@ -538,8 +538,8 @@ export function BrandingTab({
                 Escurecimento do fundo
               </p>
               <p className="text-xs leading-6 text-[#61708c]">
-                Controla o overlay sobre a imagem de fundo. "Nenhum" exibe a
-                imagem original sem escurecimento.
+                Controla o overlay sobre a imagem de fundo. Selecione Nenhum
+                para exibir a imagem original sem escurecimento.
               </p>
               <div className="flex gap-2">
                 {DIMMING_OPTIONS.map((option) => (
