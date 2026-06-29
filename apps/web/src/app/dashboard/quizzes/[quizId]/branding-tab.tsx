@@ -162,19 +162,25 @@ function DisplayPreview({
       branding={branding}
       className="aspect-video w-full rounded-[1.5rem] border border-white/40 shadow-xl"
     >
-      <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between bg-white px-4 py-2">
-          {branding.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              alt="Logo"
-              className="h-7 w-auto max-w-[120px] object-contain"
-              src={branding.logoUrl}
-            />
-          ) : (
-            <span className="text-xs font-bold text-slate-400">Projetor</span>
-          )}
-        </div>
+      <div className="relative flex h-full flex-col">
+        {/* Floating logo badge — mirrors display-client.tsx behaviour */}
+        {branding.logoUrl && branding.logoPosition !== "hidden" ? (
+          <div
+            className={`pointer-events-none absolute top-2 z-10 ${
+              branding.logoPosition === "top-right" ? "right-2" : "left-2"
+            }`}
+          >
+            <div className="rounded-xl bg-white/15 px-2 py-1.5 backdrop-blur-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt="Logo"
+                className="h-5 w-auto max-w-[80px] object-contain"
+                src={branding.logoUrl}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div className="relative flex flex-1 items-center gap-3 px-4 py-3">
           <div className="flex flex-col items-center gap-1">
             <div
@@ -205,10 +211,7 @@ function DisplayPreview({
             </div>
           </div>
         </div>
-        <div
-          className="flex items-center justify-between px-4 py-2"
-          style={{ backgroundColor: "var(--brand-secondary)" }}
-        >
+        <div className="flex items-center justify-between bg-black/40 px-4 py-2 backdrop-blur-sm">
           <span
             className="rounded px-3 py-1 text-[10px] font-black"
             style={{
