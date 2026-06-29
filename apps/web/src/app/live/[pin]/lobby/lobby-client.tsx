@@ -1163,8 +1163,7 @@ export function LobbyClient({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">
-                        {branding.anonymousMode &&
-                        entry.id !== participant.id
+                        {branding.anonymousMode && entry.id !== participant.id
                           ? "Participante"
                           : entry.nickname}
                       </p>

@@ -791,9 +791,7 @@ export function DisplayClient({
               aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
               className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-black/35 text-white backdrop-blur-sm transition hover:bg-black/55 active:translate-y-px"
               onClick={() => void toggleFullscreen()}
-              title={
-                isFullscreen ? "Sair da tela cheia (F)" : "Tela cheia (F)"
-              }
+              title={isFullscreen ? "Sair da tela cheia (F)" : "Tela cheia (F)"}
               type="button"
             >
               {isFullscreen ? (
