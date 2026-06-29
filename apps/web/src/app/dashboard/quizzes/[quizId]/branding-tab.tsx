@@ -21,6 +21,7 @@ const DIMMING_OPTIONS: Array<{
   value: BrandingState["backgroundDimming"];
   label: string;
 }> = [
+  { value: "nenhum", label: "Nenhum" },
   { value: "leve", label: "Leve" },
   { value: "medio", label: "Médio" },
   { value: "forte", label: "Forte" },

@@ -18,7 +18,10 @@ export const RESULT_COLORS = {
   wrong: "#7f1d1d",
 } as const;
 
-const DIMMING_ALPHAS: Record<BackgroundDimming, [number, number]> = {
+const DIMMING_ALPHAS: Record<
+  Exclude<BackgroundDimming, "nenhum">,
+  [number, number]
+> = {
   leve: [0.25, 0.45],
   medio: [0.45, 0.65],
   forte: [0.7, 0.85],
@@ -47,6 +50,14 @@ export function brandingCssVars(branding: LiveBranding): CSSProperties {
 // overlay hid it).
 export function brandingBackgroundStyle(branding: LiveBranding): CSSProperties {
   if (branding.backgroundImageUrl) {
+    if (branding.backgroundDimming === "nenhum") {
+      return {
+        backgroundImage: `url(${branding.backgroundImageUrl})`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+      };
+    }
+
     const [top, bottom] = DIMMING_ALPHAS[branding.backgroundDimming];
     return {
       backgroundImage: `linear-gradient(180deg, ${hexToRgba(

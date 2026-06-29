@@ -10,9 +10,10 @@ import {
   sessionEvents,
 } from "@/db/schema";
 
-export type BackgroundDimming = "leve" | "medio" | "forte";
+export type BackgroundDimming = "nenhum" | "leve" | "medio" | "forte";
 
 export const BACKGROUND_DIMMING_VALUES: BackgroundDimming[] = [
+  "nenhum",
   "leve",
   "medio",
   "forte",

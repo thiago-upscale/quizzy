@@ -16,7 +16,7 @@ export type BrandingState = {
   accentColor: string;
   fontFamily: string;
   backgroundImageUrl: string | null;
-  backgroundDimming: "leve" | "medio" | "forte";
+  backgroundDimming: "nenhum" | "leve" | "medio" | "forte";
   logoUrl: string | null;
   showQuestionOnMobile: boolean;
   slogan: string;

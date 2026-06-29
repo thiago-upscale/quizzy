@@ -81,7 +81,7 @@ type BrandingPayload = {
   accentColor: string;
   fontFamily: string;
   backgroundImageUrl: string | null;
-  backgroundDimming: "leve" | "medio" | "forte";
+  backgroundDimming: "nenhum" | "leve" | "medio" | "forte";
   logoUrl: string | null;
   showQuestionOnMobile: boolean;
   slogan: string;
@@ -197,10 +197,10 @@ function normalizeBranding(
         ? branding.fontFamily
         : defaultBranding.fontFamily,
     backgroundImageUrl: sanitizeAssetUrl(branding.backgroundImageUrl),
-    backgroundDimming: (["leve", "medio", "forte"] as const).includes(
-      branding.backgroundDimming as "leve" | "medio" | "forte",
+    backgroundDimming: (["nenhum", "leve", "medio", "forte"] as const).includes(
+      branding.backgroundDimming as "nenhum" | "leve" | "medio" | "forte",
     )
-      ? (branding.backgroundDimming as "leve" | "medio" | "forte")
+      ? (branding.backgroundDimming as "nenhum" | "leve" | "medio" | "forte")
       : defaultBranding.backgroundDimming,
     logoUrl: sanitizeAssetUrl(branding.logoUrl),
     showQuestionOnMobile:
