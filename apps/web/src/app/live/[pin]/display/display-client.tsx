@@ -748,55 +748,62 @@ export function DisplayClient({
         className="relative flex flex-1 flex-col"
         style={{ fontFamily: branding.fontFamily }}
       >
-        <div className="relative flex min-h-24 items-center justify-between bg-white px-6 py-5 shadow-lg">
-          {branding.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              alt="Logo"
-              className="h-12 w-auto max-w-[220px] object-contain"
-              src={branding.logoUrl}
-            />
-          ) : (
-            <span aria-hidden="true" />
-          )}
-          {canControlSession ? (
-            <div className="z-30 flex items-center gap-2">
-              {sessionState.status === "playing" ? (
-                <button
-                  className="min-w-24 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-[#334155] shadow-sm transition hover:bg-slate-50 active:translate-y-px"
-                  onClick={() => setShowSkipConfirmation(true)}
-                  title="Pular pergunta (S)"
-                  type="button"
-                >
-                  Pular
-                </button>
-              ) : null}
-              <form action={advanceFormAction} ref={advanceFormRef}>
-                <input name="sessionId" type="hidden" value={sessionId} />
-                <HostControlButton
-                  label={advanceLabel}
-                  pendingLabel="Avançando..."
-                  variant="primary"
-                />
-              </form>
+        {/* Floating logo badge — position driven by branding.logoPosition */}
+        {branding.logoUrl && branding.logoPosition !== "hidden" ? (
+          <div
+            className={`pointer-events-none absolute top-4 z-20 ${
+              branding.logoPosition === "top-right" ? "right-4" : "left-4"
+            }`}
+          >
+            <div className="rounded-2xl bg-white/15 px-3 py-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt="Logo"
+                className="h-10 w-auto max-w-[180px] object-contain"
+                src={branding.logoUrl}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {/* Host controls — floating glass bar, no white background */}
+        {canControlSession ? (
+          <div className="relative z-30 flex min-h-16 items-center justify-end gap-2 px-6 py-3">
+            {sessionState.status === "playing" ? (
               <button
-                aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
-                className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-[#334155] shadow-sm transition hover:bg-slate-50 active:translate-y-px"
-                onClick={() => void toggleFullscreen()}
-                title={
-                  isFullscreen ? "Sair da tela cheia (F)" : "Tela cheia (F)"
-                }
+                className="min-w-24 rounded-xl border border-white/20 bg-black/35 px-5 py-3 text-sm font-bold text-white shadow-sm backdrop-blur-sm transition hover:bg-black/55 active:translate-y-px"
+                onClick={() => setShowSkipConfirmation(true)}
+                title="Pular pergunta (S)"
                 type="button"
               >
-                {isFullscreen ? (
-                  <Minimize2 aria-hidden="true" className="h-5 w-5" />
-                ) : (
-                  <Maximize2 aria-hidden="true" className="h-5 w-5" />
-                )}
+                Pular
               </button>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+            <form action={advanceFormAction} ref={advanceFormRef}>
+              <input name="sessionId" type="hidden" value={sessionId} />
+              <HostControlButton
+                label={advanceLabel}
+                pendingLabel="Avançando..."
+                variant="primary"
+              />
+            </form>
+            <button
+              aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-black/35 text-white backdrop-blur-sm transition hover:bg-black/55 active:translate-y-px"
+              onClick={() => void toggleFullscreen()}
+              title={
+                isFullscreen ? "Sair da tela cheia (F)" : "Tela cheia (F)"
+              }
+              type="button"
+            >
+              {isFullscreen ? (
+                <Minimize2 aria-hidden="true" className="h-5 w-5" />
+              ) : (
+                <Maximize2 aria-hidden="true" className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+        ) : null}
 
         {canControlSession && showSkipConfirmation ? (
           <div className="absolute right-6 top-28 z-50 w-[22rem] rounded-2xl border border-slate-200 bg-white p-5 text-[#132238] shadow-[0_24px_70px_rgba(15,23,42,0.25)]">
@@ -991,17 +998,25 @@ export function DisplayClient({
           className="flex items-center justify-between px-8 py-3"
           style={{ backgroundColor: branding.secondaryColor }}
         >
-          <span className="text-xs font-semibold text-white/40">
-            PIN: <span className="text-white/70">{pinFormatted}</span>
-          </span>
+          {branding.showPinOnDisplay ? (
+            <span className="text-xs font-semibold text-white/40">
+              PIN: <span className="text-white/70">{pinFormatted}</span>
+            </span>
+          ) : (
+            <span />
+          )}
           {canControlSession ? (
             <span className="text-xs font-semibold text-white/50">
               Espaço: avançar · S: pular · F: tela cheia
             </span>
           ) : null}
-          <span className="text-xs font-semibold text-white/40">
-            {connectedCount} participante{connectedCount !== 1 ? "s" : ""}
-          </span>
+          {branding.showParticipantCount ? (
+            <span className="text-xs font-semibold text-white/40">
+              {connectedCount} participante{connectedCount !== 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span />
+          )}
         </div>
       </div>
     );

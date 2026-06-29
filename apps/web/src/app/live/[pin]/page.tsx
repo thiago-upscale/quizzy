@@ -111,7 +111,8 @@ export default async function LiveEntryPage({
                 </span>
               </div>
               <p className="mt-4 text-sm leading-6 text-white/72">
-                Confirme como quer aparecer para o host e entre na sala.
+                {branding.welcomeMessage ||
+                  "Confirme como quer aparecer para o host e entre na sala."}
               </p>
             </div>
           </div>

@@ -84,6 +84,23 @@ type BrandingPayload = {
   backgroundDimming: "leve" | "medio" | "forte";
   logoUrl: string | null;
   showQuestionOnMobile: boolean;
+  slogan: string;
+  logoPosition: "top-left" | "top-right" | "hidden";
+  timerStyle: "number" | "bar" | "circle";
+  showPinOnDisplay: boolean;
+  showParticipantCount: boolean;
+  showLeaderboardBetweenQuestions: boolean;
+  autoAdvanceSeconds: number;
+  hideQuizzyBranding: boolean;
+  showScoreOnMobile: boolean;
+  showRankOnMobile: boolean;
+  welcomeMessage: string;
+  countdownMessage: string;
+  endMessage: string;
+  postQuizUrl: string;
+  enableAnimations: boolean;
+  surpriseMode: boolean;
+  anonymousMode: boolean;
 };
 
 export type SaveQuizState = {
@@ -112,6 +129,23 @@ const defaultBranding: BrandingPayload = {
   backgroundDimming: "medio",
   logoUrl: null,
   showQuestionOnMobile: false,
+  slogan: "",
+  logoPosition: "top-left",
+  timerStyle: "number",
+  showPinOnDisplay: true,
+  showParticipantCount: true,
+  showLeaderboardBetweenQuestions: false,
+  autoAdvanceSeconds: 0,
+  hideQuizzyBranding: false,
+  showScoreOnMobile: true,
+  showRankOnMobile: true,
+  welcomeMessage: "",
+  countdownMessage: "",
+  endMessage: "",
+  postQuizUrl: "",
+  enableAnimations: true,
+  surpriseMode: false,
+  anonymousMode: false,
 };
 
 const destructiveConfirmationText = "APAGAR";
@@ -173,6 +207,74 @@ function normalizeBranding(
       typeof branding.showQuestionOnMobile === "boolean"
         ? branding.showQuestionOnMobile
         : defaultBranding.showQuestionOnMobile,
+    slogan:
+      typeof branding.slogan === "string"
+        ? branding.slogan.trim().slice(0, 200)
+        : defaultBranding.slogan,
+    logoPosition: (["top-left", "top-right", "hidden"] as const).includes(
+      branding.logoPosition as "top-left" | "top-right" | "hidden",
+    )
+      ? (branding.logoPosition as "top-left" | "top-right" | "hidden")
+      : defaultBranding.logoPosition,
+    timerStyle: (["number", "bar", "circle"] as const).includes(
+      branding.timerStyle as "number" | "bar" | "circle",
+    )
+      ? (branding.timerStyle as "number" | "bar" | "circle")
+      : defaultBranding.timerStyle,
+    showPinOnDisplay:
+      typeof branding.showPinOnDisplay === "boolean"
+        ? branding.showPinOnDisplay
+        : defaultBranding.showPinOnDisplay,
+    showParticipantCount:
+      typeof branding.showParticipantCount === "boolean"
+        ? branding.showParticipantCount
+        : defaultBranding.showParticipantCount,
+    showLeaderboardBetweenQuestions:
+      typeof branding.showLeaderboardBetweenQuestions === "boolean"
+        ? branding.showLeaderboardBetweenQuestions
+        : defaultBranding.showLeaderboardBetweenQuestions,
+    autoAdvanceSeconds:
+      typeof branding.autoAdvanceSeconds === "number" &&
+      branding.autoAdvanceSeconds >= 0
+        ? Math.min(Math.floor(branding.autoAdvanceSeconds), 60)
+        : defaultBranding.autoAdvanceSeconds,
+    hideQuizzyBranding:
+      typeof branding.hideQuizzyBranding === "boolean"
+        ? branding.hideQuizzyBranding
+        : defaultBranding.hideQuizzyBranding,
+    showScoreOnMobile:
+      typeof branding.showScoreOnMobile === "boolean"
+        ? branding.showScoreOnMobile
+        : defaultBranding.showScoreOnMobile,
+    showRankOnMobile:
+      typeof branding.showRankOnMobile === "boolean"
+        ? branding.showRankOnMobile
+        : defaultBranding.showRankOnMobile,
+    welcomeMessage:
+      typeof branding.welcomeMessage === "string"
+        ? branding.welcomeMessage.trim().slice(0, 300)
+        : defaultBranding.welcomeMessage,
+    countdownMessage:
+      typeof branding.countdownMessage === "string"
+        ? branding.countdownMessage.trim().slice(0, 200)
+        : defaultBranding.countdownMessage,
+    endMessage:
+      typeof branding.endMessage === "string"
+        ? branding.endMessage.trim().slice(0, 300)
+        : defaultBranding.endMessage,
+    postQuizUrl: sanitizeAssetUrl(branding.postQuizUrl) ?? "",
+    enableAnimations:
+      typeof branding.enableAnimations === "boolean"
+        ? branding.enableAnimations
+        : defaultBranding.enableAnimations,
+    surpriseMode:
+      typeof branding.surpriseMode === "boolean"
+        ? branding.surpriseMode
+        : defaultBranding.surpriseMode,
+    anonymousMode:
+      typeof branding.anonymousMode === "boolean"
+        ? branding.anonymousMode
+        : defaultBranding.anonymousMode,
   };
 }
 

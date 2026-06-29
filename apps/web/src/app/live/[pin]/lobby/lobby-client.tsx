@@ -499,7 +499,8 @@ export function LobbyClient({
                   </div>
                 ) : null}
 
-                {personalStanding ? (
+                {personalStanding &&
+                (branding.showScoreOnMobile || branding.showRankOnMobile) ? (
                   <div
                     className={`rounded-[1.8rem] p-5 text-center ${
                       personalStanding.lastIsCorrect
@@ -507,20 +508,28 @@ export function LobbyClient({
                         : "bg-white/6"
                     }`}
                   >
-                    <p
-                      className={`text-3xl font-black ${
-                        personalStanding.lastIsCorrect
-                          ? "text-[#4ade80]"
-                          : "text-white/30"
-                      }`}
-                    >
-                      {personalStanding.lastIsCorrect
-                        ? `+${personalStanding.lastPointsEarned} pts`
-                        : "+0 pts"}
-                    </p>
-                    <p className="mt-1 text-sm text-white/35">
-                      {personalStanding.rank}º lugar
-                    </p>
+                    {branding.showScoreOnMobile ? (
+                      <p
+                        className={`text-3xl font-black ${
+                          personalStanding.lastIsCorrect
+                            ? "text-[#4ade80]"
+                            : "text-white/30"
+                        }`}
+                      >
+                        {branding.surpriseMode
+                          ? "???"
+                          : personalStanding.lastIsCorrect
+                            ? `+${personalStanding.lastPointsEarned} pts`
+                            : "+0 pts"}
+                      </p>
+                    ) : null}
+                    {branding.showRankOnMobile ? (
+                      <p className="mt-1 text-sm text-white/35">
+                        {branding.surpriseMode
+                          ? "? lugar"
+                          : `${personalStanding.rank}º lugar`}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </>
@@ -599,7 +608,7 @@ export function LobbyClient({
                   {sessionState.status === "countdown" ? (
                     <div className="rounded-[1.35rem] bg-white/10 px-4 py-4 text-center">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
-                        Começando agora
+                        {branding.countdownMessage || "Começando agora"}
                       </p>
                       <p className="mt-2 text-5xl font-black text-white">
                         {sessionState.countdownSeconds ?? 3}
@@ -1039,11 +1048,11 @@ export function LobbyClient({
               <div className="mt-8 rounded-[1.8rem] bg-white p-6 text-center text-slate-950 shadow-[0_18px_50px_rgba(16,35,63,0.16)]">
                 <p className="text-4xl">🏆</p>
                 <h2 className="mt-4 text-3xl font-bold leading-tight">
-                  Agradecemos a participação!
+                  {branding.endMessage || "Agradecemos a participação!"}
                 </h2>
                 <p className="mt-2 text-sm text-slate-500">{quizTitle}</p>
 
-                {personalStanding ? (
+                {personalStanding && !branding.surpriseMode ? (
                   <div className="mt-8 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-[1.35rem] bg-slate-100 px-4 py-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1070,6 +1079,18 @@ export function LobbyClient({
                       </p>
                     </div>
                   </div>
+                ) : null}
+
+                {branding.postQuizUrl ? (
+                  <a
+                    className="mt-6 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-bold text-white transition hover:opacity-90"
+                    href={branding.postQuizUrl}
+                    rel="noopener noreferrer"
+                    style={{ backgroundColor: branding.primaryColor }}
+                    target="_blank"
+                  >
+                    Continuar →
+                  </a>
                 ) : null}
               </div>
             ) : null}
@@ -1123,7 +1144,7 @@ export function LobbyClient({
                     key={`${entry.id}-v${leaderboardVersion}`}
                     className="flex items-center gap-3 rounded-[1.35rem] bg-white/10 px-4 py-3"
                     style={
-                      prefersReducedMotion
+                      prefersReducedMotion || !branding.enableAnimations
                         ? undefined
                         : {
                             animation: "quizzy-rise 360ms ease both",
@@ -1141,10 +1162,16 @@ export function LobbyClient({
                       {entry.rank}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">{entry.nickname}</p>
+                      <p className="text-sm font-semibold">
+                        {branding.anonymousMode &&
+                        entry.id !== participant.id
+                          ? "Participante"
+                          : entry.nickname}
+                      </p>
                       <p className="text-xs text-white/65">
-                        {entry.score} pontos em{" "}
-                        {formatDuration(entry.totalTimeMs)}
+                        {branding.surpriseMode
+                          ? "— pontos"
+                          : `${entry.score} pontos em ${formatDuration(entry.totalTimeMs)}`}
                       </p>
                     </div>
                     {formatRankDelta(rankDeltaById[entry.id] ?? 0) ? (

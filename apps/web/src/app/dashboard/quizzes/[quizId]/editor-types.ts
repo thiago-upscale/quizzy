@@ -19,6 +19,23 @@ export type BrandingState = {
   backgroundDimming: "leve" | "medio" | "forte";
   logoUrl: string | null;
   showQuestionOnMobile: boolean;
+  slogan: string;
+  logoPosition: "top-left" | "top-right" | "hidden";
+  timerStyle: "number" | "bar" | "circle";
+  showPinOnDisplay: boolean;
+  showParticipantCount: boolean;
+  showLeaderboardBetweenQuestions: boolean;
+  autoAdvanceSeconds: number;
+  hideQuizzyBranding: boolean;
+  showScoreOnMobile: boolean;
+  showRankOnMobile: boolean;
+  welcomeMessage: string;
+  countdownMessage: string;
+  endMessage: string;
+  postQuizUrl: string;
+  enableAnimations: boolean;
+  surpriseMode: boolean;
+  anonymousMode: boolean;
 };
 
 export type QuizEditorProps = {

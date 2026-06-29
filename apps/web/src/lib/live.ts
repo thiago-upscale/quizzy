@@ -18,6 +18,16 @@ export const BACKGROUND_DIMMING_VALUES: BackgroundDimming[] = [
   "forte",
 ];
 
+export type LogoPosition = "top-left" | "top-right" | "hidden";
+export type TimerStyle = "number" | "bar" | "circle";
+
+export const LOGO_POSITION_VALUES: LogoPosition[] = [
+  "top-left",
+  "top-right",
+  "hidden",
+];
+export const TIMER_STYLE_VALUES: TimerStyle[] = ["number", "bar", "circle"];
+
 export type LiveBranding = {
   primaryColor: string;
   secondaryColor: string;
@@ -27,6 +37,23 @@ export type LiveBranding = {
   backgroundDimming: BackgroundDimming;
   logoUrl: string | null;
   showQuestionOnMobile: boolean;
+  slogan: string;
+  logoPosition: LogoPosition;
+  timerStyle: TimerStyle;
+  showPinOnDisplay: boolean;
+  showParticipantCount: boolean;
+  showLeaderboardBetweenQuestions: boolean;
+  autoAdvanceSeconds: number;
+  hideQuizzyBranding: boolean;
+  showScoreOnMobile: boolean;
+  showRankOnMobile: boolean;
+  welcomeMessage: string;
+  countdownMessage: string;
+  endMessage: string;
+  postQuizUrl: string;
+  enableAnimations: boolean;
+  surpriseMode: boolean;
+  anonymousMode: boolean;
 };
 
 export type RuntimeLiveQuestion = {
@@ -81,6 +108,23 @@ export const defaultLiveBranding: LiveBranding = {
   backgroundDimming: "medio",
   logoUrl: null,
   showQuestionOnMobile: false,
+  slogan: "",
+  logoPosition: "top-left",
+  timerStyle: "number",
+  showPinOnDisplay: true,
+  showParticipantCount: true,
+  showLeaderboardBetweenQuestions: false,
+  autoAdvanceSeconds: 0,
+  hideQuizzyBranding: false,
+  showScoreOnMobile: true,
+  showRankOnMobile: true,
+  welcomeMessage: "",
+  countdownMessage: "",
+  endMessage: "",
+  postQuizUrl: "",
+  enableAnimations: true,
+  surpriseMode: false,
+  anonymousMode: false,
 };
 
 export function getLiveParticipantCookieName(pin: string) {
@@ -113,6 +157,75 @@ export function normalizeLiveBranding(
       typeof branding?.showQuestionOnMobile === "boolean"
         ? branding.showQuestionOnMobile
         : defaultLiveBranding.showQuestionOnMobile,
+    slogan:
+      typeof branding?.slogan === "string"
+        ? branding.slogan
+        : defaultLiveBranding.slogan,
+    logoPosition: LOGO_POSITION_VALUES.includes(
+      branding?.logoPosition as LogoPosition,
+    )
+      ? (branding?.logoPosition as LogoPosition)
+      : defaultLiveBranding.logoPosition,
+    timerStyle: TIMER_STYLE_VALUES.includes(branding?.timerStyle as TimerStyle)
+      ? (branding?.timerStyle as TimerStyle)
+      : defaultLiveBranding.timerStyle,
+    showPinOnDisplay:
+      typeof branding?.showPinOnDisplay === "boolean"
+        ? branding.showPinOnDisplay
+        : defaultLiveBranding.showPinOnDisplay,
+    showParticipantCount:
+      typeof branding?.showParticipantCount === "boolean"
+        ? branding.showParticipantCount
+        : defaultLiveBranding.showParticipantCount,
+    showLeaderboardBetweenQuestions:
+      typeof branding?.showLeaderboardBetweenQuestions === "boolean"
+        ? branding.showLeaderboardBetweenQuestions
+        : defaultLiveBranding.showLeaderboardBetweenQuestions,
+    autoAdvanceSeconds:
+      typeof branding?.autoAdvanceSeconds === "number" &&
+      branding.autoAdvanceSeconds >= 0
+        ? Math.floor(branding.autoAdvanceSeconds)
+        : defaultLiveBranding.autoAdvanceSeconds,
+    hideQuizzyBranding:
+      typeof branding?.hideQuizzyBranding === "boolean"
+        ? branding.hideQuizzyBranding
+        : defaultLiveBranding.hideQuizzyBranding,
+    showScoreOnMobile:
+      typeof branding?.showScoreOnMobile === "boolean"
+        ? branding.showScoreOnMobile
+        : defaultLiveBranding.showScoreOnMobile,
+    showRankOnMobile:
+      typeof branding?.showRankOnMobile === "boolean"
+        ? branding.showRankOnMobile
+        : defaultLiveBranding.showRankOnMobile,
+    welcomeMessage:
+      typeof branding?.welcomeMessage === "string"
+        ? branding.welcomeMessage
+        : defaultLiveBranding.welcomeMessage,
+    countdownMessage:
+      typeof branding?.countdownMessage === "string"
+        ? branding.countdownMessage
+        : defaultLiveBranding.countdownMessage,
+    endMessage:
+      typeof branding?.endMessage === "string"
+        ? branding.endMessage
+        : defaultLiveBranding.endMessage,
+    postQuizUrl:
+      typeof branding?.postQuizUrl === "string"
+        ? branding.postQuizUrl
+        : defaultLiveBranding.postQuizUrl,
+    enableAnimations:
+      typeof branding?.enableAnimations === "boolean"
+        ? branding.enableAnimations
+        : defaultLiveBranding.enableAnimations,
+    surpriseMode:
+      typeof branding?.surpriseMode === "boolean"
+        ? branding.surpriseMode
+        : defaultLiveBranding.surpriseMode,
+    anonymousMode:
+      typeof branding?.anonymousMode === "boolean"
+        ? branding.anonymousMode
+        : defaultLiveBranding.anonymousMode,
   };
 }
 

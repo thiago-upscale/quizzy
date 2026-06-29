@@ -26,6 +26,80 @@ const DIMMING_OPTIONS: Array<{
   { value: "forte", label: "Forte" },
 ];
 
+function Toggle({
+  checked,
+  label,
+  description,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  description?: string;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="space-y-0.5">
+        <p className="text-sm font-semibold text-[#22304a]">{label}</p>
+        {description ? (
+          <p className="text-xs leading-5 text-[#61708c]">{description}</p>
+        ) : null}
+      </div>
+      <button
+        aria-pressed={checked}
+        className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full border transition ${
+          checked
+            ? "border-[#0f766e] bg-[#0f766e]"
+            : "border-slate-300 bg-slate-200"
+        }`}
+        onClick={() => onChange(!checked)}
+        type="button"
+      >
+        <span
+          className={`inline-block h-6 w-6 rounded-full bg-white shadow transition ${
+            checked ? "translate-x-7" : "translate-x-1"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function SegmentedControl<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold text-[#22304a]">{label}</p>
+      <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            aria-pressed={value === option.value}
+            className={`flex-1 rounded-lg py-2 text-xs font-semibold transition ${
+              value === option.value
+                ? "bg-[#0f766e] text-white shadow-sm"
+                : "text-slate-600 hover:bg-white hover:shadow-sm"
+            }`}
+            onClick={() => onChange(option.value)}
+            type="button"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Faithful, theme-driven mockups: both consume the same brandingCssVars /
 // ANSWER_PALETTE as the real display and mobile screens, so the preview matches
 // what participants actually see.
@@ -492,39 +566,322 @@ export function BrandingTab({
           ) : null}
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-[#22304a]">
-                  Mostrar enunciado no celular
-                </p>
-                <p className="text-xs leading-6 text-[#61708c]">
-                  Quando desligado, o participante ve no mobile apenas
-                  cronometro, progresso e respostas no mesmo esquema do display.
-                </p>
-              </div>
-              <button
-                aria-pressed={branding.showQuestionOnMobile}
-                className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full border transition ${
-                  branding.showQuestionOnMobile
-                    ? "border-[#0f766e] bg-[#0f766e]"
-                    : "border-slate-300 bg-slate-200"
-                }`}
-                onClick={() =>
-                  setBranding((currentBranding) => ({
-                    ...currentBranding,
-                    showQuestionOnMobile: !currentBranding.showQuestionOnMobile,
+            <Toggle
+              checked={branding.showQuestionOnMobile}
+              description="Quando desligado, o participante vê no mobile apenas cronômetro, progresso e respostas no mesmo esquema do display."
+              label="Mostrar enunciado no celular"
+              onChange={(value) =>
+                setBranding((b) => ({ ...b, showQuestionOnMobile: value }))
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label
+              className="text-sm font-semibold text-[#22304a]"
+              htmlFor="branding-slogan"
+            >
+              Slogan / tagline
+            </label>
+            <input
+              className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm text-[#22304a] outline-none transition focus:border-[#0f766e]"
+              id="branding-slogan"
+              maxLength={200}
+              placeholder="Ex.: O quiz mais rápido da galáxia"
+              type="text"
+              value={branding.slogan}
+              onChange={(e) =>
+                setBranding((b) => ({ ...b, slogan: e.target.value }))
+              }
+            />
+            <p className="text-[11px] text-[#61708c]">
+              Aparece na tela de espera do lobby.
+            </p>
+          </div>
+        </FieldPanel>
+
+        {/* ── Display ─────────────────────────────────────────────── */}
+        <FieldPanel className="space-y-5">
+          <SectionHeading
+            eyebrow="Projetor"
+            helper="Controles que afetam a tela exibida para a plateia."
+            title="Display"
+          />
+
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <SegmentedControl
+              label="Posição do logo"
+              options={[
+                { value: "top-left", label: "Esquerda" },
+                { value: "top-right", label: "Direita" },
+                { value: "hidden", label: "Oculto" },
+              ]}
+              value={branding.logoPosition}
+              onChange={(value) =>
+                setBranding((b) => ({ ...b, logoPosition: value }))
+              }
+            />
+          </div>
+
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <SegmentedControl
+              label="Estilo do cronômetro"
+              options={[
+                { value: "number", label: "Número" },
+                { value: "bar", label: "Barra" },
+                { value: "circle", label: "Círculo" },
+              ]}
+              value={branding.timerStyle}
+              onChange={(value) =>
+                setBranding((b) => ({ ...b, timerStyle: value }))
+              }
+            />
+          </div>
+
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <Toggle
+              checked={branding.showPinOnDisplay}
+              label="Mostrar PIN no rodapé"
+              description="Exibe o código de entrada no rodapé do display."
+              onChange={(value) =>
+                setBranding((b) => ({ ...b, showPinOnDisplay: value }))
+              }
+            />
+            <div className="border-t border-slate-100 pt-3">
+              <Toggle
+                checked={branding.showParticipantCount}
+                label="Mostrar contador de participantes"
+                description="Exibe o total de participantes conectados no rodapé."
+                onChange={(value) =>
+                  setBranding((b) => ({ ...b, showParticipantCount: value }))
+                }
+              />
+            </div>
+            <div className="border-t border-slate-100 pt-3">
+              <Toggle
+                checked={branding.showLeaderboardBetweenQuestions}
+                label="Ranking entre perguntas"
+                description="Exibe o placar da sala automaticamente após cada resultado."
+                onChange={(value) =>
+                  setBranding((b) => ({
+                    ...b,
+                    showLeaderboardBetweenQuestions: value,
                   }))
                 }
-                type="button"
-              >
-                <span
-                  className={`inline-block h-6 w-6 rounded-full bg-white shadow transition ${
-                    branding.showQuestionOnMobile
-                      ? "translate-x-7"
-                      : "translate-x-1"
-                  }`}
-                />
-              </button>
+              />
+            </div>
+            <div className="border-t border-slate-100 pt-3">
+              <Toggle
+                checked={branding.hideQuizzyBranding}
+                label="Ocultar marca Quizzy"
+                description="Remove a assinatura do Quizzy das telas ao vivo."
+                onChange={(value) =>
+                  setBranding((b) => ({ ...b, hideQuizzyBranding: value }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <label
+              className="text-sm font-semibold text-[#22304a]"
+              htmlFor="auto-advance"
+            >
+              Avanço automático (segundos)
+            </label>
+            <p className="text-xs text-[#61708c]">
+              0 = desativado. Com valor &gt; 0, o display avança automaticamente
+              após o resultado.
+            </p>
+            <input
+              className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm text-[#22304a] outline-none transition focus:border-[#0f766e]"
+              id="auto-advance"
+              max={60}
+              min={0}
+              type="number"
+              value={branding.autoAdvanceSeconds}
+              onChange={(e) =>
+                setBranding((b) => ({
+                  ...b,
+                  autoAdvanceSeconds: Math.max(
+                    0,
+                    Math.min(60, parseInt(e.target.value, 10) || 0),
+                  ),
+                }))
+              }
+            />
+          </div>
+        </FieldPanel>
+
+        {/* ── Mobile ──────────────────────────────────────────────── */}
+        <FieldPanel className="space-y-5">
+          <SectionHeading
+            eyebrow="Celular"
+            helper="Controles que afetam a tela do participante."
+            title="Mobile"
+          />
+
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <Toggle
+              checked={branding.showScoreOnMobile}
+              label="Mostrar pontuação no celular"
+              description="Exibe o total de pontos acumulados na tela do participante."
+              onChange={(value) =>
+                setBranding((b) => ({ ...b, showScoreOnMobile: value }))
+              }
+            />
+            <div className="border-t border-slate-100 pt-3">
+              <Toggle
+                checked={branding.showRankOnMobile}
+                label="Mostrar colocação no celular"
+                description="Exibe a posição no ranking na tela do resultado."
+                onChange={(value) =>
+                  setBranding((b) => ({ ...b, showRankOnMobile: value }))
+                }
+              />
+            </div>
+          </div>
+        </FieldPanel>
+
+        {/* ── Telas especiais ─────────────────────────────────────── */}
+        <FieldPanel className="space-y-5">
+          <SectionHeading
+            eyebrow="Conteúdo"
+            helper="Textos personalizados para telas específicas do quiz."
+            title="Telas especiais"
+          />
+
+          <div className="space-y-2">
+            <label
+              className="text-sm font-semibold text-[#22304a]"
+              htmlFor="welcome-message"
+            >
+              Mensagem de boas-vindas
+            </label>
+            <textarea
+              className="w-full resize-none rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm text-[#22304a] outline-none transition focus:border-[#0f766e]"
+              id="welcome-message"
+              maxLength={300}
+              placeholder="Ex.: Bem-vindo ao Quiz de Conhecimentos! Prepare-se para jogar."
+              rows={2}
+              value={branding.welcomeMessage}
+              onChange={(e) =>
+                setBranding((b) => ({ ...b, welcomeMessage: e.target.value }))
+              }
+            />
+            <p className="text-[11px] text-[#61708c]">
+              Aparece na tela de entrada antes do participante entrar na sala.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label
+              className="text-sm font-semibold text-[#22304a]"
+              htmlFor="countdown-message"
+            >
+              Mensagem de contagem regressiva
+            </label>
+            <input
+              className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm text-[#22304a] outline-none transition focus:border-[#0f766e]"
+              id="countdown-message"
+              maxLength={200}
+              placeholder="Ex.: Preparem-se! A pergunta vem aí!"
+              type="text"
+              value={branding.countdownMessage}
+              onChange={(e) =>
+                setBranding((b) => ({
+                  ...b,
+                  countdownMessage: e.target.value,
+                }))
+              }
+            />
+            <p className="text-[11px] text-[#61708c]">
+              Aparece no celular durante a contagem antes de cada pergunta.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label
+              className="text-sm font-semibold text-[#22304a]"
+              htmlFor="end-message"
+            >
+              Mensagem de encerramento
+            </label>
+            <textarea
+              className="w-full resize-none rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm text-[#22304a] outline-none transition focus:border-[#0f766e]"
+              id="end-message"
+              maxLength={300}
+              placeholder="Ex.: Obrigado por participar! Até a próxima edição."
+              rows={2}
+              value={branding.endMessage}
+              onChange={(e) =>
+                setBranding((b) => ({ ...b, endMessage: e.target.value }))
+              }
+            />
+            <p className="text-[11px] text-[#61708c]">
+              Aparece na tela final do participante quando o quiz encerra.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label
+              className="text-sm font-semibold text-[#22304a]"
+              htmlFor="post-quiz-url"
+            >
+              URL de redirecionamento pós-quiz
+            </label>
+            <input
+              className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm text-[#22304a] outline-none transition focus:border-[#0f766e]"
+              id="post-quiz-url"
+              placeholder="https://exemplo.com/obrigado"
+              type="url"
+              value={branding.postQuizUrl}
+              onChange={(e) =>
+                setBranding((b) => ({ ...b, postQuizUrl: e.target.value }))
+              }
+            />
+            <p className="text-[11px] text-[#61708c]">
+              Ao encerrar, o participante vê um botão para visitar esta URL.
+            </p>
+          </div>
+        </FieldPanel>
+
+        {/* ── Comportamento ───────────────────────────────────────── */}
+        <FieldPanel className="space-y-5">
+          <SectionHeading
+            eyebrow="Regras"
+            helper="Configure o comportamento geral da sessão ao vivo."
+            title="Comportamento"
+          />
+
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <Toggle
+              checked={branding.enableAnimations}
+              label="Animações ativadas"
+              description="Desative para sessões onde acessibilidade visual é prioritária."
+              onChange={(value) =>
+                setBranding((b) => ({ ...b, enableAnimations: value }))
+              }
+            />
+            <div className="border-t border-slate-100 pt-3">
+              <Toggle
+                checked={branding.surpriseMode}
+                label="Modo surpresa"
+                description="Oculta pontuação e ranking durante a partida. Revelado apenas no encerramento."
+                onChange={(value) =>
+                  setBranding((b) => ({ ...b, surpriseMode: value }))
+                }
+              />
+            </div>
+            <div className="border-t border-slate-100 pt-3">
+              <Toggle
+                checked={branding.anonymousMode}
+                label="Modo anônimo"
+                description="Substitui os nomes por 'Participante' no ranking público da tela principal."
+                onChange={(value) =>
+                  setBranding((b) => ({ ...b, anonymousMode: value }))
+                }
+              />
             </div>
           </div>
         </FieldPanel>

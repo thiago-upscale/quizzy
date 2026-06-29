@@ -125,6 +125,23 @@ export default async function QuizDetailPage({
     backgroundDimming: "leve" | "medio" | "forte";
     logoUrl: string | null;
     showQuestionOnMobile: boolean;
+    slogan: string;
+    logoPosition: "top-left" | "top-right" | "hidden";
+    timerStyle: "number" | "bar" | "circle";
+    showPinOnDisplay: boolean;
+    showParticipantCount: boolean;
+    showLeaderboardBetweenQuestions: boolean;
+    autoAdvanceSeconds: number;
+    hideQuizzyBranding: boolean;
+    showScoreOnMobile: boolean;
+    showRankOnMobile: boolean;
+    welcomeMessage: string;
+    countdownMessage: string;
+    endMessage: string;
+    postQuizUrl: string;
+    enableAnimations: boolean;
+    surpriseMode: boolean;
+    anonymousMode: boolean;
   }>;
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -138,6 +155,24 @@ export default async function QuizDetailPage({
           backgroundDimming: branding.backgroundDimming ?? "medio",
           logoUrl: branding.logoUrl ?? null,
           showQuestionOnMobile: branding.showQuestionOnMobile ?? false,
+          slogan: branding.slogan ?? "",
+          logoPosition: branding.logoPosition ?? "top-left",
+          timerStyle: branding.timerStyle ?? "number",
+          showPinOnDisplay: branding.showPinOnDisplay ?? true,
+          showParticipantCount: branding.showParticipantCount ?? true,
+          showLeaderboardBetweenQuestions:
+            branding.showLeaderboardBetweenQuestions ?? false,
+          autoAdvanceSeconds: branding.autoAdvanceSeconds ?? 0,
+          hideQuizzyBranding: branding.hideQuizzyBranding ?? false,
+          showScoreOnMobile: branding.showScoreOnMobile ?? true,
+          showRankOnMobile: branding.showRankOnMobile ?? true,
+          welcomeMessage: branding.welcomeMessage ?? "",
+          countdownMessage: branding.countdownMessage ?? "",
+          endMessage: branding.endMessage ?? "",
+          postQuizUrl: branding.postQuizUrl ?? "",
+          enableAnimations: branding.enableAnimations ?? true,
+          surpriseMode: branding.surpriseMode ?? false,
+          anonymousMode: branding.anonymousMode ?? false,
         }}
         description={quiz.description ?? ""}
         initialQuestions={initialQuestions}
