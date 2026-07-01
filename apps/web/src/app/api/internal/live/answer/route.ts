@@ -6,6 +6,7 @@ import { env } from "@/env";
 
 type Payload = {
   answerIndex?: number;
+  answerValue?: number;
   currentStreak?: number;
   isCorrect?: boolean;
   participantToken?: string;
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
   const questionId = payload.questionId?.trim();
   const pin = payload.pin?.trim();
   const answerIndex = payload.answerIndex;
+  const answerValue = payload.answerValue;
   const questionOrderIndex = payload.questionOrderIndex;
   const timeSpentMs = payload.timeSpentMs;
   const currentStreak = payload.currentStreak;
@@ -52,7 +54,6 @@ export async function POST(request: Request) {
   if (
     !participantToken ||
     !sessionId ||
-    typeof answerIndex !== "number" ||
     typeof currentStreak !== "number" ||
     typeof questionOrderIndex !== "number" ||
     typeof timeSpentMs !== "number"
@@ -105,7 +106,10 @@ export async function POST(request: Request) {
           participantId: participant.id,
           questionId,
           sessionId,
-          answer: { index: answerIndex },
+          answer:
+            typeof answerValue === "number"
+              ? { value: answerValue }
+              : { index: answerIndex },
           timeSpentMs,
           isCorrect,
           pointsEarned,
@@ -131,6 +135,7 @@ export async function POST(request: Request) {
       eventType: "participant.answered",
       payload: {
         answerIndex,
+        answerValue,
         isCorrect,
         participantId: participant.id,
         pin,

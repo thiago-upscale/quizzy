@@ -781,8 +781,9 @@ export function DisplayClient({
     const question = currentResult
       ? { prompt: currentResult.prompt, options: currentResult.options }
       : currentQuestion!;
-    const isPoll =
-      (currentResult?.questionType ?? currentQuestion?.type) === "poll";
+    const questionType = currentResult?.questionType ?? currentQuestion?.type;
+    const isPoll = questionType === "poll";
+    const isScale = questionType === "scale";
     const densityMode = getDisplayDensityMode(
       question.prompt,
       question.options,
@@ -951,7 +952,84 @@ export function DisplayClient({
           </div>
         </div>
 
-        {isPoll && currentResult ? (
+        {isScale && currentResult ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 px-12 py-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/50">
+              {currentResult.submittedCount} respostas · valor alvo:{" "}
+              <span className="text-white/80">
+                {currentResult.targetValue}
+              </span>
+            </p>
+            <div className="w-full max-w-3xl">
+              {(currentResult.scaleDistribution ?? []).map((count, bucket) => {
+                const total = currentResult.submittedCount || 1;
+                const pct = Math.round((count / total) * 100);
+                const scaleMin = currentResult.scaleMin ?? 0;
+                const scaleMax = currentResult.scaleMax ?? 10;
+                const buckets = currentResult.scaleDistribution?.length ?? 10;
+                const bucketRange = (scaleMax - scaleMin) / buckets;
+                const bucketLabel = (
+                  scaleMin + bucket * bucketRange
+                ).toFixed(1);
+                const target = currentResult.targetValue ?? 0;
+                const bucketMid = scaleMin + (bucket + 0.5) * bucketRange;
+                const isTargetBucket =
+                  Math.abs(bucketMid - target) <= bucketRange / 2;
+                return (
+                  <div key={bucket} className="flex items-end gap-1">
+                    <span className="w-10 shrink-0 text-right text-[10px] text-white/40">
+                      {bucketLabel}
+                    </span>
+                    <div className="flex flex-1 flex-col items-center gap-0.5">
+                      <span className="text-xs font-black text-white/70">
+                        {count > 0 ? `${pct}%` : ""}
+                      </span>
+                      <div
+                        className="w-full rounded-t-lg transition-all duration-700"
+                        style={{
+                          height: `${Math.max(4, pct * 1.8)}px`,
+                          backgroundColor: isTargetBucket
+                            ? branding.accentColor
+                            : "rgba(255,255,255,0.35)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="mt-1 flex items-center justify-between px-11">
+                <span className="text-xs font-semibold text-white/50">
+                  {currentResult.scaleMin ?? 0}
+                </span>
+                <span className="text-xs font-semibold text-white/50">
+                  {currentResult.scaleMax ?? 10}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : isScale ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 px-12 py-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/50">
+              Aguardando respostas
+            </p>
+            <div className="flex w-full max-w-2xl items-center gap-4">
+              <span className="text-lg font-black text-white/60">
+                {currentQuestion?.minValue ?? 0}
+              </span>
+              <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-white/50 transition-all duration-300"
+                  style={{
+                    width: `${Math.min(100, (submittedCount / Math.max(1, connectedCount)) * 100)}%`,
+                  }}
+                />
+              </div>
+              <span className="text-lg font-black text-white/60">
+                {currentQuestion?.maxValue ?? 10}
+              </span>
+            </div>
+          </div>
+        ) : isPoll && currentResult ? (
           <div className="flex flex-1 flex-col justify-center gap-3 px-8 py-6">
             {question.options.map((option, i) => {
               const style = OPTION_STYLES[i % OPTION_STYLES.length];

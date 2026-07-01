@@ -91,6 +91,7 @@ export function LobbyClient({
     initialSessionStatus,
   });
 
+  const [scaleValue, setScaleValue] = useState<number | null>(null);
   const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState<
     number | null
   >(null);
@@ -286,6 +287,29 @@ export function LobbyClient({
     });
   }
 
+  function submitScaleAnswer(answerValue: number) {
+    if (
+      !currentQuestion ||
+      !socketRef.current ||
+      answerState.submitted ||
+      questionRemainingSeconds === 0 ||
+      sessionState.status !== "playing"
+    ) {
+      return;
+    }
+
+    if (branding.enableVibration && "vibrate" in navigator) {
+      navigator.vibrate(50);
+    }
+
+    socketRef.current.emit("answer:submit", {
+      answerValue,
+      participantToken: participant.participantToken,
+      pin,
+      questionId: currentQuestion.id,
+    });
+  }
+
   const leaderboardToRender =
     sessionState.status === "finished" && finalLeaderboard.length > 0
       ? finalLeaderboard
@@ -376,44 +400,104 @@ export function LobbyClient({
                 />
               ) : null}
 
-              <div className="mt-4 grid flex-1 grid-cols-2 overflow-hidden rounded-[1.4rem] shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
-                {currentQuestion.options.map((option, optionIndex) => {
-                  const isChosen = answerState.answerIndex === optionIndex;
-                  const tileStyle =
-                    ANSWER_TILE_STYLES[
-                      optionIndex % ANSWER_TILE_STYLES.length
-                    ] ?? ANSWER_TILE_STYLES[0]!;
-
-                  return (
-                    <button
-                      key={`mobile-${currentQuestion.id}-${optionIndex}`}
-                      aria-pressed={isChosen}
-                      className="min-h-[132px] border border-black/5 px-4 py-4 text-left transition active:scale-[0.99] disabled:opacity-100"
-                      disabled={
-                        answerState.submitted || questionRemainingSeconds === 0
-                      }
-                      onClick={() => submitAnswer(optionIndex)}
-                      style={{
-                        backgroundColor: tileStyle.bg,
-                        boxShadow: isChosen
-                          ? "inset 0 0 0 4px rgba(255,255,255,0.96)"
-                          : undefined,
-                        color: tileStyle.fg,
-                      }}
-                      type="button"
-                    >
-                      <div className="flex h-full flex-col justify-between gap-4">
-                        <span className="text-xl font-black">
-                          {tileStyle.icon}
+              {currentQuestion.type === "scale" ? (
+                <div className="mt-4 flex flex-1 flex-col gap-4 rounded-[1.4rem] bg-white/10 px-5 py-6">
+                  {answerState.submitted ? (
+                    <div className="flex flex-1 flex-col items-center justify-center gap-2">
+                      <p className="text-3xl font-black text-white">
+                        {answerState.answerValue ?? scaleValue}
+                      </p>
+                      <p className="text-sm font-semibold text-white/60">
+                        Resposta enviada
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-white/60">
+                          {currentQuestion.minValue ?? 0}
                         </span>
-                        <span className="text-[1rem] font-bold leading-snug">
-                          {option}
+                        <span className="text-2xl font-black text-white">
+                          {scaleValue ?? currentQuestion.minValue ?? 0}
+                        </span>
+                        <span className="text-sm font-semibold text-white/60">
+                          {currentQuestion.maxValue ?? 10}
                         </span>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      <input
+                        className="w-full accent-white"
+                        type="range"
+                        min={currentQuestion.minValue ?? 0}
+                        max={currentQuestion.maxValue ?? 10}
+                        step={currentQuestion.step ?? 1}
+                        value={
+                          scaleValue ?? currentQuestion.minValue ?? 0
+                        }
+                        disabled={questionRemainingSeconds === 0}
+                        onChange={(e) => setScaleValue(Number(e.target.value))}
+                      />
+                      <button
+                        className="w-full rounded-[1.2rem] py-4 text-base font-black uppercase tracking-[0.12em] transition active:scale-[0.98] disabled:opacity-40"
+                        style={{
+                          backgroundColor: branding.accentColor,
+                          color: "var(--brand-on-accent)",
+                        }}
+                        disabled={
+                          questionRemainingSeconds === 0 ||
+                          scaleValue === null
+                        }
+                        onClick={() =>
+                          submitScaleAnswer(
+                            scaleValue ?? currentQuestion.minValue ?? 0,
+                          )
+                        }
+                        type="button"
+                      >
+                        Enviar resposta
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 grid flex-1 grid-cols-2 overflow-hidden rounded-[1.4rem] shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
+                  {currentQuestion.options.map((option, optionIndex) => {
+                    const isChosen = answerState.answerIndex === optionIndex;
+                    const tileStyle =
+                      ANSWER_TILE_STYLES[
+                        optionIndex % ANSWER_TILE_STYLES.length
+                      ] ?? ANSWER_TILE_STYLES[0]!;
+
+                    return (
+                      <button
+                        key={`mobile-${currentQuestion.id}-${optionIndex}`}
+                        aria-pressed={isChosen}
+                        className="min-h-[132px] border border-black/5 px-4 py-4 text-left transition active:scale-[0.99] disabled:opacity-100"
+                        disabled={
+                          answerState.submitted || questionRemainingSeconds === 0
+                        }
+                        onClick={() => submitAnswer(optionIndex)}
+                        style={{
+                          backgroundColor: tileStyle.bg,
+                          boxShadow: isChosen
+                            ? "inset 0 0 0 4px rgba(255,255,255,0.96)"
+                            : undefined,
+                          color: tileStyle.fg,
+                        }}
+                        type="button"
+                      >
+                        <div className="flex h-full flex-col justify-between gap-4">
+                          <span className="text-xl font-black">
+                            {tileStyle.icon}
+                          </span>
+                          <span className="text-[1rem] font-bold leading-snug">
+                            {option}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="mt-3 flex items-center justify-between rounded-full bg-black/35 px-4 py-2.5 text-sm text-white/80 backdrop-blur-sm">
                 <span className="font-semibold tracking-[0.08em]">
@@ -443,7 +527,49 @@ export function LobbyClient({
               />
             ) : null}
 
-            {currentResult.questionType === "poll" ? (
+            {currentResult.questionType === "scale" ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+                  Valor alvo:{" "}
+                  <span className="text-white/80">
+                    {currentResult.targetValue}
+                  </span>{" "}
+                  · {currentResult.submittedCount} respostas
+                </p>
+                {answerState.submitted ? (
+                  <div className="rounded-[1.4rem] bg-white/10 px-5 py-4 text-center">
+                    <p className="text-3xl font-black text-white">
+                      {answerState.answerValue ?? scaleValue}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
+                      sua resposta
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-[1.4rem] border border-[rgba(234,179,8,0.25)] bg-[rgba(234,179,8,0.1)] px-5 py-4 text-center">
+                    <p className="text-sm font-bold uppercase tracking-[0.12em] text-[#fde047]">
+                      Você não respondeu
+                    </p>
+                  </div>
+                )}
+                <div className="relative h-3 w-full overflow-hidden rounded-full bg-white/20">
+                  <div
+                    className="absolute inset-y-0 rounded-full bg-white/50"
+                    style={{
+                      left: `${(((currentResult.targetValue ?? 5) - (currentResult.scaleMin ?? 0)) / ((currentResult.scaleMax ?? 10) - (currentResult.scaleMin ?? 0))) * 100}%`,
+                      width: "3px",
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-white/40">
+                  <span>{currentResult.scaleMin ?? 0}</span>
+                  <span className="font-semibold text-white/60">
+                    alvo: {currentResult.targetValue}
+                  </span>
+                  <span>{currentResult.scaleMax ?? 10}</span>
+                </div>
+              </div>
+            ) : currentResult.questionType === "poll" ? (
               <div className="flex flex-col gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
                   {currentResult.submittedCount} votos registrados

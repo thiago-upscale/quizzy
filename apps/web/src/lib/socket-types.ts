@@ -45,7 +45,11 @@ export type ActiveQuestion = {
   submittedCount: number;
   timeLimitSeconds: number;
   totalQuestions: number;
-  type: "multiple_choice" | "true_false" | "poll";
+  type: "multiple_choice" | "true_false" | "poll" | "scale";
+  // scale-specific
+  minValue?: number;
+  maxValue?: number;
+  step?: number;
 };
 
 export type QuestionResult = {
@@ -57,8 +61,13 @@ export type QuestionResult = {
   prompt: string;
   questionId: string;
   questionOrderIndex: number;
-  questionType: "multiple_choice" | "true_false" | "poll";
+  questionType: "multiple_choice" | "true_false" | "poll" | "scale";
   submittedCount: number;
   totalQuestions: number;
   voteCounts: number[];
+  // scale-specific
+  targetValue?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleDistribution?: number[];
 };

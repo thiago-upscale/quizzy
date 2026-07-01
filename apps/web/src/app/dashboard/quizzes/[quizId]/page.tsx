@@ -61,19 +61,45 @@ export default async function QuizDetailPage({
       imageUrl?: string | null;
       question?: string;
       options?: string[];
+      minValue?: number;
+      maxValue?: number;
+      step?: number;
     };
-    const correctAnswer = question.correctAnswer as { index?: number };
+    const correctAnswer = question.correctAnswer as {
+      index?: number;
+      value?: number;
+    };
 
     const qType =
       question.type === "true_false"
         ? "true_false"
         : question.type === "poll"
           ? "poll"
-          : "multiple_choice";
+          : question.type === "scale"
+            ? "scale"
+            : "multiple_choice";
+
+    if (qType === "scale") {
+      const minValue = content.minValue ?? 0;
+      const maxValue = content.maxValue ?? 10;
+      return {
+        id: question.id,
+        type: qType as "scale",
+        question: content.question ?? "",
+        imageUrl: content.imageUrl ?? null,
+        options: [] as string[],
+        correctIndex: -1,
+        timeLimitSeconds: question.timeLimitSeconds,
+        minValue,
+        maxValue,
+        step: content.step ?? 1,
+        targetValue: correctAnswer.value ?? Math.round((minValue + maxValue) / 2),
+      };
+    }
 
     return {
       id: question.id,
-      type: qType,
+      type: qType as "multiple_choice" | "true_false" | "poll",
       question: content.question ?? "",
       imageUrl: content.imageUrl ?? null,
       options:
@@ -82,7 +108,7 @@ export default async function QuizDetailPage({
           : (content.options ?? ["Opção A", "Opção B", "Opção C", "Opção D"]),
       correctIndex: qType === "poll" ? -1 : (correctAnswer.index ?? 0),
       timeLimitSeconds: question.timeLimitSeconds,
-    } as const;
+    };
   });
 
   const liveSessions = await db

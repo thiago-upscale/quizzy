@@ -2,12 +2,17 @@ import type { SaveQuizState } from "../../actions";
 
 export type EditorQuestion = {
   id: string;
-  type: "multiple_choice" | "true_false" | "poll";
+  type: "multiple_choice" | "true_false" | "poll" | "scale";
   imageUrl: string | null;
   question: string;
   options: string[];
   correctIndex: number;
   timeLimitSeconds: number;
+  // scale-specific (only used when type === "scale")
+  minValue?: number;
+  maxValue?: number;
+  step?: number;
+  targetValue?: number;
 };
 
 export type BrandingState = {

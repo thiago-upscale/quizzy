@@ -67,12 +67,17 @@ export async function createQuiz() {
 
 type QuestionPayload = {
   id?: string;
-  type: "multiple_choice" | "true_false";
+  type: "multiple_choice" | "true_false" | "poll" | "scale";
   question: string;
   options: string[];
   correctIndex: number;
   imageUrl?: string | null;
   timeLimitSeconds: number;
+  // scale-specific
+  minValue?: number;
+  maxValue?: number;
+  step?: number;
+  targetValue?: number;
 };
 
 type BrandingPayload = {
@@ -292,28 +297,54 @@ function normalizeBranding(
 
 function normalizeQuestions(parsedQuestions: QuestionPayload[]) {
   return parsedQuestions
-    .map((question, index) => ({
-      id: typeof question.id === "string" ? question.id : undefined,
-      orderIndex: index,
-      type: question.type,
-      content: {
-        question: question.question.trim(),
-        options:
-          question.type === "true_false"
-            ? ["Verdadeiro", "Falso"]
-            : question.options.map((option) => option.trim()).filter(Boolean),
-        imageUrl: sanitizeAssetUrl(question.imageUrl),
-      },
-      correctAnswer: {
-        index: question.correctIndex,
-      },
-      timeLimitSeconds: question.timeLimitSeconds,
-    }))
-    .filter(
-      (question) =>
-        question.content.question.length > 0 &&
-        question.content.options.length >= 2,
-    );
+    .map((question, index) => {
+      const trimmedQuestion = question.question.trim();
+
+      if (question.type === "scale") {
+        const minValue = typeof question.minValue === "number" ? question.minValue : 0;
+        const maxValue = typeof question.maxValue === "number" ? question.maxValue : 10;
+        const step = typeof question.step === "number" ? question.step : 1;
+        const targetValue = typeof question.targetValue === "number" ? question.targetValue : Math.round((minValue + maxValue) / 2);
+        return {
+          id: typeof question.id === "string" ? question.id : undefined,
+          orderIndex: index,
+          type: question.type,
+          content: {
+            question: trimmedQuestion,
+            options: [] as string[],
+            imageUrl: sanitizeAssetUrl(question.imageUrl),
+            minValue,
+            maxValue,
+            step,
+          },
+          correctAnswer: { value: targetValue },
+          timeLimitSeconds: question.timeLimitSeconds,
+        };
+      }
+
+      return {
+        id: typeof question.id === "string" ? question.id : undefined,
+        orderIndex: index,
+        type: question.type,
+        content: {
+          question: trimmedQuestion,
+          options:
+            question.type === "true_false"
+              ? ["Verdadeiro", "Falso"]
+              : question.options.map((option) => option.trim()).filter(Boolean),
+          imageUrl: sanitizeAssetUrl(question.imageUrl),
+        },
+        correctAnswer: {
+          index: question.correctIndex,
+        },
+        timeLimitSeconds: question.timeLimitSeconds,
+      };
+    })
+    .filter((question) => {
+      if (!question.content.question.length) return false;
+      if (question.type === "scale") return true;
+      return question.content.options.length >= 2;
+    });
 }
 
 function parseSessionIds(rawValue: string) {

@@ -22,6 +22,7 @@ export type ParticipantListEntry = {
 export type AnswerState = {
   accepted: boolean;
   answerIndex: number | null;
+  answerValue?: number;
   currentStreak: number;
   isCorrect: boolean | null;
   pointsEarned: number;
@@ -31,6 +32,7 @@ export type AnswerState = {
 const initialAnswerState: AnswerState = {
   accepted: false,
   answerIndex: null,
+  answerValue: undefined,
   currentStreak: 0,
   isCorrect: null,
   pointsEarned: 0,
@@ -265,6 +267,7 @@ export function useLiveParticipantSocket({
       (payload: {
         accepted: boolean;
         answerIndex?: number;
+        answerValue?: number;
         currentStreak?: number;
         isCorrect?: boolean;
         pointsEarned?: number;
@@ -274,6 +277,7 @@ export function useLiveParticipantSocket({
         setAnswerState({
           accepted: true,
           answerIndex: payload.answerIndex ?? null,
+          answerValue: payload.answerValue,
           currentStreak:
             payload.currentStreak ?? playerCurrentStreakRef.current,
           isCorrect: payload.isCorrect ?? null,

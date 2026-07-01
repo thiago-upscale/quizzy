@@ -69,7 +69,12 @@ export type RuntimeLiveQuestion = {
   pointsBase: number;
   prompt: string;
   timeLimitSeconds: number;
-  type: "multiple_choice" | "true_false" | "poll";
+  type: "multiple_choice" | "true_false" | "poll" | "scale";
+  // scale-specific
+  minValue?: number;
+  maxValue?: number;
+  step?: number;
+  targetValue?: number;
 };
 
 export type LiveRecoveryParticipant = {
@@ -410,8 +415,11 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
             imageUrl?: string | null;
             options?: string[];
             question?: string;
+            minValue?: number;
+            maxValue?: number;
+            step?: number;
           };
-          correctAnswer?: { index?: number };
+          correctAnswer?: { index?: number; value?: number };
           timeLimitSeconds?: number;
           type?: string;
         }>
@@ -431,9 +439,20 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
     const currentQuestion = currentQuestions[index];
     const options = question.content?.options ?? [];
 
+    const qType =
+      question.type === "true_false"
+        ? "true_false"
+        : question.type === "poll"
+          ? "poll"
+          : question.type === "scale"
+            ? "scale"
+            : "multiple_choice";
+
     return {
       correctIndex:
-        question.type === "poll" ? -1 : (question.correctAnswer?.index ?? 0),
+        question.type === "poll" || question.type === "scale"
+          ? -1
+          : (question.correctAnswer?.index ?? 0),
       id: currentQuestion?.id ?? `virtual-${liveSession.id}-${index}`,
       imageUrl:
         typeof question.content?.imageUrl === "string"
@@ -445,12 +464,15 @@ export async function buildRuntimeQuestionsForSession(sessionId: string) {
       pointsBase: currentQuestion?.pointsBase ?? 1000,
       prompt: question.content?.question ?? `Pergunta ${index + 1}`,
       timeLimitSeconds: question.timeLimitSeconds ?? 20,
-      type:
-        question.type === "true_false"
-          ? "true_false"
-          : question.type === "poll"
-            ? "poll"
-            : "multiple_choice",
+      type: qType,
+      ...(qType === "scale"
+        ? {
+            minValue: question.content?.minValue ?? 0,
+            maxValue: question.content?.maxValue ?? 10,
+            step: question.content?.step ?? 1,
+            targetValue: question.correctAnswer?.value ?? 5,
+          }
+        : {}),
     } satisfies RuntimeLiveQuestion;
   });
 }
@@ -479,6 +501,19 @@ function getAnswerIndexFromPayload(value: unknown) {
   }
 
   return 0;
+}
+
+function getAnswerValueFromPayload(value: unknown): number | undefined {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "value" in value &&
+    typeof value.value === "number"
+  ) {
+    return value.value;
+  }
+
+  return undefined;
 }
 
 export async function buildLiveRecoverySnapshot(params: {
@@ -577,6 +612,7 @@ export async function buildLiveRecoverySnapshot(params: {
     countdownStartedAt: latestCountdownStarted?.createdAt.toISOString() ?? null,
     currentQuestionAnswers: currentQuestionAnswers.map((row) => ({
       answerIndex: getAnswerIndexFromPayload(row.answer),
+      answerValue: getAnswerValueFromPayload(row.answer),
       isCorrect: row.isCorrect,
       participantToken: row.participantToken,
       pointsEarned: row.pointsEarned,

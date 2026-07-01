@@ -38,6 +38,14 @@ type PendingDelete = {
 
 function isQuestionComplete(q: EditorQuestion) {
   if (!q.question.trim()) return false;
+  if (q.type === "scale") {
+    return (
+      typeof q.minValue === "number" &&
+      typeof q.maxValue === "number" &&
+      typeof q.targetValue === "number" &&
+      q.maxValue > q.minValue
+    );
+  }
   if (q.type === "multiple_choice" || q.type === "poll") {
     return q.options.every((opt) => opt.trim().length > 0);
   }
@@ -196,7 +204,9 @@ export function QuestionsTab({
                           ? "Verd. / Falso"
                           : question.type === "poll"
                             ? "Enquete"
-                            : "Múltipla escolha"}
+                            : question.type === "scale"
+                              ? "Escala"
+                              : "Múltipla escolha"}
                       </span>
                       <span className="text-xs text-slate-500 font-medium">
                         {question.timeLimitSeconds}s
@@ -280,15 +290,29 @@ export function QuestionsTab({
                                     options:
                                       nextType === "true_false"
                                         ? ["Verdadeiro", "Falso"]
-                                        : item.options.length >= 2
-                                          ? item.options
-                                          : [
-                                              "Opção A",
-                                              "Opção B",
-                                              "Opção C",
-                                              "Opção D",
-                                            ],
-                                    correctIndex: nextType === "poll" ? -1 : 0,
+                                        : nextType === "scale"
+                                          ? []
+                                          : item.options.length >= 2
+                                            ? item.options
+                                            : [
+                                                "Opção A",
+                                                "Opção B",
+                                                "Opção C",
+                                                "Opção D",
+                                              ],
+                                    correctIndex:
+                                      nextType === "poll" ||
+                                      nextType === "scale"
+                                        ? -1
+                                        : 0,
+                                    ...(nextType === "scale"
+                                      ? {
+                                          minValue: 0,
+                                          maxValue: 10,
+                                          step: 1,
+                                          targetValue: 5,
+                                        }
+                                      : {}),
                                   }
                                 : item,
                             ),
@@ -300,6 +324,7 @@ export function QuestionsTab({
                         </option>
                         <option value="true_false">Verdadeiro / Falso</option>
                         <option value="poll">Enquete</option>
+                        <option value="scale">Escala numérica</option>
                       </select>
                     </label>
 
@@ -386,6 +411,16 @@ export function QuestionsTab({
                             valem.
                           </p>
                         </div>
+                      ) : question.type === "scale" ? (
+                        <div className="space-y-2">
+                          <span className="text-sm font-semibold text-[#22304a]">
+                            Resposta correta
+                          </span>
+                          <p className="rounded-xl border border-[#cad5e3] bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                            Defina o valor alvo abaixo — pontuação por
+                            proximidade.
+                          </p>
+                        </div>
                       ) : (
                         <label className="space-y-2 text-sm font-semibold text-[#22304a]">
                           <span>Resposta correta</span>
@@ -420,37 +455,119 @@ export function QuestionsTab({
                       )}
                     </div>
 
-                    <FieldPanel className="grid gap-3 bg-[color:color-mix(in_srgb,var(--quizzy-surface)_58%,white)]">
-                      <p className="text-sm font-bold text-[#22304a]">
-                        Alternativas de resposta
-                      </p>
-                      {question.options.map((option, optionIndex) => (
-                        <input
-                          key={`${question.id}-option-${optionIndex}`}
-                          className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
-                          disabled={question.type === "true_false"}
-                          value={option}
-                          onChange={(event) =>
-                            setQuestions((currentQuestions) =>
-                              currentQuestions.map((item) =>
-                                item.id === question.id
-                                  ? {
-                                      ...item,
-                                      options: item.options.map(
-                                        (currentOption, currentIndex) =>
-                                          currentIndex === optionIndex
-                                            ? event.target.value
-                                            : currentOption,
-                                      ),
-                                    }
-                                  : item,
-                              ),
-                            )
-                          }
-                          placeholder={`Alternativa ${optionIndex + 1}`}
-                        />
-                      ))}
-                    </FieldPanel>
+                    {question.type === "scale" ? (
+                      <FieldPanel className="grid gap-4 bg-[color:color-mix(in_srgb,var(--quizzy-surface)_58%,white)]">
+                        <p className="text-sm font-bold text-[#22304a]">
+                          Configuração da escala
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <label className="space-y-1.5 text-sm font-semibold text-[#22304a]">
+                            <span>Mínimo</span>
+                            <input
+                              className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
+                              type="number"
+                              value={question.minValue ?? 0}
+                              onChange={(e) =>
+                                setQuestions((qs) =>
+                                  qs.map((item) =>
+                                    item.id === question.id
+                                      ? { ...item, minValue: Number(e.target.value) }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                          <label className="space-y-1.5 text-sm font-semibold text-[#22304a]">
+                            <span>Máximo</span>
+                            <input
+                              className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
+                              type="number"
+                              value={question.maxValue ?? 10}
+                              onChange={(e) =>
+                                setQuestions((qs) =>
+                                  qs.map((item) =>
+                                    item.id === question.id
+                                      ? { ...item, maxValue: Number(e.target.value) }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                          <label className="space-y-1.5 text-sm font-semibold text-[#22304a]">
+                            <span>Passo</span>
+                            <input
+                              className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
+                              type="number"
+                              min="0.1"
+                              value={question.step ?? 1}
+                              onChange={(e) =>
+                                setQuestions((qs) =>
+                                  qs.map((item) =>
+                                    item.id === question.id
+                                      ? { ...item, step: Number(e.target.value) }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                        </div>
+                        <label className="space-y-1.5 text-sm font-semibold text-[#22304a]">
+                          <span>Valor alvo (resposta correta)</span>
+                          <input
+                            className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
+                            type="number"
+                            value={question.targetValue ?? 5}
+                            min={question.minValue ?? 0}
+                            max={question.maxValue ?? 10}
+                            step={question.step ?? 1}
+                            onChange={(e) =>
+                              setQuestions((qs) =>
+                                qs.map((item) =>
+                                  item.id === question.id
+                                    ? { ...item, targetValue: Number(e.target.value) }
+                                    : item,
+                                )
+                              )
+                            }
+                          />
+                        </label>
+                      </FieldPanel>
+                    ) : (
+                      <FieldPanel className="grid gap-3 bg-[color:color-mix(in_srgb,var(--quizzy-surface)_58%,white)]">
+                        <p className="text-sm font-bold text-[#22304a]">
+                          Alternativas de resposta
+                        </p>
+                        {question.options.map((option, optionIndex) => (
+                          <input
+                            key={`${question.id}-option-${optionIndex}`}
+                            className="w-full rounded-xl border border-[#cad5e3] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0f766e]"
+                            disabled={question.type === "true_false"}
+                            value={option}
+                            onChange={(event) =>
+                              setQuestions((currentQuestions) =>
+                                currentQuestions.map((item) =>
+                                  item.id === question.id
+                                    ? {
+                                        ...item,
+                                        options: item.options.map(
+                                          (currentOption, currentIndex) =>
+                                            currentIndex === optionIndex
+                                              ? event.target.value
+                                              : currentOption,
+                                        ),
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }
+                            placeholder={`Alternativa ${optionIndex + 1}`}
+                          />
+                        ))}
+                      </FieldPanel>
+                    )}
                   </div>
 
                   {/* P3.4 — botão de remoção com undo */}

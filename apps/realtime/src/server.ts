@@ -50,11 +50,17 @@ type RoomQuestion = {
   pointsBase: number;
   prompt: string;
   timeLimitSeconds: number;
-  type: "multiple_choice" | "true_false" | "poll";
+  type: "multiple_choice" | "true_false" | "poll" | "scale";
+  // scale-specific
+  minValue?: number;
+  maxValue?: number;
+  step?: number;
+  targetValue?: number;
 };
 
 type RoomAnswer = {
   answerIndex: number;
+  answerValue?: number;
   isCorrect: boolean;
   pointsEarned: number;
   timeSpentMs: number;
@@ -82,10 +88,15 @@ type QuestionResultSnapshot = {
   prompt: string;
   questionId: string;
   questionOrderIndex: number;
-  questionType: "multiple_choice" | "true_false" | "poll";
+  questionType: "multiple_choice" | "true_false" | "poll" | "scale";
   submittedCount: number;
   totalQuestions: number;
   voteCounts: number[];
+  // scale-specific
+  targetValue?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleDistribution?: number[];
 };
 
 type SessionStatePayload = {
@@ -150,6 +161,7 @@ type TerminateSessionPayload = {
 
 type PersistAnswerPayload = {
   answerIndex: number;
+  answerValue?: number;
   currentStreak: number;
   isCorrect: boolean;
   participantToken: string;
@@ -165,6 +177,7 @@ type RecoverySnapshot = {
   countdownStartedAt: string | null;
   currentQuestionAnswers: Array<{
     answerIndex: number;
+    answerValue?: number;
     isCorrect: boolean;
     participantToken: string;
     pointsEarned: number;
@@ -387,6 +400,13 @@ function serializeCurrentQuestion(room: RoomState) {
     timeLimitSeconds: currentQuestion.timeLimitSeconds,
     totalQuestions: room.questions.length,
     type: currentQuestion.type,
+    ...(currentQuestion.type === "scale"
+      ? {
+          minValue: currentQuestion.minValue ?? 0,
+          maxValue: currentQuestion.maxValue ?? 10,
+          step: currentQuestion.step ?? 1,
+        }
+      : {}),
   };
 }
 
@@ -418,9 +438,29 @@ function buildQuestionResult(room: RoomState) {
     (answer) => answer.isCorrect,
   ).length;
 
-  const voteCounts = currentQuestion.options.map(
-    (_, i) => [...answers.values()].filter((a) => a.answerIndex === i).length,
-  );
+  const isScale = currentQuestion.type === "scale";
+
+  const voteCounts = isScale
+    ? []
+    : currentQuestion.options.map(
+        (_, i) => [...answers.values()].filter((a) => a.answerIndex === i).length,
+      );
+
+  let scaleDistribution: number[] | undefined;
+  if (isScale) {
+    const buckets = 10;
+    scaleDistribution = new Array(buckets).fill(0) as number[];
+    const scaleMin = currentQuestion.minValue ?? 0;
+    const scaleMax = currentQuestion.maxValue ?? 10;
+    const range = scaleMax - scaleMin || 1;
+    for (const a of answers.values()) {
+      if (typeof a.answerValue === "number") {
+        const normalized = (a.answerValue - scaleMin) / range;
+        const bucket = Math.min(buckets - 1, Math.floor(normalized * buckets));
+        scaleDistribution[bucket] = (scaleDistribution[bucket] ?? 0) + 1;
+      }
+    }
+  }
 
   return {
     correctCount,
@@ -435,6 +475,14 @@ function buildQuestionResult(room: RoomState) {
     submittedCount: answers.size,
     totalQuestions: room.questions.length,
     voteCounts,
+    ...(isScale
+      ? {
+          targetValue: currentQuestion.targetValue,
+          scaleMin: currentQuestion.minValue ?? 0,
+          scaleMax: currentQuestion.maxValue ?? 10,
+          scaleDistribution,
+        }
+      : {}),
   } satisfies QuestionResultSnapshot;
 }
 
@@ -638,6 +686,7 @@ function populateCurrentQuestionAnswersFromSnapshot(
         answer.participantToken,
         {
           answerIndex: answer.answerIndex,
+          answerValue: answer.answerValue,
           isCorrect: answer.isCorrect,
           pointsEarned: answer.pointsEarned,
           timeSpentMs: answer.timeSpentMs,
@@ -1742,6 +1791,7 @@ io.on("connection", (socket) => {
     "answer:submit",
     async (payload: {
       answerIndex?: number;
+      answerValue?: number;
       participantToken?: string;
       pin?: string;
       questionId?: string;
@@ -1750,12 +1800,13 @@ io.on("connection", (socket) => {
       const participantToken = payload.participantToken?.trim();
       const questionId = payload.questionId?.trim();
       const answerIndex = payload.answerIndex;
+      const answerValue = payload.answerValue;
 
       if (
         !pin ||
         !participantToken ||
         !questionId ||
-        typeof answerIndex !== "number"
+        (typeof answerIndex !== "number" && typeof answerValue !== "number")
       ) {
         const room = pin ? getOrCreateRoom(pin) : createEmptyRoom();
         rejectAnswer(io, {
@@ -1869,22 +1920,41 @@ io.on("connection", (socket) => {
       }
 
       const isPoll = currentQuestion.type === "poll";
-      const isCorrect = isPoll
-        ? false
-        : currentQuestion.correctIndex === answerIndex;
+      const isScale = currentQuestion.type === "scale";
+
+      let isCorrect: boolean;
+      let pointsEarned: number;
+
+      if (isScale && typeof answerValue === "number") {
+        const scaleMin = currentQuestion.minValue ?? 0;
+        const scaleMax = currentQuestion.maxValue ?? 10;
+        const target = currentQuestion.targetValue ?? Math.round((scaleMin + scaleMax) / 2);
+        const range = scaleMax - scaleMin || 1;
+        const distance = Math.abs(answerValue - target);
+        const proximity = Math.max(0, 1 - distance / range);
+        const totalMs = Math.max(1, currentQuestion.timeLimitSeconds * 1000);
+        const speedFactor = Math.max(0.5, 1 - (timeSpentMs / totalMs) * 0.5);
+        isCorrect = proximity >= 0.9;
+        pointsEarned = Math.round(currentQuestion.pointsBase * proximity * speedFactor);
+      } else if (isPoll) {
+        isCorrect = false;
+        pointsEarned = 0;
+      } else {
+        isCorrect = currentQuestion.correctIndex === (answerIndex ?? -1);
+        pointsEarned = computePoints({
+          currentStreak: participant.currentStreak,
+          isCorrect,
+          pointsBase: currentQuestion.pointsBase,
+          timeLimitSeconds: currentQuestion.timeLimitSeconds,
+          timeSpentMs,
+        });
+      }
+
       const nextStreak = isCorrect ? participant.currentStreak + 1 : 0;
-      const pointsEarned = isPoll
-        ? 0
-        : computePoints({
-            currentStreak: participant.currentStreak,
-            isCorrect,
-            pointsBase: currentQuestion.pointsBase,
-            timeLimitSeconds: currentQuestion.timeLimitSeconds,
-            timeSpentMs,
-          });
 
       questionAnswers.set(participantToken, {
-        answerIndex,
+        answerIndex: answerIndex ?? -1,
+        answerValue,
         isCorrect,
         pointsEarned,
         timeSpentMs,
@@ -1899,7 +1969,8 @@ io.on("connection", (socket) => {
 
       socket.emit("answer:ack", {
         accepted: true,
-        answerIndex,
+        answerIndex: answerIndex ?? -1,
+        answerValue,
         currentStreak: nextStreak,
         isCorrect,
         pointsEarned,
@@ -1923,7 +1994,8 @@ io.on("connection", (socket) => {
 
       logger.info(
         {
-          answerIndex,
+          answerIndex: answerIndex ?? -1,
+          answerValue,
           isCorrect,
           participantId: participant.id,
           pin,
@@ -1952,7 +2024,8 @@ io.on("connection", (socket) => {
 
       if (room.sessionId) {
         queuePersistAnswer({
-          answerIndex,
+          answerIndex: answerIndex ?? -1,
+          answerValue,
           currentStreak: nextStreak,
           isCorrect,
           participantToken,
