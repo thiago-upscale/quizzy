@@ -142,6 +142,8 @@ export default async function QuizDetailPage({
     enableAnimations: boolean;
     surpriseMode: boolean;
     anonymousMode: boolean;
+    enableSounds: boolean;
+    enableVibration: boolean;
   }>;
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -173,6 +175,8 @@ export default async function QuizDetailPage({
           enableAnimations: branding.enableAnimations ?? true,
           surpriseMode: branding.surpriseMode ?? false,
           anonymousMode: branding.anonymousMode ?? false,
+          enableSounds: branding.enableSounds ?? true,
+          enableVibration: branding.enableVibration ?? true,
         }}
         description={quiz.description ?? ""}
         initialQuestions={initialQuestions}

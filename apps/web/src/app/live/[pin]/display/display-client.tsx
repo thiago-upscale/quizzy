@@ -11,6 +11,7 @@ import {
 import { ANSWER_PALETTE, brandingSurfaceStyle } from "@/lib/branding-theme";
 import type { LiveBranding } from "@/lib/live";
 import { useDisplaySocket } from "@/hooks/useDisplaySocket";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 const OPTION_STYLES = ANSWER_PALETTE;
 
@@ -269,6 +270,43 @@ export function DisplayClient({
 
   const backgroundStyle = brandingSurfaceStyle(branding);
 
+  const { isUnlocked, unlock, play } = useSoundEffects(branding.enableSounds);
+
+  // Track previous values to detect transitions
+  const prevQuestionIdRef = useRef<string | null>(null);
+  const prevRemainingRef = useRef<number | null>(null);
+  const playedFinishRef = useRef(false);
+
+  useEffect(() => {
+    const questionId = currentQuestion?.id ?? null;
+    if (questionId && questionId !== prevQuestionIdRef.current) {
+      play("question-start");
+      playedFinishRef.current = false;
+    }
+    prevQuestionIdRef.current = questionId;
+  }, [currentQuestion?.id, play]);
+
+  useEffect(() => {
+    const remaining = remainingSeconds;
+    if (
+      remaining !== null &&
+      remaining !== prevRemainingRef.current &&
+      remaining <= 5 &&
+      remaining > 0 &&
+      sessionState.status === "playing"
+    ) {
+      play("timer-low");
+    }
+    prevRemainingRef.current = remaining;
+  }, [remainingSeconds, sessionState.status, play]);
+
+  useEffect(() => {
+    if (sessionState.status === "finished" && !playedFinishRef.current) {
+      playedFinishRef.current = true;
+      play("finish");
+    }
+  }, [sessionState.status, play]);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(Boolean(document.fullscreenElement));
@@ -446,9 +484,18 @@ export function DisplayClient({
 
         {/* Title */}
         <div className="relative z-10 mb-8 text-center">
-          <span className="text-3xl font-black text-white">
-            Quizzy<span className="text-[#f59e0b]">!</span>
-          </span>
+          {branding.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              alt="Logo"
+              className="mx-auto mb-3 h-12 w-auto max-w-[200px] object-contain drop-shadow-lg"
+              src={branding.logoUrl}
+            />
+          ) : (
+            <span className="text-3xl font-black text-white">
+              Quizzy<span style={{ color: "var(--brand-accent)" }}>!</span>
+            </span>
+          )}
           <div className="mt-3 rounded-xl bg-white px-8 py-3 shadow-lg">
             <p className="text-xl font-black text-[#0d1b2a]">{quizTitle}</p>
           </div>
@@ -703,11 +750,22 @@ export function DisplayClient({
               <strong className="font-bold text-white/75">{pin}</strong>
             </span>
           </div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-white/60">
-            <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-              <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-7 9a7 7 0 1 1 14 0H3z" />
-            </svg>
-            {connectedCount}
+          <div className="flex items-center gap-4">
+            {branding.enableSounds && !isUnlocked ? (
+              <button
+                className="rounded-lg border border-white/30 bg-white/10 px-4 py-1.5 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+                onClick={unlock}
+                type="button"
+              >
+                🔊 Ativar som
+              </button>
+            ) : null}
+            <div className="flex items-center gap-2 text-sm font-semibold text-white/60">
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-7 9a7 7 0 1 1 14 0H3z" />
+              </svg>
+              {connectedCount}
+            </div>
           </div>
         </div>
       </div>

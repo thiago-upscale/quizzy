@@ -7,6 +7,7 @@ import {
   brandingBackgroundStyle,
   brandingCssVars,
 } from "@/lib/branding-theme";
+import { BRANDING_TEMPLATES } from "@/lib/branding-templates";
 import type { LiveBranding } from "@/lib/live";
 import type {
   BrandingState,
@@ -374,6 +375,48 @@ export function BrandingTab({
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] xl:items-start">
       {/* Controls column */}
       <div className="min-w-0 space-y-6">
+        {/* ── Templates ─────────────────────────────────────────── */}
+        <FieldPanel className="space-y-4">
+          <SectionHeading
+            eyebrow="Início rápido"
+            helper="Selecione um tema pré-definido para aplicar cores e fonte de uma vez."
+            title="Templates"
+          />
+          <div className="grid grid-cols-1 gap-2">
+            {BRANDING_TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.id}
+                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-[#0f766e] hover:shadow-md"
+                type="button"
+                onClick={() => setBranding((b) => ({ ...b, ...tpl.branding }))}
+              >
+                <div className="flex flex-shrink-0 gap-1">
+                  <span
+                    className="h-5 w-5 rounded-full border border-white shadow-sm"
+                    style={{ backgroundColor: tpl.preview.primary }}
+                  />
+                  <span
+                    className="h-5 w-5 rounded-full border border-white shadow-sm"
+                    style={{ backgroundColor: tpl.preview.secondary }}
+                  />
+                  <span
+                    className="h-5 w-5 rounded-full border border-white shadow-sm"
+                    style={{ backgroundColor: tpl.preview.accent }}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#22304a]">
+                    {tpl.name}
+                  </p>
+                  <p className="truncate text-xs text-[#61708c]">
+                    {tpl.description}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </FieldPanel>
+
         <FieldPanel className="space-y-6">
           <SectionHeading
             eyebrow="Aplicar marca"
@@ -884,6 +927,36 @@ export function BrandingTab({
                 description="Substitui os nomes por 'Participante' no ranking público da tela principal."
                 onChange={(value) =>
                   setBranding((b) => ({ ...b, anonymousMode: value }))
+                }
+              />
+            </div>
+          </div>
+        </FieldPanel>
+
+        {/* ── Som e Vibração ──────────────────────────────────────── */}
+        <FieldPanel className="space-y-5">
+          <SectionHeading
+            eyebrow="Experiência"
+            helper="Efeitos sonoros no projetor e vibração nos celulares dos participantes."
+            title="Som e Vibração"
+          />
+
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <Toggle
+              checked={branding.enableSounds}
+              label="Efeitos sonoros"
+              description='Ativa sons sintetizados no display (projetor). Requer clicar em "Ativar som" na tela do display.'
+              onChange={(value) =>
+                setBranding((b) => ({ ...b, enableSounds: value }))
+              }
+            />
+            <div className="border-t border-slate-100 pt-3">
+              <Toggle
+                checked={branding.enableVibration}
+                label="Vibração no celular"
+                description="Vibra o dispositivo ao responder (apenas Android). iOS não suporta vibração via web."
+                onChange={(value) =>
+                  setBranding((b) => ({ ...b, enableVibration: value }))
                 }
               />
             </div>

@@ -36,6 +36,8 @@ export type BrandingState = {
   enableAnimations: boolean;
   surpriseMode: boolean;
   anonymousMode: boolean;
+  enableSounds: boolean;
+  enableVibration: boolean;
 };
 
 export type QuizEditorProps = {
