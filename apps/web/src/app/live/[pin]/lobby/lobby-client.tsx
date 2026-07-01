@@ -14,6 +14,7 @@ import {
   useLiveParticipantSocket,
   type ParticipantListEntry,
 } from "@/hooks/useLiveParticipantSocket";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 function formatDuration(totalTimeMs: number) {
   const totalSeconds = Math.round(totalTimeMs / 1000);
@@ -230,6 +231,38 @@ export function LobbyClient({
     ? (personalStanding?.score ?? participant.score)
     : animatedScore;
 
+  const { play } = useSoundEffects(branding.enableSounds);
+  const prevResultIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const resultId = currentResult?.questionId ?? null;
+    if (!resultId || resultId === prevResultIdRef.current) return;
+    prevResultIdRef.current = resultId;
+
+    if (currentResult?.questionType === "poll") return;
+
+    if (personalStanding?.answeredCurrentQuestion) {
+      if (personalStanding.lastIsCorrect) {
+        play("correct");
+        if (branding.enableVibration && "vibrate" in navigator) {
+          navigator.vibrate([80, 60, 80]);
+        }
+      } else {
+        play("wrong");
+        if (branding.enableVibration && "vibrate" in navigator) {
+          navigator.vibrate(200);
+        }
+      }
+    }
+  }, [
+    currentResult?.questionId,
+    currentResult?.questionType,
+    personalStanding?.answeredCurrentQuestion,
+    personalStanding?.lastIsCorrect,
+    play,
+    branding.enableVibration,
+  ]);
+
   function submitAnswer(answerIndex: number) {
     if (
       !currentQuestion ||
@@ -239,6 +272,10 @@ export function LobbyClient({
       sessionState.status !== "playing"
     ) {
       return;
+    }
+
+    if (branding.enableVibration && "vibrate" in navigator) {
+      navigator.vibrate(50);
     }
 
     socketRef.current.emit("answer:submit", {

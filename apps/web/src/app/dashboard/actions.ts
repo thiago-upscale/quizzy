@@ -101,6 +101,8 @@ type BrandingPayload = {
   enableAnimations: boolean;
   surpriseMode: boolean;
   anonymousMode: boolean;
+  enableSounds: boolean;
+  enableVibration: boolean;
 };
 
 export type SaveQuizState = {
@@ -146,6 +148,8 @@ const defaultBranding: BrandingPayload = {
   enableAnimations: true,
   surpriseMode: false,
   anonymousMode: false,
+  enableSounds: true,
+  enableVibration: true,
 };
 
 const destructiveConfirmationText = "APAGAR";
@@ -275,6 +279,14 @@ function normalizeBranding(
       typeof branding.anonymousMode === "boolean"
         ? branding.anonymousMode
         : defaultBranding.anonymousMode,
+    enableSounds:
+      typeof branding.enableSounds === "boolean"
+        ? branding.enableSounds
+        : defaultBranding.enableSounds,
+    enableVibration:
+      typeof branding.enableVibration === "boolean"
+        ? branding.enableVibration
+        : defaultBranding.enableVibration,
   };
 }
 

@@ -55,6 +55,8 @@ export type LiveBranding = {
   enableAnimations: boolean;
   surpriseMode: boolean;
   anonymousMode: boolean;
+  enableSounds: boolean;
+  enableVibration: boolean;
 };
 
 export type RuntimeLiveQuestion = {
@@ -126,6 +128,8 @@ export const defaultLiveBranding: LiveBranding = {
   enableAnimations: true,
   surpriseMode: false,
   anonymousMode: false,
+  enableSounds: true,
+  enableVibration: true,
 };
 
 export function getLiveParticipantCookieName(pin: string) {
@@ -227,6 +231,14 @@ export function normalizeLiveBranding(
       typeof branding?.anonymousMode === "boolean"
         ? branding.anonymousMode
         : defaultLiveBranding.anonymousMode,
+    enableSounds:
+      typeof branding?.enableSounds === "boolean"
+        ? branding.enableSounds
+        : defaultLiveBranding.enableSounds,
+    enableVibration:
+      typeof branding?.enableVibration === "boolean"
+        ? branding.enableVibration
+        : defaultLiveBranding.enableVibration,
   };
 }
 
